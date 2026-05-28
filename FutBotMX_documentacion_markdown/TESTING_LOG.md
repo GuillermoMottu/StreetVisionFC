@@ -115,7 +115,7 @@ Escritorio Windows.
 
 ## Codigo usado
 
-Commit: pendiente hasta commit inicial.
+Commit: `aca0ac1`.
 
 ## Configuracion
 
@@ -144,7 +144,7 @@ El escritorio queda listo para desarrollo ligero. No se declara validacion SAM 3
 
 ## Siguiente accion
 
-Hacer commit/push inicial y ejecutar validacion GPU en laptop MSI.
+Ejecutar validacion GPU en laptop MSI.
 
 ---
 
@@ -162,7 +162,7 @@ Escritorio Windows.
 
 ## Codigo usado
 
-Commit: pendiente hasta commit inicial.
+Commit: `aca0ac1`.
 
 ## Configuracion
 

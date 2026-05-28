@@ -8,8 +8,8 @@
 - [x] `configs/default.yaml` creado.
 - [x] Python 3.12.10 instalado en escritorio.
 - [x] `.venv` creado en escritorio con dependencias de desarrollo.
-- [ ] Commit inicial pendiente.
-- [ ] Push a GitHub pendiente.
+- [x] Commit inicial realizado: `aca0ac1`.
+- [x] Push a GitHub realizado.
 - [ ] Configuracion de laptop MSI pendiente.
 - [ ] Validacion CUDA/PyTorch/SAM 3 pendiente.
 
@@ -72,7 +72,7 @@
 - [x] Outputs minimos definidos: `tracks.csv`, `events.json`, `metrics.csv`, `summary.md`, `config.yaml`.
 - [x] Config snapshots por experimento sintetico.
 - [x] Tests de escritorio reproducibles.
-- [ ] Commit hash real agregado despues de commit inicial.
+- [x] Commit hash real agregado despues de commit inicial.
 - [ ] Resultados reales de laptop documentados.
 
 ### Fase 7 - Documentacion y demo
