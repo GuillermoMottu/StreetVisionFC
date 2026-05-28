@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Models and checkpoints
+models/
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.ckpt
+*.safetensors
+
+# Heavy data
+data/raw/
+data/processed/frames/
+data/processed/masks/
+datasets/
+
+# Heavy outputs
+outputs/videos/
+outputs/masks/
+outputs/frames/
+*.npy
+*.npz
+
+# Temporary files
+.cache/
+tmp/
+temp/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Logs
+*.log

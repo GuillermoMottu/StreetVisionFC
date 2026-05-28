@@ -1,0 +1,4 @@
+metric,value
+desktop_python,3.12.10
+desktop_dependencies,validated
+gpu_validation,pending_laptop_msi

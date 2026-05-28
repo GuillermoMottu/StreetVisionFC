@@ -1,0 +1,7 @@
+numpy
+pandas
+matplotlib
+pyyaml
+opencv-python
+jupyter
+tqdm
