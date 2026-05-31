@@ -17,6 +17,11 @@ from futbotmx.io.detections import (
 )
 from futbotmx.tracking import track_detections, write_tracks_csv
 from futbotmx.visualization import write_heatmap
+from scripts.run_prompt_comparison import (
+    choose_prompt,
+    slugify_prompt,
+    summarize_prompt,
+)
 from scripts.run_temporal_stability import (
     count_detections_by_frame,
     representative_frames,
@@ -100,6 +105,29 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(rows[0]["filtered_ball"], 1)
         self.assertEqual(rows[0]["filtered_robot"], 0)
         self.assertEqual(rows[1]["filtered_ball"], 0)
+
+    def test_prompt_comparison_helpers(self) -> None:
+        raw_frames = [
+            FrameDetections(
+                frame=120,
+                detections=(Detection("small_orange_ball", (1, 1, 4, 4), (2.5, 2.5), 0.8),),
+            ),
+            FrameDetections(frame=135, detections=()),
+        ]
+        filtered_frames = [
+            FrameDetections(
+                frame=120,
+                detections=(Detection("small_orange_ball", (1, 1, 4, 4), (2.5, 2.5), 0.8),),
+            ),
+            FrameDetections(frame=135, detections=()),
+        ]
+
+        summary = summarize_prompt("ball", "small orange ball", raw_frames, filtered_frames)
+
+        self.assertEqual(slugify_prompt("Small Orange Ball!"), "small_orange_ball")
+        self.assertEqual(summary.detected_frames_filtered, 1)
+        self.assertEqual(summary.missing_frames_filtered, (135,))
+        self.assertEqual(choose_prompt("ball", [summary]).prompt, "small orange ball")
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
