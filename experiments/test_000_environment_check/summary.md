@@ -2,11 +2,12 @@
 
 ## Estado
 
-Parcialmente completado en escritorio. La validacion de GPU queda pendiente en la laptop MSI.
+Completado para entorno base de escritorio y laptop MSI. Codigo oficial SAM 3 instalado, checkpoint descargado y carga en GPU validada.
 
 ## Equipo usado
 
-Escritorio Windows.
+- Escritorio Windows.
+- Laptop MSI Thin GF63 12VE con Ubuntu 26.04 LTS y RTX 4050 Laptop GPU.
 
 ## Resultado
 
@@ -14,11 +15,17 @@ Escritorio Windows.
 - `.venv` creado.
 - Dependencias de desarrollo instaladas.
 - Imports de escritorio validados.
+- Driver NVIDIA 595.71.05 instalado en laptop MSI.
+- `nvidia-smi` valida RTX 4050 Laptop GPU con CUDA 13.2 del driver.
+- `.venv` de laptop creado con Python 3.14.4.
+- Dependencias GPU instaladas desde `requirements-gpu.txt`.
+- PyTorch 2.12.0+cu130 valida CUDA fuera del sandbox: `torch.cuda.is_available() == True`.
+- Pruebas unitarias del repositorio ejecutadas correctamente en laptop: `Ran 3 tests ... OK`.
 
 ## Limitaciones
 
-No valida CUDA, PyTorch GPU ni SAM 3. Esa validacion debe hacerse en la laptop MSI.
+SAM 3 aun no esta validado con clip real. En ejecuciones dentro del sandbox de Codex, PyTorch puede no ver la GPU aunque fuera del sandbox si la ve.
 
 ## Siguiente accion
 
-Hacer pull en la laptop MSI, crear `.venv`, instalar `requirements-gpu.txt`, validar `nvidia-smi`, PyTorch CUDA y SAM 3.
+Ejecutar `scripts/run_sam3_test.py` con un clip real y evidencia ligera en `experiments/test_002_sam3_segmentation/`.

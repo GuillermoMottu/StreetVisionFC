@@ -1,4 +1,16 @@
 metric,value
 desktop_python,3.12.10
 desktop_dependencies,validated
-gpu_validation,pending_laptop_msi
+laptop_os,Ubuntu 26.04 LTS
+laptop_python,3.14.4
+nvidia_driver,595.71.05
+driver_cuda,13.2
+gpu,NVIDIA GeForce RTX 4050 Laptop GPU
+gpu_dependencies,validated
+torch_version,2.12.0+cu130
+torch_cuda_runtime,13.0
+torch_cuda_available,validated_outside_sandbox
+unit_tests,3_passed
+sam3_code_install,validated
+sam3_checkpoint_validation,validated
+sam3_real_clip_validation,pending

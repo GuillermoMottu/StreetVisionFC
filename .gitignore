@@ -33,6 +33,7 @@ outputs/frames/
 
 # Temporary files
 .cache/
+.deps/
 tmp/
 temp/
 
