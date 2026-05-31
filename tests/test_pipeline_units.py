@@ -15,12 +15,16 @@ from futbotmx.io.detections import (
     load_detections,
     save_detections,
 )
-from futbotmx.tracking import track_detections, write_tracks_csv
+from futbotmx.tracking import TrackRow, track_detections, write_tracks_csv
 from futbotmx.visualization import write_heatmap
 from scripts.run_prompt_comparison import (
     choose_prompt,
     slugify_prompt,
     summarize_prompt,
+)
+from scripts.run_tracking_comparison import (
+    choose_recommended_tracker,
+    summarize_tracks,
 )
 from scripts.run_temporal_stability import (
     count_detections_by_frame,
@@ -128,6 +132,21 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(summary.detected_frames_filtered, 1)
         self.assertEqual(summary.missing_frames_filtered, (135,))
         self.assertEqual(choose_prompt("ball", [summary]).prompt, "small orange ball")
+
+    def test_tracking_comparison_metrics(self) -> None:
+        rows = [
+            TrackRow(1, "ball_01", "ball", 10, 10, 8, 8, 12, 12, 0.9),
+            TrackRow(2, "ball_01", "ball", 13, 14, 11, 12, 15, 16, 0.9),
+            TrackRow(4, "ball_02", "ball", 30, 30, 28, 28, 32, 32, 0.8),
+        ]
+
+        metrics = summarize_tracks("simple", rows)
+
+        self.assertEqual(metrics[0].class_name, "ball")
+        self.assertEqual(metrics[0].track_count, 2)
+        self.assertEqual(metrics[0].late_track_starts, 1)
+        self.assertEqual(metrics[0].max_frame_gap, 1)
+        self.assertEqual(choose_recommended_tracker(metrics), "simple")
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -10,6 +10,9 @@ from futbotmx.video_io import extract_frame
 
 COLORS = {
     "ball": (0, 220, 255),
+    "robot": (0, 180, 80),
+    "small_robot": (0, 180, 80),
+    "green_soccer_field": (255, 180, 0),
     "ally_robot": (0, 180, 80),
     "opponent_robot": (30, 80, 230),
 }
