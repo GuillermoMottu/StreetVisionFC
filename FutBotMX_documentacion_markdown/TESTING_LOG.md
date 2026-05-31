@@ -585,6 +585,71 @@ Evaluar tracking real con frames consecutivos filtrados por ROI usando los promp
 
 ## Test ID
 
+`test_003_tracking_real_video_836`
+
+## Fecha
+
+`2026-05-30`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `5789842`.
+
+## Video utilizado
+
+Ruta local:
+
+```text
+/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov
+```
+
+## Configuracion
+
+- Detecciones: `experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/stride_1/detections_filtered_roi.json`.
+- Ventana: frames `120-180`.
+- ROI ya aplicado: `x=0..1360`, `y=620..1808`.
+- Tracker simple: `max-distance-px=120`, `max-lost-frames=15`.
+- ByteTrack: `supervision.ByteTrack`, `track_activation_threshold=0.25`, `lost_track_buffer=30`, `minimum_matching_threshold=0.8`, `frame_rate=59.707724425887264`.
+
+## Resultados
+
+- Tracker simple:
+  - Balon: `1` track, longitud `59`, salto maximo `5.1px`.
+  - Robots: `4` tracks, `1` inicio tardio, longitud media `37.25`, salto maximo `95.7px`.
+- ByteTrack:
+  - Balon: `1` track, longitud `59`, salto maximo `5.1px`.
+  - Robots: `3` tracks, `0` inicios tardios, longitud media `48.67`, salto maximo `33.7px`.
+- Revision visual ligera en frames `120`, `150` y `180`: no se observan cambios de ID incorrectos obvios; sin ground truth, se mantiene como validacion provisional.
+- Tracker recomendado para la siguiente etapa: `ByteTrack`.
+
+## Archivos subidos a GitHub
+
+```text
+experiments/test_003_tracking/video_836_real_tracking_120_180/summary.md
+experiments/test_003_tracking/video_836_real_tracking_120_180/metrics.csv
+experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_simple.csv
+experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv
+experiments/test_003_tracking/video_836_real_tracking_120_180/heatmap_simple.png
+experiments/test_003_tracking/video_836_real_tracking_120_180/heatmap_bytetrack.png
+experiments/test_003_tracking/video_836_real_tracking_120_180/overlay_*_frame_*.png
+```
+
+## Conclusion
+
+ByteTrack mejora la continuidad de robots frente al tracker simple en la ventana real `120-180`, reduciendo fragmentacion y saltos maximos. El tracker simple sigue siendo suficiente como fallback ligero, pero eventos y posesion deben recalcularse con ByteTrack.
+
+## Siguiente accion
+
+Recalcular eventos Nivel 1 con tracks reales filtrados y revisar falsos positivos de `shot`.
+
+---
+
+## Test ID
+
 `test_003_tracking`, `test_004_events`, `test_005_visualizations`
 
 ## Fecha

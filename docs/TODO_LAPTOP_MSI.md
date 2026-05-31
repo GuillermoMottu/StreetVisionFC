@@ -50,11 +50,13 @@ Resultado: comparacion en `experiments/test_002_sam3_segmentation/video_836_prom
 
 ## Prioridad 4 - Tracking Real
 
-- [ ] Evaluar el tracker simple con frames consecutivos filtrados por ROI.
-- [ ] Probar ByteTrack mediante `supervision` si el tracker simple no mantiene IDs.
-- [ ] Comparar estabilidad de IDs entre tracker simple y ByteTrack.
-- [ ] Documentar cambios de ID incorrectos.
-- [ ] Definir parametros recomendados para videos verticales de CopaFutMX.
+- [x] Evaluar el tracker simple con frames consecutivos filtrados por ROI.
+- [x] Probar ByteTrack mediante `supervision` si el tracker simple no mantiene IDs.
+- [x] Comparar estabilidad de IDs entre tracker simple y ByteTrack.
+- [x] Documentar cambios de ID incorrectos.
+- [x] Definir parametros recomendados para videos verticales de CopaFutMX.
+
+Resultado: comparacion en `experiments/test_003_tracking/video_836_real_tracking_120_180/` usando detecciones filtradas por ROI de la ventana consecutiva `120-180`. El tracker simple mantiene el balon en 1 track y robots en 4 tracks con 1 inicio tardio; ByteTrack mantiene el balon en 1 track y robots en 3 tracks sin inicios tardios. Recomendacion para la siguiente etapa: ByteTrack mediante `supervision` con `track_activation_threshold=0.25`, `lost_track_buffer=30`, `minimum_matching_threshold=0.8`, `frame_rate` del video y ROI previo.
 
 ## Prioridad 5 - Eventos Nivel 1
 
@@ -168,4 +170,15 @@ python scripts/run_prompt_comparison.py \
   --frame 120 --frame 135 --frame 143 --frame 147 --frame 150 --frame 180 \
   --group all \
   --roi 0 620 1360 1808
+```
+
+Comparar tracking real:
+
+```bash
+python scripts/run_tracking_comparison.py \
+  --detections experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/stride_1/detections_filtered_roi.json \
+  --experiment experiments/test_003_tracking/video_836_real_tracking_120_180 \
+  --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" \
+  --max-distance-px 120 \
+  --max-lost-frames 15
 ```
