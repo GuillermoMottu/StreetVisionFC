@@ -39,12 +39,14 @@ Resultado: ventana `120-180` procesada en `experiments/test_002_sam3_segmentatio
 
 ## Prioridad 3 - Prompts SAM 3
 
-- [ ] Comparar prompts de balon: `ball`, `orange ball`, `small orange ball`, `soccer ball`.
-- [ ] Comparar prompts de robots: `robot`, `soccer robot`, `wheeled robot`, `small robot`.
-- [ ] Comparar prompts de campo: `field`, `playing field`, `green soccer field`.
-- [ ] Registrar precision visual por prompt.
-- [ ] Seleccionar prompts base para CopaFutMX.
-- [ ] Actualizar `configs/default.yaml` si se define un set mejor.
+- [x] Comparar prompts de balon: `ball`, `orange ball`, `small orange ball`, `soccer ball`.
+- [x] Comparar prompts de robots: `robot`, `soccer robot`, `wheeled robot`, `small robot`.
+- [x] Comparar prompts de campo: `field`, `playing field`, `green soccer field`.
+- [x] Registrar precision visual por prompt.
+- [x] Seleccionar prompts base para CopaFutMX.
+- [x] Actualizar `configs/default.yaml` si se define un set mejor.
+
+Resultado: comparacion en `experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/` sobre frames `120`, `135`, `143`, `147`, `150` y `180`. Seleccion base: `green soccer field`, `small robot`, `ball`. `ball` supera a `orange ball` por confianza media ligeramente mayor con el mismo recall; `small robot` mejora recall/confianza frente a `robot`; `green soccer field` es el unico prompt de cancha con deteccion consistente.
 
 ## Prioridad 4 - Tracking Real
 
@@ -154,4 +156,16 @@ python scripts/run_temporal_stability.py \
   --prompt ball --prompt robot \
   --roi 0 620 1360 1808 \
   --max-distance-px 120
+```
+
+Comparar prompts SAM 3:
+
+```bash
+python scripts/run_prompt_comparison.py \
+  --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" \
+  --checkpoint checkpoints/sam3/sam3.pt \
+  --experiment experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180 \
+  --frame 120 --frame 135 --frame 143 --frame 147 --frame 150 --frame 180 \
+  --group all \
+  --roi 0 620 1360 1808
 ```

@@ -523,6 +523,68 @@ Comparar prompts de balon, robots y campo/cancha para definir el set base de Cop
 
 ## Test ID
 
+`test_002_sam3_prompt_comparison_120_180_video_836`
+
+## Fecha
+
+`2026-05-30`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `78be8e2`.
+
+## Video utilizado
+
+Ruta local:
+
+```text
+/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov
+```
+
+## Configuracion
+
+- Frames evaluados: `120`, `135`, `143`, `147`, `150`, `180`.
+- Prompts de balon: `ball`, `orange ball`, `small orange ball`, `soccer ball`.
+- Prompts de robots: `robot`, `soccer robot`, `wheeled robot`, `small robot`.
+- Prompts de cancha: `field`, `playing field`, `green soccer field`.
+- ROI: `x=0..1360`, `y=620..1808`.
+- Checkpoint: `checkpoints/sam3/sam3.pt`.
+
+## Resultados
+
+- Balon: `ball` detecta `4/6` frames, igual que `orange ball`, con confianza media ligeramente mayor. `small orange ball` detecta `3/6`. `soccer ball` no detecta.
+- Robots: `small robot` detecta `6/6` frames, `17` detecciones filtradas y mejor confianza media que `robot` y `soccer robot`.
+- Cancha: `green soccer field` detecta `5/6` frames; `field` no detecta y `playing field` solo detecta `1/6`.
+- Revision visual ligera: `ball`, `small robot` y `green soccer field` producen overlays coherentes en los frames revisados.
+- `configs/default.yaml` actualizado con `green_soccer_field`, `small_robot`, `ball`.
+
+## Archivos subidos a GitHub
+
+```text
+experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/summary.md
+experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/comparison.csv
+experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/visual_review.md
+experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/*/*/summary.md
+experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/*/*/metrics.csv
+experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/{ball/ball,robot/small_robot,field/green_soccer_field}/overlay_frame_*_filtered_roi.png
+```
+
+## Conclusion
+
+Prompts base seleccionados para CopaFutMX: `green soccer field`, `small robot`, `ball`. La deteccion de balon sigue perdiendo frames `135` y `147`; esta limitacion debe considerarse en tracking y eventos.
+
+## Siguiente accion
+
+Evaluar tracking real con frames consecutivos filtrados por ROI usando los prompts base seleccionados.
+
+---
+
+## Test ID
+
 `test_003_tracking`, `test_004_events`, `test_005_visualizations`
 
 ## Fecha
