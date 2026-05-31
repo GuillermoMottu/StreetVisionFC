@@ -44,6 +44,26 @@ class FrameDetections:
         )
 
 
+def filter_detections_by_roi(
+    frames: list[FrameDetections],
+    roi: tuple[float, float, float, float],
+) -> list[FrameDetections]:
+    """Keep detections whose centroid is inside an axis-aligned ROI."""
+    x1, y1, x2, y2 = roi
+    if x2 < x1 or y2 < y1:
+        raise ValueError("roi must be ordered as x1 y1 x2 y2")
+
+    filtered_frames: list[FrameDetections] = []
+    for frame in frames:
+        kept = tuple(
+            detection
+            for detection in frame.detections
+            if x1 <= detection.centroid[0] <= x2 and y1 <= detection.centroid[1] <= y2
+        )
+        filtered_frames.append(FrameDetections(frame=frame.frame, detections=kept))
+    return filtered_frames
+
+
 def load_detections(path: str | Path) -> list[FrameDetections]:
     input_path = Path(path)
     with input_path.open("r", encoding="utf-8") as handle:

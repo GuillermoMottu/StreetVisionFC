@@ -8,7 +8,13 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from futbotmx.events import detect_level1_events
-from futbotmx.io.detections import Detection, FrameDetections, load_detections, save_detections
+from futbotmx.io.detections import (
+    Detection,
+    FrameDetections,
+    filter_detections_by_roi,
+    load_detections,
+    save_detections,
+)
 from futbotmx.tracking import track_detections, write_tracks_csv
 from futbotmx.visualization import write_heatmap
 
@@ -39,6 +45,23 @@ class PipelineUnitTests(unittest.TestCase):
 
             self.assertEqual(len(loaded), 12)
             self.assertEqual(loaded[0].detections[0].class_name, "ball")
+
+    def test_filter_detections_by_roi(self) -> None:
+        frames = [
+            FrameDetections(
+                frame=1,
+                detections=(
+                    Detection("ball", (10, 10, 20, 20), (15, 15), 0.9),
+                    Detection("robot", (80, 80, 120, 120), (100, 100), 0.8),
+                ),
+            )
+        ]
+
+        filtered = filter_detections_by_roi(frames, roi=(0, 0, 50, 50))
+
+        self.assertEqual(len(filtered), 1)
+        self.assertEqual(len(filtered[0].detections), 1)
+        self.assertEqual(filtered[0].detections[0].class_name, "ball")
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

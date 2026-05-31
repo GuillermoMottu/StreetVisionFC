@@ -1,0 +1,52 @@
+project:
+  name: FutBotMX
+  level: 1
+paths:
+  data_dir: data
+  sample_dir: data/sample
+  output_dir: outputs
+  experiments_dir: experiments
+video:
+  input_path: data/sample/clip_01.mp4
+  frame_stride: 1
+  max_frames: 300
+segmentation:
+  provider: sam3
+  checkpoint_path_env: SAM3_CHECKPOINT_PATH
+  classes:
+  - field
+  - ally_robot
+  - opponent_robot
+  - ball
+  confidence_threshold: 0.5
+tracking:
+  method: bytetrack
+  max_lost_frames: 15
+  min_track_length: 3
+roi_filter:
+  enabled: true
+  mode: centroid_rect
+  x1: 0
+  y1: 620
+  x2: 1360
+  y2: 1808
+events:
+  rule_version: events_v0.1
+  possession_distance_px: 45
+  possession_min_frames: 8
+  collision_distance_px: 35
+  collision_min_frames: 4
+  shot_min_ball_speed_px_per_sec: 180
+visualization:
+  draw_masks: true
+  draw_bboxes: true
+  draw_ids: true
+  draw_centroids: true
+  draw_trails: true
+  trail_length: 30
+  draw_events: true
+  draw_possession_status: true
+  export_screenshots: true
+  export_video: false
+  export_heatmap: true
+  export_timeline: true

@@ -2,6 +2,8 @@
 
 ## Estado de Fase 0
 
+Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
+
 - [x] Estructura base del repositorio creada.
 - [x] `.gitignore` configurado para excluir datos y outputs pesados.
 - [x] `requirements-dev.txt` y `requirements-gpu.txt` creados.
@@ -10,8 +12,12 @@
 - [x] `.venv` creado en escritorio con dependencias de desarrollo.
 - [x] Commit inicial realizado: `aca0ac1`.
 - [x] Push a GitHub realizado.
-- [ ] Configuracion de laptop MSI pendiente.
-- [ ] Validacion CUDA/PyTorch/SAM 3 pendiente.
+- [x] Configuracion de laptop MSI completada.
+- [x] Validacion integral inicial con SAM 3 y clip real completada.
+- [x] Validacion CUDA/PyTorch base completada en laptop MSI.
+- [x] Instalacion de codigo oficial SAM 3 completada en laptop MSI.
+- [x] Checkpoint oficial SAM 3 descargado y carga validada en GPU.
+- [x] Validacion SAM 3 con clip real completada.
 
 ## Nivel 1 MVP
 
@@ -21,19 +27,21 @@
 - [x] Extraccion de FPS, resolucion, frames y duracion.
 - [x] Script CLI `scripts/inspect_video.py`.
 - [x] Prueba unitaria con video sintetico.
-- [ ] Prueba con clip real local.
-- [ ] Evidencia con clip real en `experiments/test_001_video_ingestion/`.
+- [x] Prueba con clip real local.
+- [x] Evidencia con clip real en `experiments/test_001_video_ingestion/`.
 
 ### Fase 2 - Segmentacion con SAM 3
 
 - [x] Wrapper de interfaz `SAM3Segmenter`.
 - [x] Contrato de detecciones normalizadas.
 - [x] Script CLI `scripts/run_sam3_test.py`.
-- [ ] Instalacion oficial SAM 3 en laptop MSI.
-- [ ] Prueba real de segmentacion de balon.
-- [ ] Prueba real de segmentacion de robots.
+- [x] Instalacion oficial SAM 3 en laptop MSI.
+- [x] Acceso/autenticacion Hugging Face para checkpoints SAM 3.
+- [x] Wrapper `SAM3Segmenter` conectado a inferencia SAM 3 real.
+- [x] Prueba real de segmentacion de balon.
+- [x] Prueba real de segmentacion de robots.
 - [ ] Prueba real de segmentacion de campo.
-- [ ] Evidencia visual ligera en `experiments/test_002_sam3_segmentation/`.
+- [x] Evidencia visual ligera en `experiments/test_002_sam3_segmentation/`.
 
 ### Fase 3 - Tracking
 
@@ -43,7 +51,8 @@
 - [x] Script CLI `scripts/run_tracking.py`.
 - [x] Prueba unitaria con detecciones sinteticas.
 - [x] Artefacto sintetico en `experiments/test_003_tracking/`.
-- [ ] Prueba con detecciones reales de SAM 3.
+- [x] Prueba con detecciones reales de SAM 3.
+- [x] Filtrado ROI inicial aplicado antes de tracking real.
 
 ### Fase 4 - Eventos Nivel 1
 
@@ -56,7 +65,8 @@
 - [x] Script CLI `scripts/run_events.py`.
 - [x] Prueba unitaria con tracks sinteticos.
 - [x] Artefacto sintetico en `experiments/test_004_events/`.
-- [ ] Validacion visual con datos reales.
+- [x] Validacion visual con datos reales.
+- [x] Eventos recalculados con tracks reales filtrados por ROI.
 
 ### Fase 5 - Visualizaciones Nivel 1
 
@@ -65,7 +75,8 @@
 - [x] Script CLI `scripts/run_visualizations.py`.
 - [x] Prueba unitaria de heatmap.
 - [x] Artefacto sintetico en `experiments/test_005_visualizations/`.
-- [ ] Overlay con video real generado en laptop.
+- [x] Overlay con video real generado en laptop.
+- [x] Overlays comparativos antes/despues de ROI generados en laptop.
 
 ### Fase 6 - Exportacion y reproducibilidad
 
@@ -73,14 +84,14 @@
 - [x] Config snapshots por experimento sintetico.
 - [x] Tests de escritorio reproducibles.
 - [x] Commit hash real agregado despues de commit inicial.
-- [ ] Resultados reales de laptop documentados.
+- [x] Resultados reales de laptop documentados.
 
 ### Fase 7 - Documentacion y demo
 
 - [x] README actualizado con pipeline, comandos y estado.
 - [x] Task list versionado.
-- [ ] Capturas reales de overlay.
-- [ ] Fragmento real de `events.json` desde SAM 3/tracking.
+- [x] Capturas reales de overlay.
+- [x] Fragmento real de `events.json` desde SAM 3/tracking.
 - [ ] Demo local o video anotado generado en laptop.
 
 ## Backlog bloqueado
