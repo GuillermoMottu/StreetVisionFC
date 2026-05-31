@@ -1,0 +1,76 @@
+{
+  "frames": [
+    {
+      "frame": 120,
+      "detections": [
+        {
+          "class_name": "small_orange_ball",
+          "bbox": [
+            1075.3074951171875,
+            732.0433959960938,
+            1104.2635498046875,
+            760.576171875
+          ],
+          "centroid": [
+            1089.7855224609375,
+            746.3097839355469
+          ],
+          "confidence": 0.7578125,
+          "mask_path": null
+        }
+      ]
+    },
+    {
+      "frame": 135,
+      "detections": []
+    },
+    {
+      "frame": 143,
+      "detections": [
+        {
+          "class_name": "small_orange_ball",
+          "bbox": [
+            1115.304443359375,
+            715.9591064453125,
+            1142.3023681640625,
+            741.7719116210938
+          ],
+          "centroid": [
+            1128.8034057617188,
+            728.8655090332031
+          ],
+          "confidence": 0.65234375,
+          "mask_path": null
+        }
+      ]
+    },
+    {
+      "frame": 147,
+      "detections": []
+    },
+    {
+      "frame": 150,
+      "detections": [
+        {
+          "class_name": "small_orange_ball",
+          "bbox": [
+            1110.18994140625,
+            714.2787475585938,
+            1137.325927734375,
+            741.5474853515625
+          ],
+          "centroid": [
+            1123.7579345703125,
+            727.9131164550781
+          ],
+          "confidence": 0.671875,
+          "mask_path": null
+        }
+      ]
+    },
+    {
+      "frame": 180,
+      "detections": []
+    }
+  ]
+}
