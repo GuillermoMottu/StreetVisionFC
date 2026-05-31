@@ -85,6 +85,7 @@ Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
 - [x] Tests de escritorio reproducibles.
 - [x] Commit hash real agregado despues de commit inicial.
 - [x] Resultados reales de laptop documentados.
+- [x] Experimento de estabilidad temporal con `frame_stride=1/3/5` documentado.
 
 ### Fase 7 - Documentacion y demo
 

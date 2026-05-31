@@ -27,13 +27,15 @@ Resultado: ROI inicial rectangular `x=0..1360`, `y=620..1808` aplicada sobre cen
 
 ## Prioridad 2 - Estabilidad Temporal
 
-- [ ] Procesar ventana consecutiva mas larga del clip 836.
-- [ ] Probar intervalos `frame_stride=1`, `frame_stride=3` y `frame_stride=5`.
-- [ ] Medir cuantas veces se detecta el balon por ventana.
-- [ ] Medir cuantas veces se detectan robots por ventana.
-- [ ] Identificar frames donde SAM 3 pierde el balon.
-- [ ] Guardar resumen por frame en `summary.md`.
-- [ ] Generar overlays representativos de inicio, mitad y fin.
+- [x] Procesar ventana consecutiva mas larga del clip 836.
+- [x] Probar intervalos `frame_stride=1`, `frame_stride=3` y `frame_stride=5`.
+- [x] Medir cuantas veces se detecta el balon por ventana.
+- [x] Medir cuantas veces se detectan robots por ventana.
+- [x] Identificar frames donde SAM 3 pierde el balon.
+- [x] Guardar resumen por frame en `summary.md`.
+- [x] Generar overlays representativos de inicio, mitad y fin.
+
+Resultado: ventana `120-180` procesada en `experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/` con ROI `x=0..1360`, `y=620..1808`. En `frame_stride=1`, SAM 3 detecta balon en 59/61 frames y robots en 61/61; pierde el balon en frames 135 y 147. En `frame_stride=3`, detecta balon en 19/21 y robots en 21/21; pierde balon en 135 y 147. En `frame_stride=5`, detecta balon en 12/13 y robots en 13/13; pierde balon en 135. Overlays representativos generados para frames 120, 150 y 180.
 
 ## Prioridad 3 - Prompts SAM 3
 
@@ -138,4 +140,18 @@ python scripts/run_events.py \
   --fps 59.707724425887264 \
   --field-width 1360 \
   --field-height 1808
+```
+
+Comparar estabilidad temporal:
+
+```bash
+python scripts/run_temporal_stability.py \
+  --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" \
+  --checkpoint checkpoints/sam3/sam3.pt \
+  --experiment experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180 \
+  --start-frame 120 --end-frame 180 \
+  --stride 1 --stride 3 --stride 5 \
+  --prompt ball --prompt robot \
+  --roi 0 620 1360 1808 \
+  --max-distance-px 120
 ```

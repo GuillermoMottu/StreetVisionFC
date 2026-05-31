@@ -461,6 +461,68 @@ Agregar filtrado por zona de cancha/ROI para descartar robots fuera del campo y 
 
 ## Test ID
 
+`test_002_sam3_temporal_stability_120_180_video_836`
+
+## Fecha
+
+`2026-05-30`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit: `476c036`.
+
+## Video utilizado
+
+Ruta local:
+
+```text
+/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov
+```
+
+## Configuracion
+
+- Ventana evaluada: frames `120-180`.
+- Strides: `1`, `3`, `5`.
+- Prompts: `ball`, `robot`.
+- ROI: `x=0..1360`, `y=620..1808`.
+- Checkpoint: `checkpoints/sam3/sam3.pt`.
+- Tracking: tracker simple por centroides con `max-distance-px 120`.
+
+## Resultados
+
+- `frame_stride=1`: balon `59/61`, robots `61/61`, frames sin balon `135`, `147`.
+- `frame_stride=3`: balon `19/21`, robots `21/21`, frames sin balon `135`, `147`.
+- `frame_stride=5`: balon `12/13`, robots `13/13`, frame sin balon `135`.
+- Detecciones removidas por ROI: `56` en stride 1, `19` en stride 3, `12` en stride 5.
+- Overlays representativos generados para frames `120`, `150` y `180`.
+
+## Archivos subidos a GitHub
+
+```text
+experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/summary.md
+experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/stride_*/summary.md
+experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/stride_*/metrics.csv
+experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/stride_*/detections_filtered_roi.json
+experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/stride_*/tracks_filtered_roi.csv
+experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/stride_*/overlay_frame_*_filtered_roi.png
+```
+
+## Conclusion
+
+SAM 3 mantiene deteccion temporal util en una ventana consecutiva mas larga. El balon es estable en la mayoria de frames, pero las perdidas repetidas en frames 135 y 147 deben revisarse visualmente y compararse contra prompts alternativos antes de cerrar prompts base.
+
+## Siguiente accion
+
+Comparar prompts de balon, robots y campo/cancha para definir el set base de CopaFutMX.
+
+---
+
+## Test ID
+
 `test_003_tracking`, `test_004_events`, `test_005_visualizations`
 
 ## Fecha
