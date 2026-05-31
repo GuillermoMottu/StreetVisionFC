@@ -40,6 +40,8 @@ def _event(
     fps: float,
     rule_version: str,
     source_experiment: str,
+    tracks_file: str = "tracks.csv",
+    config_file: str = "config.yaml",
     **extra: Any,
 ) -> dict[str, Any]:
     return {
@@ -60,8 +62,8 @@ def _event(
         "rule_version": rule_version,
         "evidence": {
             "source_experiment": source_experiment,
-            "tracks_file": "tracks.csv",
-            "config_file": "config.yaml",
+            "tracks_file": tracks_file,
+            "config_file": config_file,
             "notes": extra.pop("notes", ""),
         },
     }
@@ -76,6 +78,7 @@ def detect_level1_events(
     source_experiment: str = "experiments/test_004_events",
 ) -> list[dict[str, Any]]:
     rows = _read_tracks(tracks_csv)
+    tracks_file = Path(tracks_csv).name
     by_frame: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for row in rows:
         by_frame[int(row["frame"])].append(row)
@@ -88,11 +91,13 @@ def detect_level1_events(
     collision_min_frames = int(config.get("collision_min_frames", 4))
     shot_speed = float(config.get("shot_min_ball_speed_px_per_sec", 180))
 
-    possession_runs: list[tuple[int, int, dict[str, Any], dict[str, Any]]] = []
+    possession_runs: list[tuple[int, int, dict[str, Any], dict[str, Any], dict[str, Any], dict[str, Any]]] = []
     current_owner: tuple[str, str] | None = None
     current_start = 0
-    current_ball: dict[str, Any] | None = None
-    current_robot: dict[str, Any] | None = None
+    current_start_ball: dict[str, Any] | None = None
+    current_start_robot: dict[str, Any] | None = None
+    current_end_ball: dict[str, Any] | None = None
+    current_end_robot: dict[str, Any] | None = None
 
     for frame in sorted(by_frame):
         frame_rows = by_frame[frame]
@@ -107,20 +112,43 @@ def detect_level1_events(
                 owner = (robot["track_id"], robot.get("team", "unknown"))
 
         if owner != current_owner:
-            if current_owner and current_robot and current_ball:
+            if current_owner and current_start_robot and current_start_ball and current_end_robot and current_end_ball:
                 if frame - current_start >= possession_min_frames:
-                    possession_runs.append((current_start, frame - 1, current_robot, current_ball))
+                    possession_runs.append(
+                        (
+                            current_start,
+                            frame - 1,
+                            current_start_robot,
+                            current_start_ball,
+                            current_end_robot,
+                            current_end_ball,
+                        )
+                    )
             current_owner = owner
             current_start = frame
-            current_robot = robot
-            current_ball = ball
+            current_start_robot = robot
+            current_start_ball = ball
+            current_end_robot = robot
+            current_end_ball = ball
+        elif owner:
+            current_end_robot = robot
+            current_end_ball = ball
 
-    if current_owner and current_robot and current_ball:
+    if current_owner and current_start_robot and current_start_ball and current_end_robot and current_end_ball:
         last_frame = max(by_frame)
         if last_frame - current_start + 1 >= possession_min_frames:
-            possession_runs.append((current_start, last_frame, current_robot, current_ball))
+            possession_runs.append(
+                (
+                    current_start,
+                    last_frame,
+                    current_start_robot,
+                    current_start_ball,
+                    current_end_robot,
+                    current_end_ball,
+                )
+            )
 
-    for start, end, robot, ball in possession_runs:
+    for start, end, start_robot, start_ball, end_robot, end_ball in possession_runs:
         events.append(
             _event(
                 len(events) + 1,
@@ -130,20 +158,24 @@ def detect_level1_events(
                 fps,
                 rule_version,
                 source_experiment,
-                team=robot.get("team", "unknown"),
-                primary_object_id=robot["track_id"],
-                ball_id=ball["track_id"],
-                position_start={"x": float(ball["x"]), "y": float(ball["y"])},
-                position_end={"x": float(ball["x"]), "y": float(ball["y"])},
+                tracks_file,
+                team=start_robot.get("team", "unknown"),
+                primary_object_id=start_robot["track_id"],
+                ball_id=start_ball["track_id"],
+                position_start={"x": float(start_ball["x"]), "y": float(start_ball["y"])},
+                position_end={"x": float(end_ball["x"]), "y": float(end_ball["y"])},
                 confidence=0.65,
                 notes="Ball stayed within possession distance of robot.",
             )
         )
 
     for previous, current in zip(possession_runs, possession_runs[1:]):
-        _, previous_end, previous_robot, previous_ball = previous
-        current_start, current_end, current_robot, current_ball = current
-        if previous_robot.get("team") == current_robot.get("team") and previous_robot["track_id"] != current_robot["track_id"]:
+        _, previous_end, previous_start_robot, previous_start_ball, previous_end_robot, previous_end_ball = previous
+        current_start, current_end, current_start_robot, current_start_ball, current_end_robot, current_end_ball = current
+        if (
+            previous_end_robot.get("team") == current_start_robot.get("team")
+            and previous_end_robot["track_id"] != current_start_robot["track_id"]
+        ):
             events.append(
                 _event(
                     len(events) + 1,
@@ -153,12 +185,13 @@ def detect_level1_events(
                     fps,
                     rule_version,
                     source_experiment,
-                    team=current_robot.get("team", "unknown"),
-                    primary_object_id=previous_robot["track_id"],
-                    secondary_object_id=current_robot["track_id"],
-                    ball_id=current_ball["track_id"],
-                    position_start={"x": float(previous_ball["x"]), "y": float(previous_ball["y"])},
-                    position_end={"x": float(current_ball["x"]), "y": float(current_ball["y"])},
+                    tracks_file,
+                    team=current_start_robot.get("team", "unknown"),
+                    primary_object_id=previous_end_robot["track_id"],
+                    secondary_object_id=current_start_robot["track_id"],
+                    ball_id=current_start_ball["track_id"],
+                    position_start={"x": float(previous_end_ball["x"]), "y": float(previous_end_ball["y"])},
+                    position_end={"x": float(current_start_ball["x"]), "y": float(current_start_ball["y"])},
                     confidence=0.55,
                     notes="Possession changed between robots of the same team.",
                 )
@@ -179,6 +212,7 @@ def detect_level1_events(
                     fps,
                     rule_version,
                     source_experiment,
+                    tracks_file,
                     team="unknown",
                     primary_object_id=None,
                     ball_id=b["track_id"],
@@ -214,6 +248,7 @@ def detect_level1_events(
                         fps,
                         rule_version,
                         source_experiment,
+                        tracks_file,
                         primary_object_id=pair[0],
                         secondary_object_id=pair[1],
                         confidence=0.5,
@@ -234,6 +269,7 @@ def detect_level1_events(
                     fps,
                     rule_version,
                     source_experiment,
+                    tracks_file,
                     primary_object_id=pair[0],
                     secondary_object_id=pair[1],
                     confidence=0.5,
@@ -262,6 +298,7 @@ def detect_level1_events(
                 fps,
                 rule_version,
                 source_experiment,
+                tracks_file,
                 zone=zone,
                 confidence=min(0.9, count / max(1, len(ball_rows))),
                 notes="Dominant ball activity zone from tracked positions.",

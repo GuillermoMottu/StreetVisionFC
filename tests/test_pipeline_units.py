@@ -22,6 +22,7 @@ from scripts.run_prompt_comparison import (
     slugify_prompt,
     summarize_prompt,
 )
+from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
     choose_recommended_tracker,
     summarize_tracks,
@@ -148,6 +149,22 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(metrics[0].max_frame_gap, 1)
         self.assertEqual(choose_recommended_tracker(metrics), "simple")
 
+    def test_event_validation_diagnostics(self) -> None:
+        rows = [
+            {"frame": 1, "track_id": "ball_01", "class_name": "ball", "x": 10.0, "y": 10.0},
+            {"frame": 1, "track_id": "robot_01", "class_name": "robot", "x": 13.0, "y": 14.0},
+            {"frame": 2, "track_id": "ball_01", "class_name": "ball", "x": 16.0, "y": 18.0},
+            {"frame": 2, "track_id": "robot_01", "class_name": "robot", "x": 18.0, "y": 18.0},
+        ]
+
+        nearest = nearest_robot_rows(rows)
+        speeds = ball_speed_rows(rows, fps=10, field_width=20)
+
+        self.assertEqual(nearest[0]["nearest_robot_id"], "robot_01")
+        self.assertAlmostEqual(nearest[0]["distance_px"], 5.0)
+        self.assertAlmostEqual(speeds[0]["speed_px_per_sec"], 100.0)
+        self.assertTrue(speeds[0]["moving_toward_goal"])
+
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             tracks_path = Path(tmp) / "tracks.csv"
@@ -175,6 +192,7 @@ class PipelineUnitTests(unittest.TestCase):
             self.assertTrue(heatmap_path.exists())
             self.assertTrue(any(event["event_type"] == "possession" for event in events))
             self.assertTrue(any(event["event_type"] == "activity_zone" for event in events))
+            self.assertEqual(events[0]["evidence"]["tracks_file"], "tracks.csv")
 
 
 if __name__ == "__main__":
