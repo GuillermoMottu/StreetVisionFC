@@ -17,9 +17,8 @@ segmentation:
   provider: sam3
   checkpoint_path_env: SAM3_CHECKPOINT_PATH
   classes:
-    - field
-    - ally_robot
-    - opponent_robot
+    - green_soccer_field
+    - small_robot
     - ball
   confidence_threshold: 0.5
 
