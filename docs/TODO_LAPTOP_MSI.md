@@ -60,12 +60,14 @@ Resultado: comparacion en `experiments/test_003_tracking/video_836_real_tracking
 
 ## Prioridad 5 - Eventos Nivel 1
 
-- [ ] Recalcular posesion con tracks filtrados.
-- [ ] Revisar si eventos `shot` son reales o falsos positivos por tracking.
-- [ ] Ajustar umbrales de velocidad del balon.
-- [ ] Ajustar distancia de posesion en pixeles para resolucion `1360x1808`.
-- [ ] Validar eventos visualmente con overlays.
-- [ ] Marcar eventos como provisionales o confiables en `summary.md`.
+- [x] Recalcular posesion con tracks filtrados.
+- [x] Revisar si eventos `shot` son reales o falsos positivos por tracking.
+- [x] Ajustar umbrales de velocidad del balon.
+- [x] Ajustar distancia de posesion en pixeles para resolucion `1360x1808`.
+- [x] Validar eventos visualmente con overlays.
+- [x] Marcar eventos como provisionales o confiables en `summary.md`.
+
+Resultado: validacion en `experiments/test_004_events/video_836_real_events_120_180/` usando `tracks_bytetrack.csv`. Se ajusto posesion a `190px` para la resolucion `1360x1808` y tiro a `350px/s` para evitar falsos positivos por jitter. Eventos generados: 2 posesiones provisionales confiables, 1 colision provisional y 1 zona de actividad confiable. `shot` queda descartado en esta ventana: el umbral previo `180px/s` daba 11 candidatos, pero la revision indica movimiento pequeno/jitter cerca del gol.
 
 ## Prioridad 6 - Mas Videos CopaFutMX
 
@@ -181,4 +183,18 @@ python scripts/run_tracking_comparison.py \
   --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" \
   --max-distance-px 120 \
   --max-lost-frames 15
+```
+
+Validar eventos reales:
+
+```bash
+python scripts/run_event_validation.py \
+  --tracks experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv \
+  --experiment experiments/test_004_events/video_836_real_events_120_180 \
+  --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" \
+  --fps 59.707724425887264 \
+  --field-width 1360 \
+  --field-height 1808 \
+  --possession-distance-px 190 \
+  --shot-min-speed-px-per-sec 350
 ```

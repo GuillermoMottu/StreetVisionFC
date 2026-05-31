@@ -650,6 +650,73 @@ Recalcular eventos Nivel 1 con tracks reales filtrados y revisar falsos positivo
 
 ## Test ID
 
+`test_004_events_real_video_836`
+
+## Fecha
+
+`2026-05-30`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `adbdf2b`.
+
+## Video utilizado
+
+Ruta local:
+
+```text
+/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov
+```
+
+## Configuracion
+
+- Tracks: `experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv`.
+- Ventana: frames `120-180`.
+- FPS: `59.707724425887264`.
+- Resolucion/cancha usada: `1360x1808`.
+- Posesion: `possession_distance_px=190`, `possession_min_frames=8`.
+- Tiro: `shot_min_ball_speed_px_per_sec=350`.
+- Colision: `collision_distance_px=35`, `collision_min_frames=4`.
+
+## Resultados
+
+- Distancia balon-robot mas cercana: min `113.4px`, p50 `158.3px`, p90 `187.5px`, max `210.0px`.
+- Velocidad maxima del balon: `307.3px/s`.
+- Con umbral previo `180px/s`, `shot` generaba `11` candidatos; con `350px/s`, genera `0`.
+- Eventos generados:
+  - `2` posesiones: frames `120-133` y `148-180`.
+  - `1` colision: frames `128-142`.
+  - `1` zona de actividad: `attacking_third`.
+- `shot` queda descartado en esta ventana por falso positivo de jitter/movimiento pequeno cerca del gol.
+
+## Archivos subidos a GitHub
+
+```text
+experiments/test_004_events/video_836_real_events_120_180/summary.md
+experiments/test_004_events/video_836_real_events_120_180/events.json
+experiments/test_004_events/video_836_real_events_120_180/event_metrics.csv
+experiments/test_004_events/video_836_real_events_120_180/event_config.json
+experiments/test_004_events/video_836_real_events_120_180/nearest_robot_distance.csv
+experiments/test_004_events/video_836_real_events_120_180/ball_speed.csv
+experiments/test_004_events/video_836_real_events_120_180/overlay_event_frame_*.png
+```
+
+## Conclusion
+
+Eventos Nivel 1 quedan recalculados con tracks reales ByteTrack. Posesion queda `provisional_confiable`, colision queda `provisional`, zona de actividad queda `confiable` y tiro queda descartado para esta ventana.
+
+## Siguiente accion
+
+Preparar evidencia ligera final de Nivel 1 y/o ejecutar el mismo flujo en mas clips CopaFutMX.
+
+---
+
+## Test ID
+
 `test_003_tracking`, `test_004_events`, `test_005_visualizations`
 
 ## Fecha
