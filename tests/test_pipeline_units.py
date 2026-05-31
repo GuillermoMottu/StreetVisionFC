@@ -17,6 +17,11 @@ from futbotmx.io.detections import (
 )
 from futbotmx.tracking import track_detections, write_tracks_csv
 from futbotmx.visualization import write_heatmap
+from scripts.run_temporal_stability import (
+    count_detections_by_frame,
+    representative_frames,
+    select_frames,
+)
 
 
 def synthetic_detections() -> list[FrameDetections]:
@@ -62,6 +67,39 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(len(filtered), 1)
         self.assertEqual(len(filtered[0].detections), 1)
         self.assertEqual(filtered[0].detections[0].class_name, "ball")
+
+    def test_temporal_stability_frame_selection(self) -> None:
+        self.assertEqual(select_frames(120, 130, 5), [120, 125, 130])
+        self.assertEqual(representative_frames([120, 125, 130, 135, 140]), [120, 130, 140])
+
+    def test_temporal_stability_counts_by_frame(self) -> None:
+        raw_frames = [
+            FrameDetections(
+                frame=1,
+                detections=(
+                    Detection("ball", (10, 10, 20, 20), (15, 15), 0.9),
+                    Detection("robot", (80, 80, 120, 120), (100, 100), 0.8),
+                ),
+            ),
+            FrameDetections(
+                frame=2,
+                detections=(Detection("robot", (80, 80, 120, 120), (100, 100), 0.8),),
+            ),
+        ]
+        filtered_frames = [
+            FrameDetections(
+                frame=1,
+                detections=(Detection("ball", (10, 10, 20, 20), (15, 15), 0.9),),
+            ),
+            FrameDetections(frame=2, detections=()),
+        ]
+
+        rows = count_detections_by_frame(raw_frames, filtered_frames, ["ball", "robot"])
+
+        self.assertEqual(rows[0]["raw_total"], 2)
+        self.assertEqual(rows[0]["filtered_ball"], 1)
+        self.assertEqual(rows[0]["filtered_robot"], 0)
+        self.assertEqual(rows[1]["filtered_ball"], 0)
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
