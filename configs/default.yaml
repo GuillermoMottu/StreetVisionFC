@@ -28,12 +28,12 @@ tracking:
   min_track_length: 3
 
 events:
-  rule_version: events_v0.1
-  possession_distance_px: 45
+  rule_version: events_v0.2_real
+  possession_distance_px: 190
   possession_min_frames: 8
   collision_distance_px: 35
   collision_min_frames: 4
-  shot_min_ball_speed_px_per_sec: 180
+  shot_min_ball_speed_px_per_sec: 350
 
 visualization:
   draw_masks: true
