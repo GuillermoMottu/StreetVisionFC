@@ -1,0 +1,104 @@
+{
+  "video": {
+    "path": "/home/guillermo/V\u00eddeos/CopaFutMX/17 Abril/video-836_singular_display.mov",
+    "fps": 59.707724425887264,
+    "width": 1360,
+    "height": 1808,
+    "frame_count": 286,
+    "duration_sec": 4.79
+  },
+  "checkpoint_path": "checkpoints/sam3/sam3.pt",
+  "prompts": [
+    "ball",
+    "small robot",
+    "green soccer field"
+  ],
+  "single_frame": [
+    120
+  ],
+  "multi_frame": [
+    120,
+    130,
+    140,
+    150,
+    160
+  ],
+  "load_time_sec": 15.5693,
+  "gpu_before_load": {
+    "name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "driver_version": "595.71.05",
+    "memory_total_mb": 6141.0,
+    "memory_used_mb": 12.0,
+    "temperature_c": 46.0,
+    "power_draw_w": 10.15
+  },
+  "gpu_after_load": {
+    "name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+    "driver_version": "595.71.05",
+    "memory_total_mb": 6141.0,
+    "memory_used_mb": 3626.0,
+    "temperature_c": 49.0,
+    "power_draw_w": 12.59
+  },
+  "environment": {
+    "platform": "Linux-7.0.0-15-generic-x86_64-with-glibc2.43",
+    "python_version": "3.14.4",
+    "packages": {
+      "cv2": "4.13.0",
+      "numpy": "1.26.4",
+      "pandas": "3.0.3",
+      "torch": "2.12.0+cu130",
+      "supervision": "0.28.0",
+      "sam3": "0.1.0"
+    },
+    "torch_cuda": {
+      "torch_importable": true,
+      "torch_version": "2.12.0+cu130",
+      "torch_cuda_version": "13.0",
+      "cuda_available": true,
+      "cuda_device_count": 1,
+      "cuda_device_name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+      "cuda_total_memory_mb": 5772.81
+    }
+  },
+  "runs": [
+    {
+      "name": "single_frame",
+      "frames": [
+        120
+      ],
+      "frame_count": 1,
+      "prompt_count": 3,
+      "detection_count": 5,
+      "elapsed_sec": 2.237,
+      "sec_per_frame": 2.237,
+      "fps_effective": 0.447,
+      "cuda_memory_allocated_peak_mb": 3877.86,
+      "cuda_memory_reserved_peak_mb": 4236.0,
+      "nvidia_smi_memory_before_mb": 3626.0,
+      "nvidia_smi_memory_after_mb": 4372.0,
+      "nvidia_smi_memory_delta_mb": 746.0
+    },
+    {
+      "name": "multi_frame",
+      "frames": [
+        120,
+        130,
+        140,
+        150,
+        160
+      ],
+      "frame_count": 5,
+      "prompt_count": 3,
+      "detection_count": 26,
+      "elapsed_sec": 6.0157,
+      "sec_per_frame": 1.2031,
+      "fps_effective": 0.8312,
+      "cuda_memory_allocated_peak_mb": 3878.11,
+      "cuda_memory_reserved_peak_mb": 4236.0,
+      "nvidia_smi_memory_before_mb": 4372.0,
+      "nvidia_smi_memory_after_mb": 4372.0,
+      "nvidia_smi_memory_delta_mb": 0.0
+    }
+  ]
+}

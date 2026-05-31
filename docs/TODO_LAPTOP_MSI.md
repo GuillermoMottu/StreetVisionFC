@@ -82,11 +82,13 @@ Resultado: expansion en `experiments/test_006_more_copafutmx_videos/` con clips 
 
 ## Prioridad 7 - Benchmarks MSI
 
-- [ ] Medir tiempo de carga de SAM 3.
-- [ ] Medir tiempo por frame.
-- [ ] Medir uso aproximado de VRAM durante inferencia.
-- [ ] Medir diferencia entre una corrida de 1 frame y ventanas multi-frame.
-- [ ] Documentar configuracion de hardware/software exacta.
+- [x] Medir tiempo de carga de SAM 3.
+- [x] Medir tiempo por frame.
+- [x] Medir uso aproximado de VRAM durante inferencia.
+- [x] Medir diferencia entre una corrida de 1 frame y ventanas multi-frame.
+- [x] Documentar configuracion de hardware/software exacta.
+
+Resultado: benchmark en `experiments/test_007_msi_benchmarks/video_836_sam3/` sobre `video_836`, frames `120` y `120,130,140,150,160`, prompts base `ball`, `small robot`, `green soccer field`. Carga SAM 3: `15.5693s`, VRAM `nvidia-smi` antes/despues de carga `12 -> 3626 MB`. Corrida single-frame: `2.237s/frame`, `0.447 FPS`, pico CUDA allocated/reserved `3877.86/4236.0 MB`. Corrida multi-frame: `1.2031s/frame`, `0.8312 FPS`, pico CUDA allocated/reserved `3878.11/4236.0 MB`. Multi-frame queda en `0.54x` del tiempo por frame de single-frame, principalmente por amortizar modelo/caches ya cargados.
 
 ## Prioridad 8 - Evidencia Ligera
 
@@ -199,4 +201,16 @@ python scripts/run_event_validation.py \
   --field-height 1808 \
   --possession-distance-px 190 \
   --shot-min-speed-px-per-sec 350
+```
+
+Benchmark MSI:
+
+```bash
+python scripts/run_sam3_benchmark.py \
+  --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" \
+  --checkpoint checkpoints/sam3/sam3.pt \
+  --experiment experiments/test_007_msi_benchmarks/video_836_sam3 \
+  --single-frame 120 \
+  --multi-frame 120 130 140 150 160 \
+  --prompt ball --prompt small_robot --prompt green_soccer_field
 ```

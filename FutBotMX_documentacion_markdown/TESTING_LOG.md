@@ -8,6 +8,84 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_007_msi_sam3_benchmark_video_836`
+
+## Fecha
+
+`2026-05-31`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `e80a0ef`.
+
+## Video utilizado
+
+Ruta local:
+
+```text
+/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov
+```
+
+Nota: el archivo de video no debe subirse a GitHub.
+
+## Configuracion
+
+- Script: `scripts/run_sam3_benchmark.py`.
+- Checkpoint: `checkpoints/sam3/sam3.pt`.
+- Prompts: `ball`, `small robot`, `green soccer field`.
+- Corrida single-frame: frame `120`.
+- Corrida multi-frame: frames `120`, `130`, `140`, `150`, `160`.
+- Resolucion: `1360x1808`.
+- FPS video: `59.707724425887264`.
+
+## Hardware/software
+
+- SO: `Linux-7.0.0-15-generic-x86_64-with-glibc2.43`.
+- Python: `3.14.4`.
+- GPU: `NVIDIA GeForce RTX 4050 Laptop GPU`.
+- Driver NVIDIA: `595.71.05`.
+- VRAM total reportada por `nvidia-smi`: `6141 MB`.
+- PyTorch: `2.12.0+cu130`.
+- CUDA runtime PyTorch: `13.0`.
+- `torch.cuda.is_available() == True`.
+- SAM 3: `0.1.0`.
+
+## Resultados
+
+- Tiempo de carga SAM 3: `15.5693s`.
+- VRAM `nvidia-smi` antes/despues de carga: `12 -> 3626 MB`.
+- Single-frame: `2.237s`, `2.237s/frame`, `0.447 FPS`, `5` detecciones.
+- Multi-frame: `6.0157s`, `1.2031s/frame`, `0.8312 FPS`, `26` detecciones.
+- Pico CUDA allocated/reserved single-frame: `3877.86/4236.0 MB`.
+- Pico CUDA allocated/reserved multi-frame: `3878.11/4236.0 MB`.
+- Multi-frame queda en `0.54x` del tiempo por frame de single-frame.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/run_sam3_benchmark.py
+experiments/test_007_msi_benchmarks/video_836_sam3/summary.md
+experiments/test_007_msi_benchmarks/video_836_sam3/metrics.csv
+experiments/test_007_msi_benchmarks/video_836_sam3/benchmark.json
+experiments/test_007_msi_benchmarks/video_836_sam3/config.yaml
+```
+
+## Conclusion
+
+La RTX 4050 sostiene SAM 3 con margen util de VRAM para inferencia por imagen/frame en resolucion vertical `1360x1808`, con pico reservado cercano a `4.24 GB`. Las ventanas multi-frame amortizan mejor el costo por frame que corridas aisladas.
+
+## Siguiente accion
+
+Mantener benchmarks como referencia base y pasar a evidencia ligera final de Nivel 1.
+
+---
+
+## Test ID
+
 `test_006_more_copafutmx_videos`
 
 ## Fecha
