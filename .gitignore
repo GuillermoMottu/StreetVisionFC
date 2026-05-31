@@ -23,6 +23,13 @@ data/raw/
 data/processed/frames/
 data/processed/masks/
 datasets/
+*.avi
+*.m4v
+*.mkv
+*.mov
+*.mp4
+*.MOV
+*.MP4
 
 # Heavy outputs
 outputs/videos/

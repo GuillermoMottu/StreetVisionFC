@@ -92,11 +92,13 @@ Resultado: benchmark en `experiments/test_007_msi_benchmarks/video_836_sam3/` so
 
 ## Prioridad 8 - Evidencia Ligera
 
-- [ ] Mantener fuera de Git videos completos, checkpoints y outputs pesados.
-- [ ] Subir solo JSON, CSV, summaries, heatmaps y capturas ligeras.
-- [ ] Revisar tamano de overlays antes de versionarlos.
-- [ ] Crear una carpeta final de evidencia Nivel 1.
-- [ ] Preparar resumen de hallazgos para entrega.
+- [x] Mantener fuera de Git videos completos, checkpoints y outputs pesados.
+- [x] Subir solo JSON, CSV, summaries, heatmaps y capturas ligeras.
+- [x] Revisar tamano de overlays antes de versionarlos.
+- [x] Crear una carpeta final de evidencia Nivel 1.
+- [x] Preparar resumen de hallazgos para entrega.
+
+Resultado: evidencia final concentrada en `experiments/evidence_level1/` como indice ligero de entrega. Se agrego politica de ignore para videos (`*.mov`, `*.mp4`, etc.) y se verifico que no haya videos/checkpoints versionados; el checkpoint local `checkpoints/sam3/sam3.pt` queda fuera de Git. La revision de capturas registra 71 PNG existentes, `125.37 MiB` total, maximo individual `2.875 MB`; se documentan capturas representativas en `overlay_size_review.csv`. El resumen final `DELIVERY_SUMMARY.md` consolida deteccion SAM 3, ROI, prompts, ByteTrack, eventos Nivel 1, mas clips y benchmark MSI.
 
 ## Comandos Base
 

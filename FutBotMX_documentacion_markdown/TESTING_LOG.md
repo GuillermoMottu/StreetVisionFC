@@ -8,6 +8,59 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_008_level1_light_evidence`
+
+## Fecha
+
+`2026-05-31`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `fa1782a`.
+
+## Configuracion
+
+- Carpeta final: `experiments/evidence_level1/`.
+- Politica: no versionar videos completos, checkpoints ni outputs pesados.
+- Artefactos permitidos: JSON, CSV, Markdown, heatmaps PNG y capturas PNG representativas.
+- Videos fuente: rutas locales bajo `/home/guillermo/Vídeos/CopaFutMX/...`.
+- Checkpoint local: `checkpoints/sam3/sam3.pt`, ignorado por Git.
+
+## Resultados
+
+- Se agrego `.gitignore` para extensiones de video (`*.mov`, `*.mp4`, `*.avi`, `*.mkv`, `*.m4v` y variantes mayusculas principales).
+- `git ls-files` no reporta videos ni checkpoints versionados.
+- Inventario local detecta checkpoint pesado `checkpoints/sam3/sam3.pt` de `3.45 GB`, fuera de Git.
+- Revision PNG: `71` capturas/heatmaps, `125.37 MiB` total, maximo individual `2875085 bytes`.
+- Evidencia canonica indexada en `artifact_manifest.csv`.
+- Resumen de entrega preparado en `DELIVERY_SUMMARY.md`.
+
+## Archivos subidos a GitHub
+
+```text
+.gitignore
+experiments/evidence_level1/README.md
+experiments/evidence_level1/DELIVERY_SUMMARY.md
+experiments/evidence_level1/artifact_manifest.csv
+experiments/evidence_level1/overlay_size_review.csv
+```
+
+## Conclusion
+
+La evidencia Nivel 1 queda lista para entrega ligera sin incluir videos completos ni checkpoints. La carpeta final funciona como indice canonico hacia resultados ya versionados de segmentacion, tracking, eventos, expansion multi-clip y benchmark MSI.
+
+## Siguiente accion
+
+Usar `experiments/evidence_level1/DELIVERY_SUMMARY.md` como base de entrega y, si se continua el proyecto, avanzar con tracking/eventos en `video_595` y `video_667`.
+
+---
+
+## Test ID
+
 `test_007_msi_sam3_benchmark_video_836`
 
 ## Fecha
