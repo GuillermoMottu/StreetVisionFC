@@ -1,0 +1,4 @@
+video_id,size_mb,width,height,fps,frame_count,duration_sec,window_frames,total_detections,ball_detections,ball_frames,small_robot_detections,small_robot_frames,green_soccer_field_detections,green_soccer_field_frames,mean_ball_confidence,mean_robot_confidence,mean_field_confidence,missing_ball_frames,roi_removed,note
+video_480,20.12,1360,1808,59.7,457,7.655,60 90 120 150 180,10,0,0,5,5,5,5,0,0.694,0.626,"60, 90, 120, 150, 180",0,Ball not detected in the sampled window; review absence occlusion or prompt recall.
+video_595,21.46,1344,1792,59.715,482,8.072,60 90 120 150 180,17,6,5,6,5,5,5,0.777,0.893,0.786,none,0,All target classes detected in every sampled frame; one frame has duplicate ball/robot candidates.
+video_667,22.1,1360,1808,59.707,489,8.19,60 90 120 150 180,28,5,5,18,5,5,5,0.859,0.901,0.6,none,0,All target classes detected in every sampled frame; robot prompt returns multiple robot candidates per frame.

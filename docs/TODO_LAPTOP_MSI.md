@@ -71,12 +71,14 @@ Resultado: validacion en `experiments/test_004_events/video_836_real_events_120_
 
 ## Prioridad 6 - Mas Videos CopaFutMX
 
-- [ ] Elegir 3 clips adicionales por tamano/duracion.
-- [ ] Inspeccionar metadatos con `scripts/inspect_video.py`.
-- [ ] Ejecutar SAM 3 en una ventana corta por clip.
-- [ ] Comparar rendimiento entre clips.
-- [ ] Detectar problemas por iluminacion, camara vertical o oclusiones.
-- [ ] Registrar resultados en `FutBotMX_documentacion_markdown/TESTING_LOG.md`.
+- [x] Elegir 3 clips adicionales por tamano/duracion.
+- [x] Inspeccionar metadatos con `scripts/inspect_video.py`.
+- [x] Ejecutar SAM 3 en una ventana corta por clip.
+- [x] Comparar rendimiento entre clips.
+- [x] Detectar problemas por iluminacion, camara vertical o oclusiones.
+- [x] Registrar resultados en `FutBotMX_documentacion_markdown/TESTING_LOG.md`.
+
+Resultado: expansion en `experiments/test_006_more_copafutmx_videos/` con clips `video_480`, `video_595` y `video_667`, todos `singular_display` de ~8 segundos. En frames `60`, `90`, `120`, `150` y `180`, `video_595` y `video_667` detectan balon, robots y cancha en `5/5` frames; `video_480` detecta robots/cancha en `5/5`, pero no detecta balon en la muestra. Se generaron metadatos, detecciones filtradas por ROI, tracks ligeros, heatmaps, overlays centrales y `metrics.csv`. Siguiente recomendacion: usar `595`/`667` para tracking-eventos y reservar `480` para diagnostico de balon ausente/ocluido o recall bajo del prompt.
 
 ## Prioridad 7 - Benchmarks MSI
 

@@ -8,6 +8,76 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_006_more_copafutmx_videos`
+
+## Fecha
+
+`2026-05-31`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `fb34501`.
+
+## Videos utilizados
+
+Rutas locales:
+
+```text
+/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-480_singular_display.mov
+/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov
+/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-667_singular_display.mov
+```
+
+Nota: los archivos de video no deben subirse a GitHub.
+
+## Configuracion
+
+- Clips elegidos por tamano/duracion: `20.12MB`, `21.46MB`, `22.10MB`; todos cercanos a 8 segundos.
+- Frames evaluados por clip: `60`, `90`, `120`, `150`, `180`.
+- Prompts base: `ball`, `small robot`, `green soccer field`.
+- Checkpoint: `checkpoints/sam3/sam3.pt`.
+- ROI: ancho completo del video, `y=620..height`.
+- Tracking ligero: tracker simple con `max-distance-px=180`.
+
+## Resultados
+
+- `video_480`: balon `0/5`, robots `5/5`, cancha `5/5`, `10` detecciones filtradas.
+- `video_595`: balon `5/5`, robots `5/5`, cancha `5/5`, `17` detecciones filtradas.
+- `video_667`: balon `5/5`, robots `5/5`, cancha `5/5`, `28` detecciones filtradas.
+- ROI no removio detecciones en esta muestra.
+- `video_480` queda marcado para diagnostico de balon ausente/ocluido o recall bajo del prompt.
+- `video_595` y `video_667` quedan como mejores candidatos para continuar con tracking/eventos reales.
+
+## Archivos subidos a GitHub
+
+```text
+experiments/test_001_video_ingestion/video_667_metadata.json
+experiments/test_006_more_copafutmx_videos/summary.md
+experiments/test_006_more_copafutmx_videos/metrics.csv
+experiments/test_006_more_copafutmx_videos/video_*/summary.md
+experiments/test_006_more_copafutmx_videos/video_*/detections.json
+experiments/test_006_more_copafutmx_videos/video_*/detections_filtered_roi.json
+experiments/test_006_more_copafutmx_videos/video_*/tracks_filtered_roi.csv
+experiments/test_006_more_copafutmx_videos/video_*/heatmap_filtered_roi.png
+experiments/test_006_more_copafutmx_videos/video_*/overlay_frame_120_filtered_roi.png
+```
+
+## Conclusion
+
+Los prompts base generalizan bien para robots/cancha y tambien para balon en `595` y `667`. El clip `480` no ofrece deteccion de balon en la ventana muestreada, por lo que no debe usarse para eventos sin revisar ausencia, oclusion o prompts alternativos.
+
+## Siguiente accion
+
+Ejecutar tracking/eventos reales en `595` y `667`, y abrir una prueba especifica de prompts/frames para recuperar el balon en `480`.
+
+---
+
+## Test ID
+
 `test_001_sam3_ball_prompt`
 
 ## Fecha
