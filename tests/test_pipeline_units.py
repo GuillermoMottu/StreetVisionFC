@@ -22,6 +22,7 @@ from scripts.run_prompt_comparison import (
     slugify_prompt,
     summarize_prompt,
 )
+from scripts.run_sam3_benchmark import parse_float, parse_nvidia_smi_row
 from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
     choose_recommended_tracker,
@@ -164,6 +165,17 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertAlmostEqual(nearest[0]["distance_px"], 5.0)
         self.assertAlmostEqual(speeds[0]["speed_px_per_sec"], 100.0)
         self.assertTrue(speeds[0]["moving_toward_goal"])
+
+    def test_sam3_benchmark_parses_nvidia_smi_output(self) -> None:
+        snapshot = parse_nvidia_smi_row("NVIDIA GeForce RTX 4050 Laptop GPU, 595.71.05, 6141, 4230, 51, 28.47")
+
+        self.assertEqual(snapshot.name, "NVIDIA GeForce RTX 4050 Laptop GPU")
+        self.assertEqual(snapshot.driver_version, "595.71.05")
+        self.assertEqual(snapshot.memory_total_mb, 6141)
+        self.assertEqual(snapshot.memory_used_mb, 4230)
+        self.assertEqual(snapshot.temperature_c, 51)
+        self.assertEqual(snapshot.power_draw_w, 28.47)
+        self.assertIsNone(parse_float("N/A"))
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
