@@ -100,7 +100,7 @@ El Nivel 1 se considera estable cuando:
 
 ## 6.2 Nivel 2 — Extensión intermedia
 
-El Nivel 2 no se elimina, pero solo debe iniciarse cuando el Nivel 1 tenga una prueba funcional documentada.
+El Nivel 2 no se elimina. Queda desbloqueado porque Nivel 1 ya tiene prueba funcional documentada, evidencia ligera, demo local y gate reproducible en `experiments/test_011_level2_unlock/`.
 
 ### Objetivo
 
@@ -119,12 +119,13 @@ Mejorar la calidad del análisis deportivo y de las visualizaciones.
 
 ### Condiciones para avanzar a Nivel 2
 
-- Nivel 1 ejecutado exitosamente en laptop MSI.
-- Resultados ligeros subidos a GitHub.
-- Commit hash registrado en `TESTING_LOG.md`.
-- Configuración usada guardada en `experiments/test_xxx/config.yaml`.
-- Validación humana de al menos una prueba de segmentación/tracking.
-- Documentación de errores principales.
+- [x] Nivel 1 ejecutado exitosamente en laptop MSI.
+- [x] Resultados ligeros subidos a GitHub.
+- [x] Commit hash registrado en `TESTING_LOG.md`.
+- [x] Configuración usada guardada en `experiments/test_xxx/config.yaml`.
+- [x] Validación humana de al menos una prueba de segmentación/tracking.
+- [x] Documentación de errores principales.
+- [x] Gate reproducible de desbloqueo Nivel 2 generado.
 
 ---
 
@@ -296,9 +297,9 @@ Queda fuera del alcance inicial:
 
 | Supuesto | Estado |
 |---|---|
-| Se cuenta con al menos un video local de prueba | Pendiente de validación |
-| SAM 3 puede ejecutarse en la laptop MSI | Pendiente de validación |
-| La RTX 4050 permite pruebas de inferencia razonables | Pendiente de benchmark |
+| Se cuenta con al menos un video local de prueba | Validado |
+| SAM 3 puede ejecutarse en la laptop MSI | Validado |
+| La RTX 4050 permite pruebas de inferencia razonables | Validado |
 | GitHub será el centro de sincronización | Aprobado |
 | No se usará Obsidian | Aprobado |
 | El escritorio se usará para desarrollo y documentación | Aprobado |

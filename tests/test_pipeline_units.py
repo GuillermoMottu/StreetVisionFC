@@ -28,6 +28,7 @@ from scripts.run_sam3_benchmark import parse_float, parse_nvidia_smi_row
 from scripts.run_level1_validation_report import ratio_status
 from scripts.build_level1_evidence_package import mib
 from scripts.clean_detections import parse_top_k
+from scripts.check_level2_readiness import ReadinessCheck
 from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
     choose_recommended_tracker,
@@ -212,6 +213,12 @@ class PipelineUnitTests(unittest.TestCase):
     def test_level1_evidence_size_formatting(self) -> None:
         self.assertEqual(mib(0), "0.00")
         self.assertEqual(mib(1024 * 1024), "1.00")
+
+    def test_level2_readiness_check_shape(self) -> None:
+        check = ReadinessCheck("demo", "pass", "evidence.md", "ok")
+
+        self.assertEqual(check.check_id, "demo")
+        self.assertEqual(check.status, "pass")
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

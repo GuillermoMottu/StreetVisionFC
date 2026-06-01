@@ -423,12 +423,15 @@ Ocurre cuando:
 
 Debe existir:
 
-- Prueba funcional de Nivel 1.
-- SAM 3 validado.
-- Tracking básico exportado.
-- `events.json` mínimo.
-- Evidencia en `experiments/`.
-- Bitácora actualizada.
+- [x] Prueba funcional de Nivel 1.
+- [x] SAM 3 validado.
+- [x] Tracking básico exportado.
+- [x] `events.json` mínimo.
+- [x] Evidencia en `experiments/`.
+- [x] Bitácora actualizada.
+- [x] Gate de desbloqueo en `experiments/test_011_level2_unlock/`.
+
+Resultado: Nivel 2 queda desbloqueado para planeacion e implementacion inicial.
 
 ## Para iniciar Nivel 3
 

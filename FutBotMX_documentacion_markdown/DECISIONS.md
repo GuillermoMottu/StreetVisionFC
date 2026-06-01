@@ -140,3 +140,18 @@ Antes de desarrollar Nivel 2 o Nivel 3, se debe validar SAM 3 en la laptop MSI.
 
 **Consecuencia:**  
 No se debe afirmar que SAM 3 funciona hasta tener evidencia en `experiments/`.
+
+---
+
+## DEC-010 - Desbloquear Nivel 2
+
+**Estado:** Aprobada
+
+**Contexto:**
+Nivel 1 cuenta con evidencia real de SAM 3, tracking ByteTrack, eventos Nivel 1, demo local no versionada, paquete de evidencia ligera y reporte automatico con `10 pass`, `0 warn`, `0 fail`.
+
+**Decisión:**
+Nivel 2 queda desbloqueado para planeacion e implementacion inicial. El trabajo debe empezar por metricas deportivas intermedias, eventos intermedios y visualizaciones ligeras, usando `docs/TODO_LEVEL2.md` como checklist operativo.
+
+**Consecuencia:**
+Nivel 3 permanece bloqueado hasta que Nivel 2 tenga resultados documentados. Los videos/checkpoints siguen fuera de Git.

@@ -8,6 +8,52 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_011_level2_unlock`
+
+## Fecha
+
+`2026-05-31`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `898004e`.
+
+## Configuracion
+
+- Gate: `scripts/check_level2_readiness.py`.
+- Evidencia base: `experiments/evidence_level1/validation_report.csv`.
+- Salida: `experiments/test_011_level2_unlock/summary.md`.
+- Checklist Nivel 2: `docs/TODO_LEVEL2.md`.
+
+## Resultados
+
+- Estado: `desbloqueado`.
+- Checks pass: `6`.
+- Checks fail: `0`.
+- Nivel 1 validado con `10 pass`, `0 warn`, `0 fail`.
+- Nivel 2 queda listo para planeacion e implementacion inicial.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/check_level2_readiness.py
+docs/TODO_LEVEL2.md
+experiments/test_011_level2_unlock/summary.md
+experiments/test_011_level2_unlock/readiness_checks.csv
+```
+
+## Conclusion
+
+Nivel 2 queda formalmente desbloqueado. El siguiente desarrollo debe iniciar por `docs/TODO_LEVEL2.md`, prioridad 1: metricas deportivas intermedias.
+
+---
+
+## Test ID
+
 `test_010_level1_dedup_and_demo`
 
 ## Fecha

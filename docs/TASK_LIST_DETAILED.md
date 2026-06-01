@@ -103,6 +103,22 @@ Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
 - [x] Cinco recomendaciones de solidez Nivel 1 documentadas en `docs/LEVEL1_SOLIDITY_RECOMMENDATIONS.md`.
 - [x] Demo local o video anotado generado en laptop.
 
+## Nivel 2 - Extension Intermedia
+
+Estado operativo: desbloqueado por `experiments/test_011_level2_unlock/summary.md`.
+
+Checklist operativo: `docs/TODO_LEVEL2.md`.
+
+- [x] Gate de desbloqueo Nivel 2 ejecutado.
+- [x] Nivel 1 validado con `10 pass`, `0 warn`, `0 fail`.
+- [x] Demo local Nivel 1 documentada.
+- [x] Archivos pesados fuera de Git.
+- [ ] Prioridad 1 - Metricas deportivas intermedias.
+- [ ] Prioridad 2 - Eventos intermedios.
+- [ ] Prioridad 3 - Visualizaciones Nivel 2.
+- [ ] Prioridad 4 - Multi-clip real.
+- [ ] Prioridad 5 - Demo Nivel 2.
+
 ## Backlog bloqueado
 
-Nivel 2 y Nivel 3 permanecen bloqueados hasta validar Nivel 1 con evidencia real de SAM 3 en la laptop MSI.
+Nivel 3 permanece bloqueado hasta documentar Nivel 2 con resultados.
