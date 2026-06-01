@@ -92,6 +92,7 @@ Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
 - [x] Paquete de evidencia ligera Nivel 1 creado en `experiments/evidence_level1/`.
 - [x] Script reproducible para reconstruir evidencia ligera: `scripts/build_level1_evidence_package.py`.
 - [x] Reporte automatico de validacion Nivel 1: `scripts/run_level1_validation_report.py`.
+- [x] Limpieza de detecciones por NMS/top-k implementada antes de eventos multi-clip.
 
 ### Fase 7 - Documentacion y demo
 
@@ -100,7 +101,7 @@ Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
 - [x] Capturas reales de overlay.
 - [x] Fragmento real de `events.json` desde SAM 3/tracking.
 - [x] Cinco recomendaciones de solidez Nivel 1 documentadas en `docs/LEVEL1_SOLIDITY_RECOMMENDATIONS.md`.
-- [ ] Demo local o video anotado generado en laptop.
+- [x] Demo local o video anotado generado en laptop.
 
 ## Backlog bloqueado
 

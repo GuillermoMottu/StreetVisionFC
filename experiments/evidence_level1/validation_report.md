@@ -2,7 +2,7 @@
 
 ## Resumen
 
-- Checks pass: `8`.
+- Checks pass: `10`.
 - Checks warn: `0`.
 - Checks fail: `0`.
 
@@ -15,6 +15,8 @@
 - `events_level1_real`: `pass`; event_types = `activity_zone, collision, possession`; esperado `possession/collision/activity_zone and no shot`.
 - `additional_clip_readiness`: `pass`; clips_with_ball_robot_5_of_5 = `video_595 video_667`; esperado `video_595 and video_667`.
 - `msi_benchmark_margin`: `pass`; multi_frame_perf_vram = `1.2031s/frame, 4236MB reserved`; esperado `< 2.2370s/frame and < 5000MB reserved`.
+- `deduplication_ready`: `pass`; removed_duplicates = `video_595 ball=1, video_667 robots=3`; esperado `video_595 ball=1 and video_667 robots=3`.
+- `local_demo_ready`: `pass`; demo_summary_and_local_mp4 = `summary=True, mp4=True`; esperado `summary=True, mp4=True`.
 - `heavy_files_policy`: `pass`; tracked_heavy_files = `none`; esperado `none`.
 
 ## Recomendaciones

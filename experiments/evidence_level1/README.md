@@ -32,3 +32,4 @@ El pipeline Nivel 1 ya produce evidencia real de deteccion, tracking y eventos s
 - `artifact_manifest.csv`: lista curada de evidencia ligera y rutas.
 - `overlay_size_review.csv`: revision de tamanos de capturas PNG seleccionadas.
 - `validation_report.md`: checks automaticos de solidez Nivel 1.
+- `demo_local.md`: ruta y comando de la demo MP4 local no versionada.

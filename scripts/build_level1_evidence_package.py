@@ -32,9 +32,14 @@ CANONICAL_ARTIFACTS = (
     Artifact("prompts", "prompt_comparison", "experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/comparison.csv", "csv", "include", "Comparacion cuantitativa de prompts."),
     Artifact("more_videos", "multi_clip_summary", "experiments/test_006_more_copafutmx_videos/summary.md", "markdown", "include", "Expansion a video_480 video_595 video_667."),
     Artifact("more_videos", "multi_clip_metrics", "experiments/test_006_more_copafutmx_videos/metrics.csv", "csv", "include", "Metricas por clip adicional."),
+    Artifact("deduplication", "dedup_summary", "experiments/test_009_level1_solidity/deduplication/summary.md", "markdown", "include", "Limpieza NMS/top-k antes de eventos multi-clip."),
+    Artifact("deduplication", "video_595_cleaning_metrics", "experiments/test_009_level1_solidity/deduplication/video_595_cleaning_metrics.csv", "csv", "include", "Deduplicacion de balon en video_595."),
+    Artifact("deduplication", "video_667_cleaning_metrics", "experiments/test_009_level1_solidity/deduplication/video_667_cleaning_metrics.csv", "csv", "include", "Top-k de robots en video_667."),
     Artifact("benchmark", "msi_benchmark_summary", "experiments/test_007_msi_benchmarks/video_836_sam3/summary.md", "markdown", "include", "Resumen benchmark SAM 3."),
     Artifact("benchmark", "msi_benchmark_metrics", "experiments/test_007_msi_benchmarks/video_836_sam3/metrics.csv", "csv", "include", "Metricas single vs multi-frame."),
     Artifact("benchmark", "msi_benchmark_json", "experiments/test_007_msi_benchmarks/video_836_sam3/benchmark.json", "json", "include", "Snapshot completo de benchmark y entorno."),
+    Artifact("demo", "demo_local_summary", "experiments/evidence_level1/demo_local.md", "markdown", "include", "Ruta y configuracion de demo MP4 local no versionada."),
+    Artifact("demo", "demo_local_mp4", "outputs/videos/level1_demo_video_836_120_180.mp4", "video", "exclude", "Demo MP4 local ignorada por Git."),
     Artifact("source_video", "video_836", "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov", "video", "exclude", "Video completo local fuera de Git."),
     Artifact("source_checkpoint", "sam3_checkpoint", "checkpoints/sam3/sam3.pt", "checkpoint", "exclude", "Checkpoint local ignorado por Git."),
 )
@@ -141,7 +146,8 @@ def write_markdown(output_dir: Path) -> None:
         "- `DELIVERY_SUMMARY.md`: resumen final para entrega.\n"
         "- `artifact_manifest.csv`: lista curada de evidencia ligera y rutas.\n"
         "- `overlay_size_review.csv`: revision de tamanos de capturas PNG seleccionadas.\n"
-        "- `validation_report.md`: checks automaticos de solidez Nivel 1.\n",
+        "- `validation_report.md`: checks automaticos de solidez Nivel 1.\n"
+        "- `demo_local.md`: ruta y comando de la demo MP4 local no versionada.\n",
         encoding="utf-8",
     )
     (output_dir / "DELIVERY_SUMMARY.md").write_text(

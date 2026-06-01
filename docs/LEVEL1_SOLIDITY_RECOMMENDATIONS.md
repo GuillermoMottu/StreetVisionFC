@@ -30,7 +30,7 @@ Implementar deduplicacion/NMS o seleccion top-k por clase para resolver duplicad
 
 Impacto: mejora tracking/eventos cuando se escale a mas clips.
 
-Estado: recomendado para el siguiente ciclo antes de eventos multi-clip.
+Estado: implementado con `scripts/clean_detections.py` y evidencia en `experiments/test_009_level1_solidity/deduplication/`.
 
 ## 5. Preparar demo local no versionada
 
@@ -38,4 +38,4 @@ Generar un video corto anotado o secuencia de frames para `video_836` frames `12
 
 Impacto: mejora comunicacion visual del MVP sin cargar el repositorio.
 
-Estado: recomendado para cierre de demo; no bloquea validacion tecnica.
+Estado: implementado con `scripts/create_demo_video.py`; demo local generada en `outputs/videos/level1_demo_video_836_120_180.mp4` y documentada en `experiments/evidence_level1/demo_local.md`.

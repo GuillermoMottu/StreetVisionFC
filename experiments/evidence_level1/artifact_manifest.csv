@@ -14,8 +14,13 @@ prompts,prompt_summary,experiments/test_002_sam3_segmentation/video_836_prompt_c
 prompts,prompt_comparison,experiments/test_002_sam3_segmentation/video_836_prompt_comparison_120_180/comparison.csv,csv,803,include,Comparacion cuantitativa de prompts.
 more_videos,multi_clip_summary,experiments/test_006_more_copafutmx_videos/summary.md,markdown,2586,include,Expansion a video_480 video_595 video_667.
 more_videos,multi_clip_metrics,experiments/test_006_more_copafutmx_videos/metrics.csv,csv,927,include,Metricas por clip adicional.
+deduplication,dedup_summary,experiments/test_009_level1_solidity/deduplication/summary.md,markdown,1101,include,Limpieza NMS/top-k antes de eventos multi-clip.
+deduplication,video_595_cleaning_metrics,experiments/test_009_level1_solidity/deduplication/video_595_cleaning_metrics.csv,csv,86,include,Deduplicacion de balon en video_595.
+deduplication,video_667_cleaning_metrics,experiments/test_009_level1_solidity/deduplication/video_667_cleaning_metrics.csv,csv,88,include,Top-k de robots en video_667.
 benchmark,msi_benchmark_summary,experiments/test_007_msi_benchmarks/video_836_sam3/summary.md,markdown,1282,include,Resumen benchmark SAM 3.
 benchmark,msi_benchmark_metrics,experiments/test_007_msi_benchmarks/video_836_sam3/metrics.csv,csv,406,include,Metricas single vs multi-frame.
 benchmark,msi_benchmark_json,experiments/test_007_msi_benchmarks/video_836_sam3/benchmark.json,json,2547,include,Snapshot completo de benchmark y entorno.
+demo,demo_local_summary,experiments/evidence_level1/demo_local.md,markdown,513,include,Ruta y configuracion de demo MP4 local no versionada.
+demo,demo_local_mp4,outputs/videos/level1_demo_video_836_120_180.mp4,video,5634678,exclude,Demo MP4 local ignorada por Git.
 source_video,video_836,/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov,video,13706971,exclude,Video completo local fuera de Git.
 source_checkpoint,sam3_checkpoint,checkpoints/sam3/sam3.pt,checkpoint,3450062241,exclude,Checkpoint local ignorado por Git.

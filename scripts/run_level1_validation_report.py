@@ -178,6 +178,39 @@ def build_checks(root: Path) -> list[ValidationCheck]:
             )
         )
 
+    video_595_cleaning = read_csv_rows(root / "experiments/test_009_level1_solidity/deduplication/video_595_cleaning_metrics.csv")
+    video_667_cleaning = read_csv_rows(root / "experiments/test_009_level1_solidity/deduplication/video_667_cleaning_metrics.csv")
+    video_595_ball = find_row(video_595_cleaning, lambda row: row["class_name"] == "ball")
+    video_667_robot = find_row(video_667_cleaning, lambda row: row["class_name"] == "small_robot")
+    if video_595_ball and video_667_robot:
+        removed_ball = int(video_595_ball["removed"])
+        removed_robot = int(video_667_robot["removed"])
+        checks.append(
+            ValidationCheck(
+                "deduplication_ready",
+                "pass" if removed_ball == 1 and removed_robot == 3 else "warn",
+                "removed_duplicates",
+                f"video_595 ball={removed_ball}, video_667 robots={removed_robot}",
+                "video_595 ball=1 and video_667 robots=3",
+                "experiments/test_009_level1_solidity/deduplication/*_cleaning_metrics.csv",
+                "Aplicar NMS/top-k antes de tracking/eventos multi-clip.",
+            )
+        )
+
+    demo_summary = root / "experiments/evidence_level1/demo_local.md"
+    demo_video = root / "outputs/videos/level1_demo_video_836_120_180.mp4"
+    checks.append(
+        ValidationCheck(
+            "local_demo_ready",
+            "pass" if demo_summary.exists() and demo_video.exists() else "warn",
+            "demo_summary_and_local_mp4",
+            f"summary={demo_summary.exists()}, mp4={demo_video.exists()}",
+            "summary=True, mp4=True",
+            "experiments/evidence_level1/demo_local.md",
+            "Regenerar demo con `scripts/create_demo_video.py` si falta el MP4 local.",
+        )
+    )
+
     tracked_heavy = git_has_tracked_heavy_files()
     checks.append(
         ValidationCheck(

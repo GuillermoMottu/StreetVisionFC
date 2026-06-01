@@ -8,6 +8,54 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_010_level1_dedup_and_demo`
+
+## Fecha
+
+`2026-05-31`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `4450faf`.
+
+## Configuracion
+
+- Limpieza: `scripts/clean_detections.py`.
+- Demo local: `scripts/create_demo_video.py`.
+- Clips de limpieza: `video_595` y `video_667`.
+- Demo: `video_836`, frames `120-180`, tracks ByteTrack, `15 FPS`.
+
+## Resultados
+
+- `video_595`: limpieza remueve `1` deteccion duplicada de balon (`6 -> 5`).
+- `video_667`: limpieza remueve `3` detecciones extra de robot (`18 -> 15`).
+- Demo MP4 local generada en `outputs/videos/level1_demo_video_836_120_180.mp4`.
+- Tamano local de demo: `5634678` bytes.
+- El MP4 queda ignorado por Git; solo se versiona `experiments/evidence_level1/demo_local.md`.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/clean_detections.py
+scripts/create_demo_video.py
+experiments/test_009_level1_solidity/deduplication/summary.md
+experiments/test_009_level1_solidity/deduplication/*_cleaning_metrics.csv
+experiments/test_009_level1_solidity/deduplication/*_detections_cleaned.json
+experiments/evidence_level1/demo_local.md
+```
+
+## Conclusion
+
+Las dos recomendaciones pendientes quedan desarrolladas: hay limpieza reutilizable de detecciones antes de eventos multi-clip y una demo local anotada no versionada para comunicar el MVP Nivel 1.
+
+---
+
+## Test ID
+
 `test_009_level1_solidity_validation`
 
 ## Fecha
