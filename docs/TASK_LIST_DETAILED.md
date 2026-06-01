@@ -40,7 +40,7 @@ Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
 - [x] Wrapper `SAM3Segmenter` conectado a inferencia SAM 3 real.
 - [x] Prueba real de segmentacion de balon.
 - [x] Prueba real de segmentacion de robots.
-- [ ] Prueba real de segmentacion de campo.
+- [x] Prueba real de segmentacion de campo.
 - [x] Evidencia visual ligera en `experiments/test_002_sam3_segmentation/`.
 
 ### Fase 3 - Tracking
@@ -89,6 +89,9 @@ Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
 - [x] Prompts base de SAM 3 seleccionados con evidencia real.
 - [x] Tracking real comparado entre tracker simple y ByteTrack.
 - [x] Eventos Nivel 1 recalculados y calibrados con tracks reales ByteTrack.
+- [x] Paquete de evidencia ligera Nivel 1 creado en `experiments/evidence_level1/`.
+- [x] Script reproducible para reconstruir evidencia ligera: `scripts/build_level1_evidence_package.py`.
+- [x] Reporte automatico de validacion Nivel 1: `scripts/run_level1_validation_report.py`.
 
 ### Fase 7 - Documentacion y demo
 
@@ -96,6 +99,7 @@ Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
 - [x] Task list versionado.
 - [x] Capturas reales de overlay.
 - [x] Fragmento real de `events.json` desde SAM 3/tracking.
+- [x] Cinco recomendaciones de solidez Nivel 1 documentadas en `docs/LEVEL1_SOLIDITY_RECOMMENDATIONS.md`.
 - [ ] Demo local o video anotado generado en laptop.
 
 ## Backlog bloqueado

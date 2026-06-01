@@ -23,6 +23,8 @@ from scripts.run_prompt_comparison import (
     summarize_prompt,
 )
 from scripts.run_sam3_benchmark import parse_float, parse_nvidia_smi_row
+from scripts.run_level1_validation_report import ratio_status
+from scripts.build_level1_evidence_package import mib
 from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
     choose_recommended_tracker,
@@ -176,6 +178,16 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(snapshot.temperature_c, 51)
         self.assertEqual(snapshot.power_draw_w, 28.47)
         self.assertIsNone(parse_float("N/A"))
+
+    def test_level1_validation_helpers(self) -> None:
+        self.assertEqual(ratio_status(59, 61, pass_ratio=0.95), "pass")
+        self.assertEqual(ratio_status(50, 61, pass_ratio=0.95), "warn")
+        self.assertEqual(ratio_status(10, 61, pass_ratio=0.95), "fail")
+        self.assertEqual(ratio_status(1, 0, pass_ratio=0.95), "fail")
+
+    def test_level1_evidence_size_formatting(self) -> None:
+        self.assertEqual(mib(0), "0.00")
+        self.assertEqual(mib(1024 * 1024), "1.00")
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -8,6 +8,57 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_009_level1_solidity_validation`
+
+## Fecha
+
+`2026-05-31`
+
+## Equipo utilizado
+
+Laptop MSI Thin GF63 12VE con RTX 4050.
+
+## Codigo usado
+
+Commit base: `1d58ee7`.
+
+## Configuracion
+
+- Recomendaciones: `docs/LEVEL1_SOLIDITY_RECOMMENDATIONS.md`.
+- Validador: `scripts/run_level1_validation_report.py`.
+- Reconstructor de evidencia: `scripts/build_level1_evidence_package.py`.
+- Salida: `experiments/evidence_level1/validation_report.md` y `validation_report.csv`.
+- No requiere rerun de SAM 3; consume artefactos JSON/CSV/Markdown existentes.
+
+## Resultados
+
+- Checks automaticos: `8 pass`, `0 warn`, `0 fail`.
+- Validaciones cubiertas: prompt real de campo, recall temporal de balon/robots, estabilidad ByteTrack, eventos Nivel 1, clips adicionales, benchmark MSI y politica de archivos pesados.
+- `docs/TASK_LIST_DETAILED.md` sincronizado con evidencia de campo real y herramientas de validacion/reproducibilidad.
+- `experiments/evidence_level1/` ahora puede reconstruirse con un comando ligero.
+
+## Archivos subidos a GitHub
+
+```text
+docs/LEVEL1_SOLIDITY_RECOMMENDATIONS.md
+scripts/run_level1_validation_report.py
+scripts/build_level1_evidence_package.py
+experiments/evidence_level1/validation_report.md
+experiments/evidence_level1/validation_report.csv
+```
+
+## Conclusion
+
+Nivel 1 queda mas solido sin abrir trabajo pesado nuevo: las recomendaciones quedan documentadas, la evidencia ligera es regenerable y existe un check automatico que confirma que no hay bloqueadores inmediatos para preparar Nivel 2.
+
+## Siguiente accion
+
+Antes de Nivel 2, priorizar deduplicacion/NMS y demo local anotada no versionada.
+
+---
+
+## Test ID
+
 `test_008_level1_light_evidence`
 
 ## Fecha

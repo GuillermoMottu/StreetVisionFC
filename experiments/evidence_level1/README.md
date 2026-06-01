@@ -20,6 +20,7 @@ Esta carpeta es el indice final de evidencia ligera para la validacion Nivel 1 d
 - Mantener el checkpoint local bajo `checkpoints/sam3/sam3.pt`, ignorado por Git.
 - Usar `artifact_manifest.csv` como indice de artefactos canonicos.
 - Usar `overlay_size_review.csv` para justificar las capturas versionadas.
+- Usar `validation_report.md` como validacion automatica previa a Nivel 2.
 
 ## Resultado ejecutivo
 
@@ -30,3 +31,4 @@ El pipeline Nivel 1 ya produce evidencia real de deteccion, tracking y eventos s
 - `DELIVERY_SUMMARY.md`: resumen final para entrega.
 - `artifact_manifest.csv`: lista curada de evidencia ligera y rutas.
 - `overlay_size_review.csv`: revision de tamanos de capturas PNG seleccionadas.
+- `validation_report.md`: checks automaticos de solidez Nivel 1.
