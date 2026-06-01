@@ -11,6 +11,8 @@ from futbotmx.events import detect_level1_events
 from futbotmx.io.detections import (
     Detection,
     FrameDetections,
+    bbox_iou,
+    deduplicate_detections,
     filter_detections_by_roi,
     load_detections,
     save_detections,
@@ -25,6 +27,7 @@ from scripts.run_prompt_comparison import (
 from scripts.run_sam3_benchmark import parse_float, parse_nvidia_smi_row
 from scripts.run_level1_validation_report import ratio_status
 from scripts.build_level1_evidence_package import mib
+from scripts.clean_detections import parse_top_k
 from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
     choose_recommended_tracker,
@@ -80,6 +83,27 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(len(filtered), 1)
         self.assertEqual(len(filtered[0].detections), 1)
         self.assertEqual(filtered[0].detections[0].class_name, "ball")
+
+    def test_deduplicate_detections_applies_nms_and_top_k(self) -> None:
+        frames = [
+            FrameDetections(
+                frame=1,
+                detections=(
+                    Detection("ball", (10, 10, 20, 20), (15, 15), 0.9),
+                    Detection("ball", (11, 11, 21, 21), (16, 16), 0.8),
+                    Detection("ball", (80, 80, 90, 90), (85, 85), 0.7),
+                    Detection("small_robot", (30, 30, 60, 60), (45, 45), 0.9),
+                ),
+            )
+        ]
+
+        cleaned = deduplicate_detections(frames, iou_threshold=0.5, top_k_by_class={"ball": 1})
+
+        self.assertGreater(bbox_iou(frames[0].detections[0].bbox, frames[0].detections[1].bbox), 0.5)
+        self.assertEqual(parse_top_k(["ball=1", "small_robot=3"]), {"ball": 1, "small_robot": 3})
+        self.assertEqual(len(cleaned[0].detections), 2)
+        self.assertEqual(sum(1 for item in cleaned[0].detections if item.class_name == "ball"), 1)
+        self.assertEqual(cleaned[0].detections[0].class_name, "ball")
 
     def test_temporal_stability_frame_selection(self) -> None:
         self.assertEqual(select_frames(120, 130, 5), [120, 125, 130])

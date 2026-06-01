@@ -64,6 +64,60 @@ def filter_detections_by_roi(
     return filtered_frames
 
 
+def bbox_iou(first: tuple[float, float, float, float], second: tuple[float, float, float, float]) -> float:
+    x1 = max(first[0], second[0])
+    y1 = max(first[1], second[1])
+    x2 = min(first[2], second[2])
+    y2 = min(first[3], second[3])
+    intersection_width = max(0.0, x2 - x1)
+    intersection_height = max(0.0, y2 - y1)
+    intersection = intersection_width * intersection_height
+    if intersection == 0:
+        return 0.0
+
+    first_area = max(0.0, first[2] - first[0]) * max(0.0, first[3] - first[1])
+    second_area = max(0.0, second[2] - second[0]) * max(0.0, second[3] - second[1])
+    union = first_area + second_area - intersection
+    return intersection / union if union > 0 else 0.0
+
+
+def deduplicate_detections(
+    frames: list[FrameDetections],
+    iou_threshold: float = 0.6,
+    top_k_by_class: dict[str, int] | None = None,
+) -> list[FrameDetections]:
+    """Apply per-frame/per-class NMS and optional top-k selection."""
+    if not 0 <= iou_threshold <= 1:
+        raise ValueError("iou_threshold must be between 0 and 1")
+
+    top_k_by_class = top_k_by_class or {}
+    cleaned_frames: list[FrameDetections] = []
+    for frame in frames:
+        by_class: dict[str, list[Detection]] = {}
+        for detection in frame.detections:
+            by_class.setdefault(detection.class_name, []).append(detection)
+
+        kept: list[Detection] = []
+        for class_name in sorted(by_class):
+            candidates = sorted(by_class[class_name], key=lambda item: item.confidence, reverse=True)
+            class_kept: list[Detection] = []
+            for candidate in candidates:
+                if all(bbox_iou(candidate.bbox, existing.bbox) < iou_threshold for existing in class_kept):
+                    class_kept.append(candidate)
+            limit = top_k_by_class.get(class_name)
+            if limit is not None:
+                class_kept = class_kept[: max(0, limit)]
+            kept.extend(class_kept)
+
+        cleaned_frames.append(
+            FrameDetections(
+                frame=frame.frame,
+                detections=tuple(sorted(kept, key=lambda item: (item.class_name, -item.confidence))),
+            )
+        )
+    return cleaned_frames
+
+
 def load_detections(path: str | Path) -> list[FrameDetections]:
     input_path = Path(path)
     with input_path.open("r", encoding="utf-8") as handle:
