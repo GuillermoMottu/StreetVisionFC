@@ -1,0 +1,26 @@
+metric_category,entity_type,entity_id,class_name,team,metric_name,value,unit,frame_start,frame_end,notes
+track,track,ball_bt_01,ball,neutral,total_distance_px,94.121053,px,120,180,
+track,track,ball_bt_01,ball,neutral,avg_speed_px_per_sec,93.662565,px/s,120,180,
+track,track,ball_bt_01,ball,neutral,max_speed_px_per_sec,307.306088,px/s,120,180,
+track,track,ball_bt_01,ball,neutral,observed_seconds,0.988147,s,120,180,
+track,track,ball_bt_01,ball,neutral,observations,59.000000,frames,120,180,
+track,track,robot_bt_01,robot,neutral,total_distance_px,252.492145,px,120,180,
+track,track,robot_bt_01,robot,neutral,avg_speed_px_per_sec,251.262191,px/s,120,180,
+track,track,robot_bt_01,robot,neutral,max_speed_px_per_sec,2009.233657,px/s,120,180,
+track,track,robot_bt_01,robot,neutral,observed_seconds,1.021643,s,120,180,
+track,track,robot_bt_01,robot,neutral,observations,61.000000,frames,120,180,
+track,track,robot_bt_02,robot,neutral,total_distance_px,317.396646,px,120,180,
+track,track,robot_bt_02,robot,neutral,avg_speed_px_per_sec,315.850525,px/s,120,180,
+track,track,robot_bt_02,robot,neutral,max_speed_px_per_sec,912.163965,px/s,120,180,
+track,track,robot_bt_02,robot,neutral,observed_seconds,1.021643,s,120,180,
+track,track,robot_bt_02,robot,neutral,observations,61.000000,frames,120,180,
+track,track,robot_bt_03,robot,neutral,total_distance_px,124.734243,px,120,144,
+track,track,robot_bt_03,robot,neutral,avg_speed_px_per_sec,310.316575,px/s,120,144,
+track,track,robot_bt_03,robot,neutral,max_speed_px_per_sec,627.711226,px/s,120,144,
+track,track,robot_bt_03,robot,neutral,observed_seconds,0.401958,s,120,144,
+track,track,robot_bt_03,robot,neutral,observations,24.000000,frames,120,144,
+possession,robot,robot_bt_01,robot,neutral,seconds,0.904406,s,,,Ball assigned to nearest robot inside possession threshold.
+possession,robot,robot_bt_01,robot,neutral,percent_observed_time,88.524590,%,,,Ball assigned to nearest robot inside possession threshold.
+possession,robot,robot_bt_01,robot,neutral,mean_ball_distance_px,152.989611,px,,,Ball assigned to nearest robot inside possession threshold.
+possession,team,neutral,team,neutral,seconds,0.904406,s,,,Team possession aggregates robot-level assignments.
+possession,team,neutral,team,neutral,percent_observed_time,88.524590,%,,,Team possession aggregates robot-level assignments.

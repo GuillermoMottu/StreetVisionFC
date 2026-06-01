@@ -8,6 +8,63 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_012_level2_metrics`
+
+## Fecha
+
+`2026-06-01`
+
+## Equipo utilizado
+
+Escritorio Linux.
+
+## Codigo usado
+
+Commit base: `653f355`.
+
+## Configuracion
+
+- Script: `scripts/run_level2_metrics.py`.
+- Tracks: `experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv`.
+- Ventana: frames `120-180`.
+- FPS: `59.707724425887264`.
+- Resolucion/cancha usada: `1360x1808`.
+- Umbral de posesion: `190px`.
+
+## Resultados
+
+- Frames observados: `61`.
+- Tracks analizados: `4`.
+- Tiempo observado aproximado: `1.021643s`.
+- Tiempo con posesion asignada: `0.904406s`.
+- Posesion asignada a `robot_bt_01` / equipo `neutral`: `88.52459%` del tiempo observado.
+- Distancia recorrida del balon: `94.121053px`.
+- Velocidad maxima aproximada del balon: `307.306088px/s`.
+- Distancias y velocidades por track quedan exportadas en `level2_metrics.csv` y `level2_metrics.json`.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/run_level2_metrics.py
+src/futbotmx/metrics/
+experiments/test_012_level2_metrics/video_836_real_metrics_120_180/summary.md
+experiments/test_012_level2_metrics/video_836_real_metrics_120_180/level2_metrics.csv
+experiments/test_012_level2_metrics/video_836_real_metrics_120_180/level2_metrics.json
+experiments/test_012_level2_metrics/video_836_real_metrics_120_180/config.yaml
+```
+
+## Conclusion
+
+Prioridad 1 de Nivel 2 queda implementada con metricas deportivas intermedias reproducibles desde tracks reales ya versionados. Las metricas son aproximadas en espacio de pixeles por la perspectiva de camara y dependen de continuidad de tracking.
+
+## Siguiente accion
+
+Avanzar a Prioridad 2 de Nivel 2: eventos intermedios de recuperacion, intercepcion y jugada destacada.
+
+---
+
+## Test ID
+
 `test_011_level2_unlock`
 
 ## Fecha

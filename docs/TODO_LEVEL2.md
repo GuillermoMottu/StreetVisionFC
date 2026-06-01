@@ -14,11 +14,13 @@ Nivel 2 queda desbloqueado despues de la validacion Nivel 1 con `10 pass`, `0 wa
 
 ## Prioridad 1 - Metricas Deportivas Intermedias
 
-- [ ] Calcular posesion temporal por robot/equipo.
-- [ ] Calcular distancia recorrida por robot y balon.
-- [ ] Calcular velocidad aproximada por track.
-- [ ] Exportar `level2_metrics.csv` y `level2_metrics.json`.
-- [ ] Documentar supuestos y limitaciones por perspectiva de camara.
+- [x] Calcular posesion temporal por robot/equipo.
+- [x] Calcular distancia recorrida por robot y balon.
+- [x] Calcular velocidad aproximada por track.
+- [x] Exportar `level2_metrics.csv` y `level2_metrics.json`.
+- [x] Documentar supuestos y limitaciones por perspectiva de camara.
+
+Evidencia: `experiments/test_012_level2_metrics/video_836_real_metrics_120_180/`.
 
 ## Prioridad 2 - Eventos Intermedios
 

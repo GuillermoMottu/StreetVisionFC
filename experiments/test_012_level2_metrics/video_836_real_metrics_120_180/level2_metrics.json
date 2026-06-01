@@ -1,0 +1,147 @@
+{
+  "rule_version": "level2_metrics_v0.1",
+  "source": {
+    "tracks_file": "experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv",
+    "source_experiment": "experiments/test_012_level2_metrics/video_836_real_metrics_120_180",
+    "fps": 59.707724425887264,
+    "field_width": 1360.0,
+    "field_height": 1808.0
+  },
+  "summary": {
+    "observed_frames": 61,
+    "track_count": 4,
+    "total_observed_seconds": 1.021643,
+    "possession_assigned_seconds": 0.904406,
+    "possession_unassigned_seconds": 0.117238,
+    "possession_threshold_px": 190.0
+  },
+  "possession_by_robot": [
+    {
+      "robot_id": "robot_bt_01",
+      "team": "neutral",
+      "frames": 54,
+      "seconds": 0.904406,
+      "percent_observed_time": 88.52459,
+      "mean_ball_distance_px": 152.989611
+    }
+  ],
+  "possession_by_team": [
+    {
+      "team": "neutral",
+      "frames": 54,
+      "seconds": 0.904406,
+      "percent_observed_time": 88.52459,
+      "mean_ball_distance_px": 152.989611
+    }
+  ],
+  "possession_timeline": [
+    {
+      "frame_start": 120,
+      "frame_end": 133,
+      "time_start_sec": 2.01,
+      "time_end_sec": 2.228,
+      "duration_sec": 0.234476,
+      "robot_id": "robot_bt_01",
+      "team": "neutral",
+      "ball_id": "ball_bt_01",
+      "mean_ball_distance_px": 171.046298
+    },
+    {
+      "frame_start": 137,
+      "frame_end": 142,
+      "time_start_sec": 2.295,
+      "time_end_sec": 2.378,
+      "duration_sec": 0.10049,
+      "robot_id": "robot_bt_01",
+      "team": "neutral",
+      "ball_id": "ball_bt_01",
+      "mean_ball_distance_px": 184.602976
+    },
+    {
+      "frame_start": 144,
+      "frame_end": 144,
+      "time_start_sec": 2.412,
+      "time_end_sec": 2.412,
+      "duration_sec": 0.016748,
+      "robot_id": "robot_bt_01",
+      "team": "neutral",
+      "ball_id": "ball_bt_01",
+      "mean_ball_distance_px": 177.082886
+    },
+    {
+      "frame_start": 148,
+      "frame_end": 180,
+      "time_start_sec": 2.479,
+      "time_end_sec": 3.015,
+      "duration_sec": 0.552692,
+      "robot_id": "robot_bt_01",
+      "team": "neutral",
+      "ball_id": "ball_bt_01",
+      "mean_ball_distance_px": 138.851215
+    }
+  ],
+  "track_metrics": [
+    {
+      "track_id": "ball_bt_01",
+      "class_name": "ball",
+      "team": "neutral",
+      "observations": 59,
+      "frame_start": 120,
+      "frame_end": 180,
+      "observed_seconds": 0.988147,
+      "movement_seconds": 1.004895,
+      "total_distance_px": 94.121053,
+      "avg_speed_px_per_sec": 93.662565,
+      "max_speed_px_per_sec": 307.306088
+    },
+    {
+      "track_id": "robot_bt_01",
+      "class_name": "robot",
+      "team": "neutral",
+      "observations": 61,
+      "frame_start": 120,
+      "frame_end": 180,
+      "observed_seconds": 1.021643,
+      "movement_seconds": 1.004895,
+      "total_distance_px": 252.492145,
+      "avg_speed_px_per_sec": 251.262191,
+      "max_speed_px_per_sec": 2009.233657
+    },
+    {
+      "track_id": "robot_bt_02",
+      "class_name": "robot",
+      "team": "neutral",
+      "observations": 61,
+      "frame_start": 120,
+      "frame_end": 180,
+      "observed_seconds": 1.021643,
+      "movement_seconds": 1.004895,
+      "total_distance_px": 317.396646,
+      "avg_speed_px_per_sec": 315.850525,
+      "max_speed_px_per_sec": 912.163965
+    },
+    {
+      "track_id": "robot_bt_03",
+      "class_name": "robot",
+      "team": "neutral",
+      "observations": 24,
+      "frame_start": 120,
+      "frame_end": 144,
+      "observed_seconds": 0.401958,
+      "movement_seconds": 0.401958,
+      "total_distance_px": 124.734243,
+      "avg_speed_px_per_sec": 310.316575,
+      "max_speed_px_per_sec": 627.711226
+    }
+  ],
+  "assumptions": [
+    "Las metricas temporales usan los frames observados y los saltos de frame derivados del FPS.",
+    "La posesion se asigna al robot mas cercano cuando el balon queda dentro del umbral configurado en pixeles.",
+    "Distancia y velocidad son estimaciones en pixeles desde desplazamiento de centroides, no metros reales."
+  ],
+  "limitations": [
+    "La perspectiva de camara no esta rectificada; las distancias en pixeles varian con profundidad y angulo.",
+    "Oclusiones, detecciones perdidas y cambios de ID pueden fragmentar distancia, velocidad y posesion.",
+    "Las etiquetas de equipo quedan como unknown/neutral cuando el detector o tracker exporta clases neutrales."
+  ]
+}

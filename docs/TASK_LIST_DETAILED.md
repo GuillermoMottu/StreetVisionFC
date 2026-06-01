@@ -113,7 +113,7 @@ Checklist operativo: `docs/TODO_LEVEL2.md`.
 - [x] Nivel 1 validado con `10 pass`, `0 warn`, `0 fail`.
 - [x] Demo local Nivel 1 documentada.
 - [x] Archivos pesados fuera de Git.
-- [ ] Prioridad 1 - Metricas deportivas intermedias.
+- [x] Prioridad 1 - Metricas deportivas intermedias.
 - [ ] Prioridad 2 - Eventos intermedios.
 - [ ] Prioridad 3 - Visualizaciones Nivel 2.
 - [ ] Prioridad 4 - Multi-clip real.
