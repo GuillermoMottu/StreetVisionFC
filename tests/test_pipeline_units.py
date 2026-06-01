@@ -17,6 +17,7 @@ from futbotmx.io.detections import (
     load_detections,
     save_detections,
 )
+from futbotmx.metrics import compute_level2_metrics
 from futbotmx.tracking import TrackRow, track_detections, write_tracks_csv
 from futbotmx.visualization import write_heatmap
 from scripts.run_prompt_comparison import (
@@ -219,6 +220,60 @@ class PipelineUnitTests(unittest.TestCase):
 
         self.assertEqual(check.check_id, "demo")
         self.assertEqual(check.status, "pass")
+
+    def test_level2_metrics_possession_distance_and_speed(self) -> None:
+        rows = []
+        for frame in range(6):
+            rows.extend(
+                [
+                    {
+                        "frame": frame,
+                        "track_id": "ball_01",
+                        "class_name": "ball",
+                        "x": 10.0 + frame,
+                        "y": 10.0,
+                        "confidence": 0.9,
+                        "team": "neutral",
+                    },
+                    {
+                        "frame": frame,
+                        "track_id": "ally_robot_01",
+                        "class_name": "ally_robot",
+                        "x": 10.0 + frame,
+                        "y": 15.0,
+                        "confidence": 0.8,
+                        "team": "ally",
+                    },
+                    {
+                        "frame": frame,
+                        "track_id": "opponent_robot_01",
+                        "class_name": "opponent_robot",
+                        "x": 15.0 + frame,
+                        "y": 10.0,
+                        "confidence": 0.8,
+                        "team": "opponent",
+                    },
+                ]
+            )
+
+        metrics = compute_level2_metrics(
+            rows,
+            fps=10,
+            possession_distance_px=6,
+            tracks_file="synthetic_tracks.csv",
+            field_width=160,
+            field_height=90,
+        )
+
+        self.assertEqual(metrics.summary["observed_frames"], 6)
+        self.assertAlmostEqual(metrics.summary["total_observed_seconds"], 0.6)
+        self.assertAlmostEqual(metrics.summary["possession_assigned_seconds"], 0.6)
+        self.assertEqual(metrics.possession_by_robot[0]["robot_id"], "ally_robot_01")
+        self.assertAlmostEqual(metrics.possession_by_robot[0]["seconds"], 0.6)
+        ball_metrics = [item for item in metrics.track_metrics if item["track_id"] == "ball_01"][0]
+        self.assertAlmostEqual(ball_metrics["total_distance_px"], 5.0)
+        self.assertAlmostEqual(ball_metrics["avg_speed_px_per_sec"], 10.0)
+        self.assertTrue(any(row.metric_name == "total_distance_px" for row in metrics.metric_rows))
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
