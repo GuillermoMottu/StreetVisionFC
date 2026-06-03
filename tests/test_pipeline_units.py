@@ -7,7 +7,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from futbotmx.events import detect_level1_events
+from futbotmx.events import detect_level1_events, detect_level2_events
 from futbotmx.io.detections import (
     Detection,
     FrameDetections,
@@ -274,6 +274,56 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertAlmostEqual(ball_metrics["total_distance_px"], 5.0)
         self.assertAlmostEqual(ball_metrics["avg_speed_px_per_sec"], 10.0)
         self.assertTrue(any(row.metric_name == "total_distance_px" for row in metrics.metric_rows))
+
+    def test_level2_events_recovery_interception_and_highlight(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tracks_path = Path(tmp) / "tracks.csv"
+            rows = [
+                TrackRow(0, "ball_01", "ball", 10, 10, 8, 8, 12, 12, 0.9),
+                TrackRow(0, "ally_robot_01", "ally_robot", 12, 10, 8, 6, 16, 14, 0.8),
+                TrackRow(0, "opponent_robot_01", "opponent_robot", 60, 10, 56, 6, 64, 14, 0.8),
+                TrackRow(1, "ball_01", "ball", 11, 10, 9, 8, 13, 12, 0.9),
+                TrackRow(1, "ally_robot_01", "ally_robot", 13, 10, 9, 6, 17, 14, 0.8),
+                TrackRow(1, "opponent_robot_01", "opponent_robot", 59, 10, 55, 6, 63, 14, 0.8),
+                TrackRow(2, "ball_01", "ball", 12, 10, 10, 8, 14, 12, 0.9),
+                TrackRow(2, "ally_robot_01", "ally_robot", 14, 10, 10, 6, 18, 14, 0.8),
+                TrackRow(2, "opponent_robot_01", "opponent_robot", 58, 10, 54, 6, 62, 14, 0.8),
+                TrackRow(3, "ball_01", "ball", 35, 10, 33, 8, 37, 12, 0.9),
+                TrackRow(3, "ally_robot_01", "ally_robot", 14, 10, 10, 6, 18, 14, 0.8),
+                TrackRow(3, "opponent_robot_01", "opponent_robot", 50, 10, 46, 6, 54, 14, 0.8),
+                TrackRow(4, "ball_01", "ball", 50, 10, 48, 8, 52, 12, 0.9),
+                TrackRow(4, "ally_robot_01", "ally_robot", 15, 10, 11, 6, 19, 14, 0.8),
+                TrackRow(4, "opponent_robot_01", "opponent_robot", 51, 10, 47, 6, 55, 14, 0.8),
+                TrackRow(5, "ball_01", "ball", 51, 10, 49, 8, 53, 12, 0.9),
+                TrackRow(5, "ally_robot_01", "ally_robot", 16, 10, 12, 6, 20, 14, 0.8),
+                TrackRow(5, "opponent_robot_01", "opponent_robot", 52, 10, 48, 6, 56, 14, 0.8),
+                TrackRow(6, "ball_01", "ball", 52, 10, 50, 8, 54, 12, 0.9),
+                TrackRow(6, "ally_robot_01", "ally_robot", 17, 10, 13, 6, 21, 14, 0.8),
+                TrackRow(6, "opponent_robot_01", "opponent_robot", 53, 10, 49, 6, 57, 14, 0.8),
+            ]
+            write_tracks_csv(rows, tracks_path)
+
+            events = detect_level2_events(
+                tracks_path,
+                fps=10,
+                field_width=90,
+                field_height=60,
+                config={
+                    "rule_version": "level2_events_v0.1",
+                    "possession_distance_px": 5,
+                    "recovery_min_frames": 2,
+                    "interception_max_gap_frames": 3,
+                    "interception_min_speed_px_per_sec": 50,
+                    "highlight_min_speed_px_per_sec": 100,
+                },
+            )
+
+            self.assertTrue(any(event["event_type"] == "ball_recovery" for event in events))
+            self.assertTrue(any(event["event_type"] == "interception" for event in events))
+            self.assertTrue(any(event["event_type"] == "highlight_play" for event in events))
+            self.assertTrue(all(event["reliability"] in {"confiable", "provisional", "descartado"} for event in events))
+            interceptions = [event for event in events if event["event_type"] == "interception"]
+            self.assertTrue(any(event["reliability"] == "provisional" for event in interceptions))
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

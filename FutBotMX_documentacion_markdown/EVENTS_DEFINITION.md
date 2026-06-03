@@ -72,6 +72,7 @@ No se debe declarar un evento como validado sin evidencia.
     "y": 295
   },
   "confidence": 0.72,
+  "reliability": "provisional",
   "rule_version": "events_v0.1",
   "evidence": {
     "source_experiment": "experiments/test_004_event_detection",
@@ -100,9 +101,9 @@ No se debe declarar un evento como validado sin evidencia.
 
 | Evento | Nivel | Estado |
 |---|---|---|
-| Intercepción | Nivel 2 | Pendiente |
-| Recuperación | Nivel 2 | Pendiente |
-| Jugada destacada | Nivel 2 | Pendiente |
+| Intercepción | Nivel 2 | Implementado inicial |
+| Recuperación | Nivel 2 | Implementado inicial |
+| Jugada destacada | Nivel 2 | Implementado inicial |
 | Timeline de posesión | Nivel 2 | Pendiente |
 
 ---
@@ -222,6 +223,67 @@ Una zona de actividad representa una región del campo con alta concentración d
 
 ---
 
+## 8.6 Recuperacion de balon
+
+Una recuperacion ocurre cuando un robot vuelve a quedar dentro del umbral de posesion despues de un tramo libre, desconocido o sin posesion asignada.
+
+### Entradas
+
+- `tracks.csv`
+- Posicion del balon.
+- Posiciones de robots.
+- Umbral de posesion.
+- Minimo de frames para aceptar la recuperacion.
+
+### Lógica inicial
+
+1. Calcular el robot mas cercano al balon por frame.
+2. Construir tramos de posesion por robot.
+3. Marcar recuperacion cuando inicia un tramo de posesion.
+4. Usar `confiable` si el tramo es largo y cercano, `provisional` si cumple minimo, `descartado` si no alcanza el minimo.
+
+---
+
+## 8.7 Intercepcion aproximada
+
+Una intercepcion aproximada ocurre cuando el balon cambia de robot poseedor en una ventana corta y con velocidad suficiente.
+
+### Entradas
+
+- Tramos de posesion.
+- Velocidad aproximada del balon.
+- Gap maximo entre posesiones.
+- Equipo del robot cuando exista.
+
+### Lógica inicial
+
+1. Comparar tramos consecutivos de posesion.
+2. Verificar cambio de robot.
+3. Medir gap entre salida y nueva posesion.
+4. Revisar velocidad del balon durante el cambio.
+5. Marcar `provisional` si cumple; `descartado` si no hay cambio valido o si los robots son del mismo equipo confirmado.
+
+---
+
+## 8.8 Jugada destacada
+
+Una jugada destacada inicial se marca cuando existe velocidad alta del balon, zona relevante o cambio de posesion.
+
+### Entradas
+
+- Velocidad del balon por segmento.
+- Zona del campo.
+- Cambios de posesion.
+
+### Lógica inicial
+
+1. Encontrar el segmento con mayor velocidad del balon.
+2. Revisar si supera el umbral configurado.
+3. Registrar zona del balon.
+4. Marcar `provisional` hasta tener validacion visual humana; `descartado` si no supera umbral.
+
+---
+
 # 9. Limitaciones
 
 - Los eventos son heurísticos.
@@ -229,6 +291,8 @@ Una zona de actividad representa una región del campo con alta concentración d
 - La posesión puede confundirse con proximidad.
 - Los tiros pueden confundirse con despejes.
 - Las colisiones pueden ser falsas por perspectiva.
+- Las recuperaciones e intercepciones Nivel 2 dependen de continuidad de IDs y pueden fallar con oclusion.
+- La confiabilidad `confiable`, `provisional` o `descartado` no reemplaza validacion visual humana.
 - No se debe afirmar precisión final sin validación humana.
 
 ---
