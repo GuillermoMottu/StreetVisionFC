@@ -36,6 +36,7 @@ from scripts.run_level1_validation_report import ratio_status
 from scripts.build_level1_evidence_package import mib
 from scripts.clean_detections import parse_top_k
 from scripts.check_level2_readiness import ReadinessCheck
+from scripts.run_level2_multiclip import ClipSpec, clip_row, sports_frames
 from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
     choose_recommended_tracker,
@@ -374,6 +375,33 @@ class PipelineUnitTests(unittest.TestCase):
             self.assertGreater((root / "event_timeline.png").stat().st_size, 0)
             self.assertGreater((root / "possession_timeline.png").stat().st_size, 0)
             self.assertGreater((root / "heatmap_ball.png").stat().st_size, 0)
+
+    def test_level2_multiclip_filters_field_and_preserves_diagnostic_role(self) -> None:
+        frames = [
+            FrameDetections(
+                frame=1,
+                detections=(
+                    Detection("ball", (1, 1, 3, 3), (2, 2), 0.9),
+                    Detection("small_robot", (5, 5, 9, 9), (7, 7), 0.8),
+                    Detection("green_soccer_field", (0, 0, 100, 100), (50, 50), 0.7),
+                ),
+            )
+        ]
+
+        filtered = sports_frames(frames)
+        row = clip_row(
+            ClipSpec("video_480", "diagnostic", 1360, 1808, 59.7, notes="sin balon"),
+            metrics=None,
+            events=[],
+            detection_counts={"small_robot": 5, "green_soccer_field": 5},
+            tracks_path=None,
+        )
+
+        self.assertEqual(len(filtered[0].detections), 2)
+        self.assertEqual({item.class_name for item in filtered[0].detections}, {"ball", "small_robot"})
+        self.assertEqual(row["role"], "diagnostic")
+        self.assertEqual(row["ball_detections"], 0)
+        self.assertEqual(row["robot_detections"], 5)
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
