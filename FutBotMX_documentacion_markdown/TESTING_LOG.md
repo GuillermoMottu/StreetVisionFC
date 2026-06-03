@@ -8,6 +8,62 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_015_level2_multiclip`
+
+## Fecha
+
+`2026-06-03`
+
+## Equipo utilizado
+
+Escritorio Linux.
+
+## Codigo usado
+
+Commit base: `508f83b`.
+
+## Configuracion
+
+- Script: `scripts/run_level2_multiclip.py`.
+- Candidatos: `video_595`, `video_667`.
+- Baseline: `video_836` con metrics/eventos Nivel 2 ya versionados.
+- Diagnostico: `video_480`.
+- Detecciones limpias: `experiments/test_009_level1_solidity/deduplication/*_detections_cleaned.json`.
+- Tracking ligero: `max_distance_px=260`, `max_lost_frames=40`.
+- Eventos: `level2_events_v0.1`.
+
+## Resultados
+
+- `video_595`: tracking Nivel 2 generado con `5` frames observados, `3` tracks deportivos y `0.502386s` de posesion asignada. Eventos: `1` recovery descartado, `1` interception descartado, `1` highlight provisional.
+- `video_667`: tracking Nivel 2 generado con `5` frames observados, `4` tracks deportivos y `0.0s` de posesion asignada. Eventos: `1` interception descartado y `1` highlight descartado.
+- `video_836`: baseline con `61` frames, `4` tracks y `0.904406s` de posesion asignada.
+- `video_480`: se mantiene como diagnostico de balon; `0` detecciones de balon, `5` robots y `5` canchas en la muestra, sin eventos deportivos.
+- Comparacion generada en `multiclip_comparison.csv`.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/run_level2_multiclip.py
+experiments/test_015_level2_multiclip/summary.md
+experiments/test_015_level2_multiclip/multiclip_comparison.csv
+experiments/test_015_level2_multiclip/video_595/*
+experiments/test_015_level2_multiclip/video_667/*
+experiments/test_015_level2_multiclip/video_836/summary.md
+experiments/test_015_level2_multiclip/video_480/summary.md
+```
+
+## Conclusion
+
+Prioridad 4 de Nivel 2 queda implementada con comparacion multi-clip real usando artefactos ligeros ya versionados. `video_595` y `video_667` son comparables solo como muestras sparse cada 30 frames; `video_836` sigue siendo la referencia densa. `video_480` permanece reservado para diagnostico de balon.
+
+## Siguiente accion
+
+Avanzar a Prioridad 5 de Nivel 2: demo local y resumen final Nivel 2.
+
+---
+
+## Test ID
+
 `test_014_level2_visualizations`
 
 ## Fecha

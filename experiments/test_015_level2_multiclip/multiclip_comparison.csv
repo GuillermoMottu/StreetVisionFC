@@ -1,0 +1,5 @@
+clip_id,role,fps,resolution,tracks_file,observed_frames,track_count,possession_assigned_seconds,ball_detections,robot_detections,ball_recovery,interception,highlight_play,confiable,provisional,descartado,notes
+video_595,candidate,59.715053,1344x1792,experiments/test_015_level2_multiclip/video_595/tracks_level2.csv,5,3,0.502386,5,6,1,1,1,0,1,2,"Buen recall de balon/robots; muestra sparse en frames 60,90,120,150,180."
+video_667,candidate,59.706960,1360x1808,experiments/test_015_level2_multiclip/video_667/tracks_level2.csv,5,4,0.0,5,15,0,1,1,0,0,2,Robots visibles y multiples candidatos por frame; se usa deduplicacion/top-k previa.
+video_836,baseline,59.707724,1360x1808,experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv,61,4,0.904406,,0,4,1,1,1,3,2,Baseline Nivel 2 con tracks ByteTrack densos en frames 120-180.
+video_480,diagnostic,59.699543,1360x1808,,0,0,0,0,5,0,0,0,0,0,0,Diagnostico: no hay deteccion de balon en la muestra; no se ejecutan eventos deportivos.

@@ -44,11 +44,13 @@ Evidencia: `experiments/test_014_level2_visualizations/video_836_real_visuals_12
 
 ## Prioridad 4 - Multi-Clip Real
 
-- [ ] Ejecutar tracking/eventos en `video_595`.
-- [ ] Ejecutar tracking/eventos en `video_667`.
-- [ ] Comparar metricas contra `video_836`.
-- [ ] Documentar diferencias por camara, iluminacion y oclusion.
-- [ ] Mantener `video_480` como diagnostico de balon.
+- [x] Ejecutar tracking/eventos en `video_595`.
+- [x] Ejecutar tracking/eventos en `video_667`.
+- [x] Comparar metricas contra `video_836`.
+- [x] Documentar diferencias por camara, iluminacion y oclusion.
+- [x] Mantener `video_480` como diagnostico de balon.
+
+Evidencia: `experiments/test_015_level2_multiclip/`.
 
 ## Prioridad 5 - Demo Nivel 2
 

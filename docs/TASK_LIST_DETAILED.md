@@ -116,7 +116,7 @@ Checklist operativo: `docs/TODO_LEVEL2.md`.
 - [x] Prioridad 1 - Metricas deportivas intermedias.
 - [x] Prioridad 2 - Eventos intermedios.
 - [x] Prioridad 3 - Visualizaciones Nivel 2.
-- [ ] Prioridad 4 - Multi-clip real.
+- [x] Prioridad 4 - Multi-clip real.
 - [ ] Prioridad 5 - Demo Nivel 2.
 
 ## Backlog bloqueado

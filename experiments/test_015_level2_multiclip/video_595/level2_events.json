@@ -1,0 +1,100 @@
+[
+  {
+    "event_id": "lvl2_evt_000001",
+    "event_type": "ball_recovery",
+    "frame_start": 60,
+    "frame_end": 60,
+    "time_start_sec": 1.005,
+    "time_end_sec": 1.005,
+    "team": "neutral",
+    "primary_object_id": "small_robot_01",
+    "secondary_object_id": null,
+    "ball_id": "ball_01",
+    "zone": "unknown",
+    "position_start": {
+      "x": 782.6474304199219,
+      "y": 787.1732177734375
+    },
+    "position_end": {
+      "x": 782.6474304199219,
+      "y": 787.1732177734375
+    },
+    "confidence": 0.15,
+    "reliability": "descartado",
+    "rule_version": "level2_events_v0.1",
+    "evidence": {
+      "source_experiment": "experiments/test_015_level2_multiclip/video_595",
+      "tracks_file": "experiments/test_015_level2_multiclip/video_595/tracks_level2.csv",
+      "config_file": "config.yaml",
+      "notes": "Robot recovered or re-established ball proximity after a free/unknown possession segment.",
+      "signals": {
+        "frames": 1,
+        "min_frames": 5,
+        "mean_distance_px": 152.501
+      }
+    }
+  },
+  {
+    "event_id": "lvl2_evt_000002",
+    "event_type": "interception",
+    "frame_start": 60,
+    "frame_end": 180,
+    "time_start_sec": 1.005,
+    "time_end_sec": 3.014,
+    "team": "unknown",
+    "primary_object_id": null,
+    "secondary_object_id": null,
+    "ball_id": "ball_01",
+    "zone": "unknown",
+    "position_start": null,
+    "position_end": null,
+    "confidence": 0.05,
+    "reliability": "descartado",
+    "rule_version": "level2_events_v0.1",
+    "evidence": {
+      "source_experiment": "experiments/test_015_level2_multiclip/video_595",
+      "tracks_file": "experiments/test_015_level2_multiclip/video_595/tracks_level2.csv",
+      "config_file": "config.yaml",
+      "notes": "No possession change between different robots satisfied interception criteria.",
+      "signals": {
+        "possession_runs": 1,
+        "max_gap_frames": 12,
+        "min_speed_px_per_sec": 120.0
+      }
+    }
+  },
+  {
+    "event_id": "lvl2_evt_000003",
+    "event_type": "highlight_play",
+    "frame_start": 120,
+    "frame_end": 150,
+    "time_start_sec": 2.01,
+    "time_end_sec": 2.512,
+    "team": "unknown",
+    "primary_object_id": null,
+    "secondary_object_id": null,
+    "ball_id": "ball_01",
+    "zone": "attacking_third",
+    "position_start": {
+      "x": 1003.4037170410156,
+      "y": 735.3516235351562
+    },
+    "position_end": {
+      "x": 1144.5421752929688,
+      "y": 727.7374572753906
+    },
+    "confidence": 0.653,
+    "reliability": "provisional",
+    "rule_version": "level2_events_v0.1",
+    "evidence": {
+      "source_experiment": "experiments/test_015_level2_multiclip/video_595",
+      "tracks_file": "experiments/test_015_level2_multiclip/video_595/tracks_level2.csv",
+      "config_file": "config.yaml",
+      "notes": "Ball speed and field zone produced a highlight candidate.",
+      "signals": {
+        "speed_px_per_sec": 281.345,
+        "min_speed_px_per_sec": 250.0
+      }
+    }
+  }
+]

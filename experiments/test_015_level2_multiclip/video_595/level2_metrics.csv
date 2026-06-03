@@ -1,0 +1,21 @@
+metric_category,entity_type,entity_id,class_name,team,metric_name,value,unit,frame_start,frame_end,notes
+track,track,ball_01,ball,neutral,total_distance_px,386.217896,px,60,180,
+track,track,ball_01,ball,neutral,avg_speed_px_per_sec,192.191850,px/s,60,180,
+track,track,ball_01,ball,neutral,max_speed_px_per_sec,281.344872,px/s,60,180,
+track,track,ball_01,ball,neutral,observed_seconds,2.511929,s,60,180,
+track,track,ball_01,ball,neutral,observations,5.000000,frames,60,180,
+track,track,small_robot_01,small_robot,neutral,total_distance_px,565.636663,px,60,180,
+track,track,small_robot_01,small_robot,neutral,avg_speed_px_per_sec,281.475193,px/s,60,180,
+track,track,small_robot_01,small_robot,neutral,max_speed_px_per_sec,458.291818,px/s,60,180,
+track,track,small_robot_01,small_robot,neutral,observed_seconds,2.511929,s,60,180,
+track,track,small_robot_01,small_robot,neutral,observations,5.000000,frames,60,180,
+track,track,small_robot_02,small_robot,neutral,total_distance_px,0.000000,px,60,60,
+track,track,small_robot_02,small_robot,neutral,avg_speed_px_per_sec,0.000000,px/s,60,60,
+track,track,small_robot_02,small_robot,neutral,max_speed_px_per_sec,0.000000,px/s,60,60,
+track,track,small_robot_02,small_robot,neutral,observed_seconds,0.502386,s,60,60,
+track,track,small_robot_02,small_robot,neutral,observations,1.000000,frames,60,60,
+possession,robot,small_robot_01,robot,neutral,seconds,0.502386,s,,,Ball assigned to nearest robot inside possession threshold.
+possession,robot,small_robot_01,robot,neutral,percent_observed_time,20.000000,%,,,Ball assigned to nearest robot inside possession threshold.
+possession,robot,small_robot_01,robot,neutral,mean_ball_distance_px,152.501174,px,,,Ball assigned to nearest robot inside possession threshold.
+possession,team,neutral,team,neutral,seconds,0.502386,s,,,Team possession aggregates robot-level assignments.
+possession,team,neutral,team,neutral,percent_observed_time,20.000000,%,,,Team possession aggregates robot-level assignments.
