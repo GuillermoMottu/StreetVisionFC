@@ -20,6 +20,12 @@ from futbotmx.io.detections import (
 from futbotmx.metrics import compute_level2_metrics
 from futbotmx.tracking import TrackRow, track_detections, write_tracks_csv
 from futbotmx.visualization import write_heatmap
+from futbotmx.visualization.level2 import (
+    build_heatmap_specs,
+    write_event_timeline,
+    write_filtered_heatmap,
+    write_possession_timeline,
+)
 from scripts.run_prompt_comparison import (
     choose_prompt,
     slugify_prompt,
@@ -324,6 +330,50 @@ class PipelineUnitTests(unittest.TestCase):
             self.assertTrue(all(event["reliability"] in {"confiable", "provisional", "descartado"} for event in events))
             interceptions = [event for event in events if event["event_type"] == "interception"]
             self.assertTrue(any(event["reliability"] == "provisional" for event in interceptions))
+
+    def test_level2_visualizations_write_lightweight_outputs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            tracks_path = root / "tracks.csv"
+            events_path = root / "events.json"
+            metrics_path = root / "metrics.json"
+            rows = [
+                TrackRow(0, "ball_01", "ball", 10, 10, 8, 8, 12, 12, 0.9),
+                TrackRow(1, "ball_01", "ball", 20, 10, 18, 8, 22, 12, 0.9),
+                TrackRow(0, "robot_01", "robot", 12, 14, 8, 10, 16, 18, 0.8),
+                TrackRow(1, "robot_01", "robot", 22, 14, 18, 10, 26, 18, 0.8),
+            ]
+            write_tracks_csv(rows, tracks_path)
+            events_path.write_text(
+                """[
+  {"event_id":"lvl2_evt_000001","event_type":"ball_recovery","frame_start":0,"frame_end":1,
+   "time_start_sec":0.0,"time_end_sec":0.1,"reliability":"confiable"}
+]""",
+                encoding="utf-8",
+            )
+            metrics_path.write_text(
+                """{
+  "summary": {"observed_frames": 2, "track_count": 2},
+  "possession_timeline": [
+    {"frame_start":0,"frame_end":1,"time_start_sec":0.0,"time_end_sec":0.1,
+     "duration_sec":0.1,"robot_id":"robot_01","mean_ball_distance_px":5.0}
+  ]
+}""",
+                encoding="utf-8",
+            )
+
+            event_count = write_event_timeline(events_path, root / "event_timeline.png")
+            possession_count = write_possession_timeline(metrics_path, root / "possession_timeline.png")
+            heatmap_count = write_filtered_heatmap(tracks_path, root / "heatmap_ball.png", 100, 60, class_name="ball")
+            specs = build_heatmap_specs(tracks_path)
+
+            self.assertEqual(event_count, 1)
+            self.assertEqual(possession_count, 1)
+            self.assertEqual(heatmap_count, 2)
+            self.assertTrue(any(spec["id"] == "ball" for spec in specs))
+            self.assertGreater((root / "event_timeline.png").stat().st_size, 0)
+            self.assertGreater((root / "possession_timeline.png").stat().st_size, 0)
+            self.assertGreater((root / "heatmap_ball.png").stat().st_size, 0)
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
