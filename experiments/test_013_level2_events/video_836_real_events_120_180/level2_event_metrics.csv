@@ -1,0 +1,6 @@
+event_type,reliability,count
+ball_recovery,confiable,1
+ball_recovery,descartado,1
+ball_recovery,provisional,2
+highlight_play,provisional,1
+interception,descartado,1

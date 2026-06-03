@@ -8,6 +8,65 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_013_level2_events`
+
+## Fecha
+
+`2026-06-03`
+
+## Equipo utilizado
+
+Escritorio Linux.
+
+## Codigo usado
+
+Commit base: `cf3f51c`.
+
+## Configuracion
+
+- Script: `scripts/run_level2_events.py`.
+- Tracks: `experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv`.
+- Ventana: frames `120-180`.
+- FPS: `59.707724425887264`.
+- Resolucion/cancha usada: `1360x1808`.
+- Umbral de posesion: `190px`.
+- Recuperacion: `recovery_min_frames=5`.
+- Intercepcion: `interception_max_gap_frames=12`, `interception_min_speed_px_per_sec=120`.
+- Highlight: `highlight_min_speed_px_per_sec=250`.
+- Overlays representativos enlazados desde `experiments/test_004_events/video_836_real_events_120_180/`.
+
+## Resultados
+
+- `ball_recovery`: `1` confiable, `2` provisionales, `1` descartado por tramo corto.
+- `interception`: `1` descartado porque no hubo cambio de robot poseedor en la ventana real.
+- `highlight_play`: `1` provisional en frames `127-128`, zona `attacking_third`, velocidad `307.306px/s`.
+- Confiabilidad exportada por evento con valores `confiable`, `provisional` y `descartado`.
+- Validacion visual: `15/15` frames representativos enlazados a overlays existentes, `0` pendientes.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/run_level2_events.py
+src/futbotmx/events/level2.py
+experiments/test_013_level2_events/video_836_real_events_120_180/summary.md
+experiments/test_013_level2_events/video_836_real_events_120_180/level2_events.json
+experiments/test_013_level2_events/video_836_real_events_120_180/level2_event_metrics.csv
+experiments/test_013_level2_events/video_836_real_events_120_180/overlay_validation.csv
+experiments/test_013_level2_events/video_836_real_events_120_180/config.yaml
+```
+
+## Conclusion
+
+Prioridad 2 de Nivel 2 queda implementada con eventos intermedios reproducibles desde tracks reales. La intercepcion se mantiene como candidato descartado en `video_836` por falta de cambio de poseedor, lo cual evita inventar un evento no soportado por la evidencia.
+
+## Siguiente accion
+
+Avanzar a Prioridad 3 de Nivel 2: timelines de eventos/posesion y mapas de calor separados.
+
+---
+
+## Test ID
+
 `test_012_level2_metrics`
 
 ## Fecha

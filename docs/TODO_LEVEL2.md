@@ -24,11 +24,13 @@ Evidencia: `experiments/test_012_level2_metrics/video_836_real_metrics_120_180/`
 
 ## Prioridad 2 - Eventos Intermedios
 
-- [ ] Detectar recuperacion de balon.
-- [ ] Detectar intercepcion aproximada.
-- [ ] Detectar jugada destacada basada en zona, velocidad o cambio de posesion.
-- [ ] Marcar confiabilidad de cada evento: `confiable`, `provisional`, `descartado`.
-- [ ] Validar eventos con overlays representativos.
+- [x] Detectar recuperacion de balon.
+- [x] Detectar intercepcion aproximada.
+- [x] Detectar jugada destacada basada en zona, velocidad o cambio de posesion.
+- [x] Marcar confiabilidad de cada evento: `confiable`, `provisional`, `descartado`.
+- [x] Validar eventos con overlays representativos.
+
+Evidencia: `experiments/test_013_level2_events/video_836_real_events_120_180/`.
 
 ## Prioridad 3 - Visualizaciones Nivel 2
 
