@@ -34,11 +34,13 @@ Evidencia: `experiments/test_013_level2_events/video_836_real_events_120_180/`.
 
 ## Prioridad 3 - Visualizaciones Nivel 2
 
-- [ ] Crear timeline de eventos.
-- [ ] Crear timeline de posesion.
-- [ ] Crear mapas de calor separados por clase/robot.
-- [ ] Crear resumen visual ligero por clip.
-- [ ] Mantener videos completos fuera de Git.
+- [x] Crear timeline de eventos.
+- [x] Crear timeline de posesion.
+- [x] Crear mapas de calor separados por clase/robot.
+- [x] Crear resumen visual ligero por clip.
+- [x] Mantener videos completos fuera de Git.
+
+Evidencia: `experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/`.
 
 ## Prioridad 4 - Multi-Clip Real
 

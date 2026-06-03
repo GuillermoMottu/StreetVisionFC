@@ -8,6 +8,63 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_014_level2_visualizations`
+
+## Fecha
+
+`2026-06-03`
+
+## Equipo utilizado
+
+Escritorio Linux.
+
+## Codigo usado
+
+Commit base: `79e32eb`.
+
+## Configuracion
+
+- Script: `scripts/run_level2_visualizations.py`.
+- Tracks: `experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv`.
+- Eventos Nivel 2: `experiments/test_013_level2_events/video_836_real_events_120_180/level2_events.json`.
+- Metricas Nivel 2: `experiments/test_012_level2_metrics/video_836_real_metrics_120_180/level2_metrics.json`.
+- Resolucion/cancha usada: `1360x1808`.
+- Ventana: frames `120-180`.
+
+## Resultados
+
+- `event_timeline.png` generado con `6` eventos Nivel 2.
+- `possession_timeline.png` generado con `4` intervalos de posesion.
+- Mapas de calor separados generados: clase `ball`, clase `robot`, y tracks `ball_bt_01`, `robot_bt_01`, `robot_bt_02`, `robot_bt_03`.
+- Resumen visual ligero generado en `visual_summary.md`.
+- Manifest de visualizaciones generado en `visualization_manifest.csv`.
+- No se genero ni versiono video completo.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/run_level2_visualizations.py
+src/futbotmx/visualization/level2.py
+experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/event_timeline.png
+experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/possession_timeline.png
+experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/heatmap_*.png
+experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/visualization_manifest.csv
+experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/visual_summary.md
+experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/config.yaml
+```
+
+## Conclusion
+
+Prioridad 3 de Nivel 2 queda implementada con timelines y mapas de calor ligeros derivados de tracks, eventos y metricas ya versionadas. Los videos completos permanecen fuera de Git.
+
+## Siguiente accion
+
+Avanzar a Prioridad 4 de Nivel 2: ejecucion y comparacion multi-clip real para `video_595` y `video_667`.
+
+---
+
+## Test ID
+
 `test_013_level2_events`
 
 ## Fecha

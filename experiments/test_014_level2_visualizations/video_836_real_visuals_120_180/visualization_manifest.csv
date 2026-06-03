@@ -1,0 +1,9 @@
+artifact,type,path,rows
+event_timeline,png,event_timeline.png,6
+possession_timeline,png,possession_timeline.png,4
+ball,png,heatmap_class_ball.png,59
+robot,png,heatmap_class_robot.png,146
+ball_bt_01,png,heatmap_track_ball_bt_01.png,59
+robot_bt_01,png,heatmap_track_robot_bt_01.png,61
+robot_bt_02,png,heatmap_track_robot_bt_02.png,61
+robot_bt_03,png,heatmap_track_robot_bt_03.png,24
