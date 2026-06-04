@@ -34,6 +34,7 @@ from scripts.run_prompt_comparison import (
 from scripts.run_sam3_benchmark import parse_float, parse_nvidia_smi_row
 from scripts.run_level1_validation_report import ratio_status
 from scripts.build_level1_evidence_package import mib
+from scripts.build_level2_demo_package import build_demo_facts
 from scripts.clean_detections import parse_top_k
 from scripts.check_level2_readiness import ReadinessCheck
 from scripts.run_level2_multiclip import ClipSpec, clip_row, sports_frames
@@ -402,6 +403,53 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(row["role"], "diagnostic")
         self.assertEqual(row["ball_detections"], 0)
         self.assertEqual(row["robot_detections"], 5)
+
+    def test_level2_demo_facts_summarize_inputs(self) -> None:
+        facts = build_demo_facts(
+            metrics={
+                "summary": {
+                    "observed_frames": 61,
+                    "track_count": 4,
+                    "possession_assigned_seconds": 0.9,
+                },
+                "possession_by_robot": [
+                    {
+                        "robot_id": "robot_01",
+                        "percent_observed_time": 80.0,
+                    }
+                ],
+            },
+            events=[
+                {"event_type": "ball_recovery", "reliability": "confiable"},
+                {"event_type": "highlight_play", "reliability": "provisional"},
+            ],
+            comparison_rows=[
+                {"clip_id": "video_836", "role": "baseline"},
+                {
+                    "clip_id": "video_595",
+                    "role": "candidate",
+                    "observed_frames": "5",
+                    "track_count": "3",
+                    "possession_assigned_seconds": "0.5",
+                    "ball_recovery": "1",
+                    "interception": "1",
+                    "highlight_play": "1",
+                },
+                {
+                    "clip_id": "video_480",
+                    "role": "diagnostic",
+                    "ball_detections": "0",
+                    "robot_detections": "5",
+                },
+            ],
+        )
+
+        self.assertEqual(facts["observed_frames"], 61)
+        self.assertEqual(facts["top_possession_robot"], "robot_01")
+        self.assertEqual(facts["event_counts"]["ball_recovery"], 1)
+        self.assertEqual(facts["reliability_counts"]["provisional"], 1)
+        self.assertEqual(len(facts["candidates"]), 1)
+        self.assertEqual(facts["diagnostic"]["clip_id"], "video_480")
 
     def test_tracking_events_and_heatmap(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
