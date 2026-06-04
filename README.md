@@ -49,6 +49,12 @@ Validar gates:
 .venv/bin/python scripts/check_level3_readiness.py
 ```
 
+Generar contrato de datos Nivel 3:
+
+```bash
+.venv/bin/python scripts/build_level3_data_contract.py
+```
+
 Inspeccionar un video local:
 
 ```powershell
@@ -89,6 +95,7 @@ python scripts\run_visualizations.py --tracks experiments\test_003_tracking\trac
 - `test_012` a `test_016`: metricas, eventos, visualizaciones, multi-clip y demo Nivel 2.
 - `test_017_level2_closure`: cierre tecnico Nivel 2 y gate hacia Nivel 3.
 - `test_018_level3_readiness`: decision formal, seleccion de clips y readiness Nivel 3.
+- `test_019_level3_data_contract`: auditoria de Nivel 2 y esquemas de artefactos Nivel 3.
 
 ## Regla principal
 

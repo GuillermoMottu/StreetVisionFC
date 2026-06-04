@@ -78,33 +78,33 @@ Definir los formatos que usaran metricas tacticas, eventos avanzados, visualizac
 
 ### Tarea 1.1 - Auditar datos heredados de Nivel 2
 
-- [ ] Revisar columnas de `tracks_level2.csv`.
-- [ ] Revisar estructura de `level2_events.json`.
-- [ ] Revisar `level2_metrics.csv` y `level2_metrics.json`.
-- [ ] Identificar campos faltantes para Nivel 3: equipo, coordenadas rectificadas, zona, confianza, frame inicial/final.
-- [ ] Documentar limitaciones detectadas en `experiments/test_019_level3_data_contract/summary.md`.
+- [x] Revisar columnas de `tracks_level2.csv`.
+- [x] Revisar estructura de `level2_events.json`.
+- [x] Revisar `level2_metrics.csv` y `level2_metrics.json`.
+- [x] Identificar campos faltantes para Nivel 3: equipo, coordenadas rectificadas, zona, confianza, frame inicial/final.
+- [x] Documentar limitaciones detectadas en `experiments/test_019_level3_data_contract/summary.md`.
 
 ### Tarea 1.2 - Definir esquemas de salida
 
-- [ ] Definir `level3_tracks.csv` con coordenadas originales y rectificadas.
-- [ ] Definir `level3_metrics.csv` para metricas tacticas agregadas.
-- [ ] Definir `level3_metrics.json` para resumen legible.
-- [ ] Definir `level3_events.json` para cadenas de pases, highlights e interacciones.
-- [ ] Definir `level3_highlights.csv` con ranking de jugadas.
-- [ ] Definir `level3_narrative.md` con narrativa generada por reglas.
-- [ ] Definir `level3_visualization_manifest.csv` con PNG/GIF/video local asociado.
+- [x] Definir `level3_tracks.csv` con coordenadas originales y rectificadas.
+- [x] Definir `level3_metrics.csv` para metricas tacticas agregadas.
+- [x] Definir `level3_metrics.json` para resumen legible.
+- [x] Definir `level3_events.json` para cadenas de pases, highlights e interacciones.
+- [x] Definir `level3_highlights.csv` con ranking de jugadas.
+- [x] Definir `level3_narrative.md` con narrativa generada por reglas.
+- [x] Definir `level3_visualization_manifest.csv` con PNG/GIF/video local asociado.
 
 ### Tarea 1.3 - Crear modulos base
 
-- [ ] Crear paquete `src/futbotmx/level3/` si el codigo crece mas alla de un script.
-- [ ] Separar modelos de datos, metricas tacticas, eventos avanzados y visualizaciones.
-- [ ] Reutilizar lectores existentes de tracks y eventos.
-- [ ] Agregar pruebas unitarias para validacion de esquemas.
+- [x] Crear paquete `src/futbotmx/level3/` si el codigo crece mas alla de un script.
+- [x] Separar modelos de datos, metricas tacticas, eventos avanzados y visualizaciones.
+- [x] Reutilizar lectores existentes de tracks y eventos.
+- [x] Agregar pruebas unitarias para validacion de esquemas.
 
 ### Criterio de aceptacion
 
-- [ ] Los artefactos Nivel 3 tienen nombres, columnas y campos documentados.
-- [ ] Las pruebas cubren lectura/escritura de los nuevos formatos.
+- [x] Los artefactos Nivel 3 tienen nombres, columnas y campos documentados.
+- [x] Las pruebas cubren lectura/escritura de los nuevos formatos.
 
 ## Actividad 2 - Rectificacion Espacial Y Mini-Mapa
 

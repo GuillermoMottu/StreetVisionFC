@@ -1,0 +1,15 @@
+level3_data_contract:
+  rule_version: level3_data_contract_v0.1
+  source_experiment: experiments/test_017_level2_closure
+  clips:
+    - video_595
+    - video_667
+  outputs:
+    - level2_audit.csv
+    - level3_schema_manifest.csv
+    - level3_schema.json
+    - summary.md
+  contract_notes:
+    - level3_tracks_csv_extends_level2_tracks_csv
+    - homography_fields_are_declared_but_not_computed_until_activity_2
+    - team_assignment_remains_provisional_until_explicitly_resolved

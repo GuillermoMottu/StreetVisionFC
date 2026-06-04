@@ -272,6 +272,7 @@ Videos anotados completos pueden generarse localmente en la laptop, pero no debe
 - [x] Nivel 2 implementado y documentado.
 - [x] Nivel 2 cerrado con gate tecnico reproducible.
 - [x] Nivel 3 iniciado de forma controlada con readiness `10 pass`, `0 fail`.
+- [x] Contrato de datos Nivel 3 definido con auditoria de clips candidatos.
 
 ---
 

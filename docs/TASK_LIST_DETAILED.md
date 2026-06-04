@@ -125,3 +125,6 @@ Checklist operativo: `docs/TODO_LEVEL2.md`.
 Nivel 3 esta iniciado de forma controlada. La Actividad 0 queda enfocada en decision formal, seleccion de clips y gate de readiness.
 
 Todo operativo detallado: `docs/TODO_LEVEL3.md`.
+
+- [x] Actividad 0 - Gate de inicio y alcance.
+- [x] Actividad 1 - Contrato de datos Nivel 3.
