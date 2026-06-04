@@ -1,0 +1,7 @@
+tracker,class_name,frames_with_detections,rows,track_count,late_track_starts,mean_track_length,max_track_length,max_frame_gap,max_step_px
+simple,ball,57,85,2,1,42.500000,57,4,13.866276
+simple,green_soccer_field,61,61,1,0,61.000000,61,1,2.130788
+simple,small_robot,61,62,2,1,31.000000,61,1,18.079523
+bytetrack,ball,57,84,2,1,42.000000,57,4,13.866276
+bytetrack,green_soccer_field,61,61,1,0,61.000000,61,1,2.130788
+bytetrack,small_robot,61,61,1,0,61.000000,61,1,18.079523

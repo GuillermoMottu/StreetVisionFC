@@ -1,0 +1,67 @@
+[
+  {
+    "event_id": "lvl2_evt_000001",
+    "event_type": "interception",
+    "frame_start": 120,
+    "frame_end": 180,
+    "time_start_sec": 2.01,
+    "time_end_sec": 3.014,
+    "team": "unknown",
+    "primary_object_id": null,
+    "secondary_object_id": null,
+    "ball_id": "ball_01",
+    "zone": "unknown",
+    "position_start": null,
+    "position_end": null,
+    "confidence": 0.05,
+    "reliability": "descartado",
+    "rule_version": "level2_events_v0.1",
+    "evidence": {
+      "source_experiment": "experiments/test_017_level2_closure/video_595",
+      "tracks_file": "experiments/test_017_level2_closure/video_595/tracks_level2.csv",
+      "config_file": "config.yaml",
+      "notes": "No possession change between different robots satisfied interception criteria.",
+      "signals": {
+        "possession_runs": 0,
+        "max_gap_frames": 12,
+        "min_speed_px_per_sec": 120.0
+      }
+    }
+  },
+  {
+    "event_id": "lvl2_evt_000002",
+    "event_type": "highlight_play",
+    "frame_start": 122,
+    "frame_end": 123,
+    "time_start_sec": 2.043,
+    "time_end_sec": 2.06,
+    "team": "unknown",
+    "primary_object_id": null,
+    "secondary_object_id": null,
+    "ball_id": "ball_bt_01",
+    "zone": "middle_third",
+    "position_start": {
+      "x": 1014.3500671386719,
+      "y": 734.3895263671875
+    },
+    "position_end": {
+      "x": 1020.5497131347656,
+      "y": 734.1890869140625
+    },
+    "confidence": 0.717,
+    "reliability": "provisional",
+    "rule_version": "level2_events_v0.1",
+    "evidence": {
+      "source_experiment": "experiments/test_017_level2_closure/video_595",
+      "tracks_file": "experiments/test_017_level2_closure/video_595/tracks_level2.csv",
+      "config_file": "config.yaml",
+      "notes": "Ball speed and field zone produced a highlight candidate.",
+      "signals": {
+        "speed_px_per_sec": 370.406,
+        "min_speed_px_per_sec": 250.0,
+        "ball_track_continuity": "same_track",
+        "zone_axis": "y"
+      }
+    }
+  }
+]
