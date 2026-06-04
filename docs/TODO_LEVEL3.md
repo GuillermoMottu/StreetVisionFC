@@ -1,0 +1,554 @@
+# TODO Nivel 3
+
+Nivel 3 esta iniciado de forma controlada desde la Actividad 0. Este TODO convierte el gate posterior al cierre de Nivel 2 en una lista operativa para completar la extension avanzada sin romper la entrega principal.
+
+Punto de partida:
+
+- Nivel 2 cerrado en `experiments/test_017_level2_closure/`.
+- Gate Nivel 2 con `8 pass`, `0 fail`.
+- Nivel 3 iniciado con decision formal `DEC-012`.
+- Recomendacion tecnica pendiente: rectificacion/homografia como mejora de Nivel 3.
+
+Meta de Nivel 3:
+
+Generar una demo destacada con analisis tactico aproximado, visualizaciones avanzadas, highlights, narrativa deportiva, dashboard ligero y reel final, manteniendo reproducibilidad desde GitHub y dejando archivos pesados fuera del repositorio.
+
+## Regla De Trabajo
+
+- [ ] No comprometer el cierre ya logrado de Nivel 1 y Nivel 2.
+- [ ] Mantener videos completos, checkpoints, frames masivos, mascaras masivas y renders pesados fuera de Git.
+- [ ] Versionar solo evidencia ligera: CSV, JSON, Markdown, PNG seleccionados, manifests y configuraciones.
+- [ ] Crear una carpeta de experimento por bloque nuevo.
+- [ ] Guardar siempre `config.yaml`, `summary.md` y, cuando aplique, `*_manifest.csv`.
+- [ ] Mantener Nivel 3 como demo avanzada, no como SaaS, streaming en tiempo real ni arbitraje completo.
+- [ ] Preferir calculos sobre `tracks_level2.csv`, `level2_events.json` y metricas existentes antes de ejecutar inferencia pesada nueva.
+
+## Estado De Desbloqueo
+
+- [x] Nivel 2 documentado con resultados.
+- [x] Eventos intermedios funcionando con evidencia.
+- [x] Visualizaciones intermedias generadas.
+- [x] Pipeline reproducible desde GitHub.
+- [x] Gate de cierre Nivel 2 sin fallos.
+- [x] Registrar decision formal de inicio de Nivel 3 en `FutBotMX_documentacion_markdown/DECISIONS.md`.
+- [x] Elegir clip principal para demo Nivel 3: `video_595`.
+- [x] Elegir clips secundarios para validacion multi-clip: `video_667`; diagnostico: `video_480`.
+- [x] Definir presupuesto de tiempo para no afectar entrega final.
+
+## Actividad 0 - Gate De Inicio Y Alcance
+
+### Objetivo
+
+Confirmar que Nivel 3 se puede iniciar con alcance controlado y evidencia suficiente de Nivel 2.
+
+### Tarea 0.1 - Formalizar decision de inicio
+
+- [x] Crear decision `DEC-012 - Inicio controlado Nivel 3`.
+- [x] Declarar que Nivel 3 se inicia solo como extension avanzada.
+- [x] Registrar riesgos: homografia aproximada, identidad de equipos, oclusiones, clips pesados fuera de Git.
+- [x] Registrar criterio de salida: demo avanzada reproducible con evidencia ligera.
+
+### Tarea 0.2 - Definir clips de trabajo
+
+- [x] Seleccionar clip principal entre `video_595`, `video_667` o `video_836`: `video_595`.
+- [x] Seleccionar al menos un clip secundario para validacion cruzada: `video_667`.
+- [x] Mantener `video_480` como diagnostico si el balon sigue siendo inestable.
+- [x] Documentar motivos de seleccion: visibilidad del campo, estabilidad de tracks, presencia de eventos.
+
+### Tarea 0.3 - Crear gate de readiness Nivel 3
+
+- [x] Implementar `scripts/check_level3_readiness.py`.
+- [x] Validar existencia de `experiments/test_017_level2_closure/summary.md`.
+- [x] Validar `LEVEL2_CLOSURE_SUMMARY.md` con Nivel 2 cerrado.
+- [x] Validar que existan tracks y eventos de al menos dos clips candidatos.
+- [x] Validar que no haya archivos pesados versionados.
+- [x] Exportar resultados a `experiments/test_018_level3_readiness/readiness_checks.csv`.
+- [x] Crear `experiments/test_018_level3_readiness/summary.md`.
+
+### Criterio de aceptacion
+
+- [x] `scripts/check_level3_readiness.py` termina con `0 fail`.
+- [x] `summary.md` declara Nivel 3 desbloqueado para implementacion controlada.
+
+## Actividad 1 - Contrato De Datos Nivel 3
+
+### Objetivo
+
+Definir los formatos que usaran metricas tacticas, eventos avanzados, visualizaciones, dashboard y reel.
+
+### Tarea 1.1 - Auditar datos heredados de Nivel 2
+
+- [ ] Revisar columnas de `tracks_level2.csv`.
+- [ ] Revisar estructura de `level2_events.json`.
+- [ ] Revisar `level2_metrics.csv` y `level2_metrics.json`.
+- [ ] Identificar campos faltantes para Nivel 3: equipo, coordenadas rectificadas, zona, confianza, frame inicial/final.
+- [ ] Documentar limitaciones detectadas en `experiments/test_019_level3_data_contract/summary.md`.
+
+### Tarea 1.2 - Definir esquemas de salida
+
+- [ ] Definir `level3_tracks.csv` con coordenadas originales y rectificadas.
+- [ ] Definir `level3_metrics.csv` para metricas tacticas agregadas.
+- [ ] Definir `level3_metrics.json` para resumen legible.
+- [ ] Definir `level3_events.json` para cadenas de pases, highlights e interacciones.
+- [ ] Definir `level3_highlights.csv` con ranking de jugadas.
+- [ ] Definir `level3_narrative.md` con narrativa generada por reglas.
+- [ ] Definir `level3_visualization_manifest.csv` con PNG/GIF/video local asociado.
+
+### Tarea 1.3 - Crear modulos base
+
+- [ ] Crear paquete `src/futbotmx/level3/` si el codigo crece mas alla de un script.
+- [ ] Separar modelos de datos, metricas tacticas, eventos avanzados y visualizaciones.
+- [ ] Reutilizar lectores existentes de tracks y eventos.
+- [ ] Agregar pruebas unitarias para validacion de esquemas.
+
+### Criterio de aceptacion
+
+- [ ] Los artefactos Nivel 3 tienen nombres, columnas y campos documentados.
+- [ ] Las pruebas cubren lectura/escritura de los nuevos formatos.
+
+## Actividad 2 - Rectificacion Espacial Y Mini-Mapa
+
+### Objetivo
+
+Convertir posiciones de camara a coordenadas aproximadas de cancha para habilitar Voronoi, control espacial, mini-mapa y grafo tactico.
+
+### Tarea 2.1 - Definir modelo de cancha
+
+- [ ] Crear representacion normalizada de cancha con ejes `x_norm`, `y_norm`.
+- [ ] Definir dimensiones relativas de campo, porterias y zonas tacticas.
+- [ ] Definir sistema de coordenadas consistente con `zone_axis` de Nivel 2.
+- [ ] Documentar convencion de origen, direccion y unidades.
+
+### Tarea 2.2 - Calibrar homografia aproximada
+
+- [ ] Crear `field_calibration.json` con puntos de referencia por clip.
+- [ ] Permitir calibracion manual por cuatro esquinas si la deteccion automatica no es confiable.
+- [ ] Implementar transformacion de puntos de imagen a cancha.
+- [ ] Implementar fallback sin homografia para clips donde no se vea suficiente campo.
+- [ ] Registrar confianza de calibracion por clip.
+
+### Tarea 2.3 - Generar tracks rectificados
+
+- [ ] Leer `tracks_level2.csv`.
+- [ ] Calcular centroides rectificados para robots y balon.
+- [ ] Exportar `level3_tracks.csv`.
+- [ ] Conservar columnas originales para trazabilidad.
+- [ ] Marcar filas con transformacion no confiable.
+
+### Tarea 2.4 - Validar visualmente la rectificacion
+
+- [ ] Crear mini-mapa base `minimap_base.png`.
+- [ ] Dibujar trayectorias rectificadas sobre mini-mapa.
+- [ ] Comparar contra overlay original en frames seleccionados.
+- [ ] Crear capturas ligeras de validacion.
+- [ ] Documentar errores visuales y supuestos.
+
+### Artefactos esperados
+
+- [ ] `experiments/test_020_level3_spatial_model/config.yaml`.
+- [ ] `experiments/test_020_level3_spatial_model/field_calibration.json`.
+- [ ] `experiments/test_020_level3_spatial_model/level3_tracks.csv`.
+- [ ] `experiments/test_020_level3_spatial_model/minimap_tracks.png`.
+- [ ] `experiments/test_020_level3_spatial_model/summary.md`.
+
+### Criterio de aceptacion
+
+- [ ] Al menos un clip principal tiene tracks rectificados utilizables.
+- [ ] La transformacion conserva IDs, frames y clases.
+- [ ] El mini-mapa no contradice visualmente el movimiento observado.
+
+## Actividad 3 - Metricas Tacticas Avanzadas
+
+### Objetivo
+
+Agregar analisis tactico aproximado basado en espacio, proximidad e interacciones entre robots.
+
+### Tarea 3.1 - Calcular control espacial aproximado
+
+- [ ] Implementar control por proximidad usando grilla de cancha.
+- [ ] Asignar cada celda al robot mas cercano.
+- [ ] Separar control por equipo cuando exista asignacion de equipo.
+- [ ] Crear fallback por robot individual cuando no exista equipo confiable.
+- [ ] Exportar porcentaje de control por frame y agregado por clip.
+
+### Tarea 3.2 - Calcular Voronoi tactico
+
+- [ ] Generar regiones tipo Voronoi sobre coordenadas rectificadas.
+- [ ] Recortar regiones a limites de cancha.
+- [ ] Ignorar robots con tracking no confiable.
+- [ ] Guardar frames representativos para eventos importantes.
+- [ ] Comparar resultado contra grilla de control espacial.
+
+### Tarea 3.3 - Medir presion e interaccion
+
+- [ ] Calcular distancia robot-balon rectificada.
+- [ ] Calcular distancia entre robots cercanos.
+- [ ] Detectar presion sobre poseedor del balon.
+- [ ] Detectar clusters de robots en disputa.
+- [ ] Exportar `interaction_metrics.csv`.
+
+### Tarea 3.4 - Construir grafo de interaccion
+
+- [ ] Crear nodos por robot y balon.
+- [ ] Crear aristas por proximidad, disputa, posesion o pase.
+- [ ] Ponderar aristas por duracion/confianza.
+- [ ] Exportar `interaction_graph.json`.
+- [ ] Exportar tabla `interaction_edges.csv`.
+
+### Artefactos esperados
+
+- [ ] `experiments/test_021_level3_tactical_metrics/level3_metrics.csv`.
+- [ ] `experiments/test_021_level3_tactical_metrics/level3_metrics.json`.
+- [ ] `experiments/test_021_level3_tactical_metrics/interaction_metrics.csv`.
+- [ ] `experiments/test_021_level3_tactical_metrics/interaction_graph.json`.
+- [ ] `experiments/test_021_level3_tactical_metrics/summary.md`.
+
+### Criterio de aceptacion
+
+- [ ] Las metricas tacticas se calculan sin depender de video pesado.
+- [ ] Los resultados son comparables entre al menos dos clips.
+- [ ] Cada metrica indica supuestos y nivel de confianza.
+
+## Actividad 4 - Eventos Avanzados Nivel 3
+
+### Objetivo
+
+Detectar eventos de mayor valor narrativo: cadenas de pases, highlights avanzados, jugadas de presion y grafo de interaccion.
+
+### Tarea 4.1 - Cadenas de pases
+
+- [ ] Reutilizar segmentos de posesion de Nivel 2.
+- [ ] Detectar cambios de posesion entre robots del mismo equipo.
+- [ ] Agrupar pases consecutivos en cadenas.
+- [ ] Registrar inicio, fin, robots involucrados, frames y confianza.
+- [ ] Marcar cadenas dudosas cuando falte equipo o el balon tenga tracking inestable.
+
+### Tarea 4.2 - Highlights avanzados
+
+- [ ] Crear score de highlight por velocidad del balon.
+- [ ] Sumar peso por cambio de posesion.
+- [ ] Sumar peso por cercania a porteria o zona critica.
+- [ ] Sumar peso por presion/interaccion entre robots.
+- [ ] Penalizar eventos con baja confianza de tracking.
+- [ ] Exportar ranking en `level3_highlights.csv`.
+
+### Tarea 4.3 - Narrativa deportiva
+
+- [ ] Crear reglas de texto para jugadas destacadas.
+- [ ] Generar frases por evento con timestamp/frame.
+- [ ] Indicar motivo del highlight: pase, recuperacion, presion, tiro aproximado, actividad en zona.
+- [ ] Evitar afirmar goles o reglas oficiales si no hay evidencia suficiente.
+- [ ] Exportar `level3_narrative.md`.
+
+### Tarea 4.4 - Overlays de validacion de eventos
+
+- [ ] Crear PNG por highlight top.
+- [ ] Incluir ID de robots, balon, trayectoria corta y etiqueta del evento.
+- [ ] Incluir confianza del evento.
+- [ ] Crear `overlay_validation.csv`.
+
+### Artefactos esperados
+
+- [ ] `experiments/test_022_level3_advanced_events/level3_events.json`.
+- [ ] `experiments/test_022_level3_advanced_events/level3_highlights.csv`.
+- [ ] `experiments/test_022_level3_advanced_events/level3_narrative.md`.
+- [ ] `experiments/test_022_level3_advanced_events/overlay_validation.csv`.
+- [ ] `experiments/test_022_level3_advanced_events/summary.md`.
+
+### Criterio de aceptacion
+
+- [ ] Hay al menos tres highlights rankeados en el clip principal o se documenta por que no existen.
+- [ ] Cada evento tiene confianza y explicacion.
+- [ ] La narrativa no sobrepromete precision no demostrada.
+
+## Actividad 5 - Visualizaciones Avanzadas
+
+### Objetivo
+
+Crear visualizaciones que hagan visible el valor de Nivel 3: Voronoi, grafo, mini-mapa, highlights y tablero tactico.
+
+### Tarea 5.1 - Visualizacion Voronoi
+
+- [ ] Crear script `scripts/run_level3_visualizations.py`.
+- [ ] Renderizar Voronoi sobre mini-mapa.
+- [ ] Renderizar Voronoi sobre frame original si la calibracion lo permite.
+- [ ] Exportar imagen por highlight relevante.
+- [ ] Documentar limitaciones por perspectiva.
+
+### Tarea 5.2 - Visualizacion de grafo de interaccion
+
+- [ ] Renderizar nodos de robots y balon.
+- [ ] Dibujar aristas con grosor segun duracion o frecuencia.
+- [ ] Diferenciar posesion, disputa y proximidad.
+- [ ] Exportar `interaction_graph.png`.
+
+### Tarea 5.3 - Mini-mapa animable o secuencial
+
+- [ ] Crear mini-mapa con trails de robots y balon.
+- [ ] Marcar zonas de actividad.
+- [ ] Marcar evento actual cuando exista.
+- [ ] Exportar PNG ligeros por frames clave.
+- [ ] Si se genera GIF, mantenerlo pequeno o dejarlo fuera de Git con manifest.
+
+### Tarea 5.4 - Storyboard de highlights
+
+- [ ] Crear una lamina por highlight con mini-mapa, frame original y texto corto.
+- [ ] Exportar `highlight_storyboard.png`.
+- [ ] Crear `highlight_storyboard_manifest.csv`.
+
+### Artefactos esperados
+
+- [ ] `experiments/test_023_level3_visualizations/voronoi_frame_*.png`.
+- [ ] `experiments/test_023_level3_visualizations/interaction_graph.png`.
+- [ ] `experiments/test_023_level3_visualizations/minimap_highlight_*.png`.
+- [ ] `experiments/test_023_level3_visualizations/highlight_storyboard.png`.
+- [ ] `experiments/test_023_level3_visualizations/visualization_manifest.csv`.
+- [ ] `experiments/test_023_level3_visualizations/summary.md`.
+
+### Criterio de aceptacion
+
+- [ ] Las visualizaciones son legibles como capturas estaticas.
+- [ ] Cada imagen esta respaldada por datos CSV/JSON.
+- [ ] No se versionan renders pesados.
+
+## Actividad 6 - Dashboard Ligero Nivel 3
+
+### Objetivo
+
+Crear un dashboard local o estatico que concentre metricas, eventos, highlights y visualizaciones avanzadas para presentacion.
+
+### Tarea 6.1 - Definir formato del dashboard
+
+- [ ] Decidir si sera HTML estatico, Markdown enriquecido o app ligera local.
+- [ ] Evitar arquitectura SaaS, login, backend complejo o dependencias innecesarias.
+- [ ] Definir secciones: resumen, metricas, timeline, highlights, visualizaciones, evidencia.
+
+### Tarea 6.2 - Construir resumen visual
+
+- [ ] Mostrar score de highlights.
+- [ ] Mostrar posesion y control espacial.
+- [ ] Mostrar distancia/velocidad clave.
+- [ ] Mostrar numero de interacciones y cadenas de pases.
+- [ ] Mostrar clip principal y clips secundarios analizados.
+
+### Tarea 6.3 - Integrar assets
+
+- [ ] Incluir mini-mapa.
+- [ ] Incluir Voronoi.
+- [ ] Incluir grafo de interaccion.
+- [ ] Incluir storyboard de highlights.
+- [ ] Incluir links relativos a CSV/JSON/Markdown de evidencia.
+
+### Tarea 6.4 - Empaquetar dashboard
+
+- [ ] Crear `experiments/test_024_level3_dashboard/`.
+- [ ] Crear `dashboard_manifest.csv`.
+- [ ] Crear `summary.md`.
+- [ ] Documentar comando de generacion.
+
+### Criterio de aceptacion
+
+- [ ] El dashboard se puede abrir localmente sin depender de archivos pesados versionados.
+- [ ] El dashboard explica Nivel 3 con evidencia visual y metrica.
+
+## Actividad 7 - Reel Final Y Demo De Presentacion
+
+### Objetivo
+
+Preparar material final para mostrar el resultado avanzado de FutBotMX de forma clara y convincente.
+
+### Tarea 7.1 - Seleccionar momentos del reel
+
+- [ ] Usar `level3_highlights.csv` para elegir momentos.
+- [ ] Elegir entre tres y cinco segmentos cortos.
+- [ ] Priorizar jugadas con buen tracking y visualizacion clara.
+- [ ] Documentar frames/timestamps seleccionados.
+
+### Tarea 7.2 - Crear overlay narrativo
+
+- [ ] Mostrar IDs y trails.
+- [ ] Mostrar evento actual.
+- [ ] Mostrar mini-mapa o indicador tactico cuando sea legible.
+- [ ] Mostrar texto narrativo breve por highlight.
+- [ ] Evitar saturar el frame con informacion.
+
+### Tarea 7.3 - Generar reel local
+
+- [ ] Crear script o comando documentado para renderizar reel.
+- [ ] Mantener MP4 pesado fuera de Git.
+- [ ] Exportar thumbnails ligeros.
+- [ ] Exportar `reel_manifest.csv` con rutas locales o descripcion de archivos no versionados.
+
+### Tarea 7.4 - Crear paquete de demo
+
+- [ ] Crear `experiments/test_025_level3_reel/summary.md`.
+- [ ] Incluir capturas ligeras del reel.
+- [ ] Incluir descripcion de narrativa.
+- [ ] Incluir comandos para regenerar el reel.
+
+### Criterio de aceptacion
+
+- [ ] Existe una demo final local reproducible.
+- [ ] Existe evidencia ligera versionable suficiente para GitHub.
+- [ ] El reel no depende de afirmar precision no validada.
+
+## Actividad 8 - Validacion Multi-Clip Nivel 3
+
+### Objetivo
+
+Demostrar que Nivel 3 no funciona solo en un clip aislado y documentar donde falla.
+
+### Tarea 8.1 - Ejecutar pipeline Nivel 3 en clip principal
+
+- [ ] Generar tracks rectificados.
+- [ ] Generar metricas tacticas.
+- [ ] Generar eventos avanzados.
+- [ ] Generar visualizaciones.
+- [ ] Generar dashboard/demo.
+
+### Tarea 8.2 - Ejecutar pipeline Nivel 3 en clip secundario
+
+- [ ] Repetir calculos sin reescribir reglas para un solo clip.
+- [ ] Comparar diferencias de camara, iluminacion, oclusion y estabilidad de balon.
+- [ ] Registrar fallos o degradaciones.
+
+### Tarea 8.3 - Comparar resultados
+
+- [ ] Crear `level3_multiclip_comparison.csv`.
+- [ ] Comparar numero de highlights.
+- [ ] Comparar control espacial agregado.
+- [ ] Comparar numero de interacciones.
+- [ ] Comparar confiabilidad media.
+
+### Tarea 8.4 - Revision humana
+
+- [ ] Revisar overlays de highlights top.
+- [ ] Marcar `confiable`, `provisional` o `descartado`.
+- [ ] Documentar ejemplos de falsos positivos.
+- [ ] Documentar casos donde la homografia no sea suficiente.
+
+### Artefactos esperados
+
+- [ ] `experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv`.
+- [ ] `experiments/test_026_level3_multiclip/summary.md`.
+- [ ] Subcarpetas por clip con `config.yaml`, `summary.md` y evidencia ligera.
+
+### Criterio de aceptacion
+
+- [ ] Al menos dos clips tienen salida Nivel 3 documentada.
+- [ ] Las limitaciones se reportan explicitamente.
+
+## Actividad 9 - Pruebas, Calidad Y Gate De Cierre
+
+### Objetivo
+
+Cerrar Nivel 3 con un gate reproducible equivalente al cierre tecnico de Nivel 2.
+
+### Tarea 9.1 - Pruebas unitarias
+
+- [ ] Agregar pruebas de homografia/transformacion de puntos.
+- [ ] Agregar pruebas de grilla de control espacial.
+- [ ] Agregar pruebas de ranking de highlights.
+- [ ] Agregar pruebas de generacion de narrativa.
+- [ ] Agregar pruebas de lectura/escritura de esquemas Nivel 3.
+
+### Tarea 9.2 - Pruebas de integracion ligeras
+
+- [ ] Crear fixtures pequenos con tracks sinteticos.
+- [ ] Verificar que el pipeline Nivel 3 produce CSV/JSON esperados.
+- [ ] Verificar que visualizaciones basicas se generan sin video pesado.
+- [ ] Verificar que el dashboard referencia assets existentes.
+
+### Tarea 9.3 - Gate de cierre Nivel 3
+
+- [ ] Implementar `scripts/check_level3_closure.py`.
+- [ ] Validar tests unitarios verdes.
+- [ ] Validar readiness Nivel 3.
+- [ ] Validar artefactos de spatial model.
+- [ ] Validar artefactos de metricas tacticas.
+- [ ] Validar artefactos de eventos avanzados.
+- [ ] Validar visualizaciones avanzadas.
+- [ ] Validar dashboard y reel manifest.
+- [ ] Validar multi-clip.
+- [ ] Validar ausencia de archivos pesados versionados.
+- [ ] Exportar `closure_checks.csv`.
+- [ ] Crear `experiments/test_027_level3_closure/summary.md`.
+
+### Criterio de aceptacion
+
+- [ ] `scripts/check_level3_closure.py` termina con `0 fail`.
+- [ ] La carpeta de cierre declara Nivel 3 completado.
+
+## Actividad 10 - Documentacion Final
+
+### Objetivo
+
+Actualizar la documentacion principal para que la entrega final explique claramente que se completo Nivel 3 y como reproducirlo.
+
+### Tarea 10.1 - Actualizar documentos principales
+
+- [ ] Actualizar `README.md` con estado Nivel 3.
+- [ ] Actualizar `FutBotMX_documentacion_markdown/PROJECT_SCOPE.md`.
+- [ ] Actualizar `FutBotMX_documentacion_markdown/EVENTS_DEFINITION.md`.
+- [ ] Actualizar `FutBotMX_documentacion_markdown/VISUALIZATION_STRATEGY.md`.
+- [ ] Actualizar `FutBotMX_documentacion_markdown/TESTING_LOG.md`.
+- [ ] Actualizar `FutBotMX_documentacion_markdown/DECISIONS.md`.
+- [ ] Actualizar `docs/TASK_LIST_DETAILED.md`.
+
+### Tarea 10.2 - Crear resumen final Nivel 3
+
+- [ ] Crear `experiments/test_027_level3_closure/LEVEL3_CLOSURE_SUMMARY.md`.
+- [ ] Incluir checks pass/fail.
+- [ ] Incluir lista de artefactos.
+- [ ] Incluir limitaciones conocidas.
+- [ ] Incluir comandos reproducibles.
+- [ ] Declarar archivos pesados fuera de Git.
+
+### Tarea 10.3 - Preparar lectura para evaluacion
+
+- [ ] Crear una seccion clara en README con capturas Nivel 3.
+- [ ] Mostrar tabla de metricas principales.
+- [ ] Mostrar ejemplo corto de narrativa.
+- [ ] Mostrar links relativos a dashboard y evidencia.
+- [ ] Explicar que Nivel 3 es analisis avanzado aproximado, no arbitraje oficial.
+
+### Criterio de aceptacion
+
+- [ ] Un evaluador puede entender y reproducir Nivel 3 desde README y docs.
+- [ ] La documentacion no contiene estados contradictorios entre Nivel 2 y Nivel 3.
+
+## Orden Recomendado De Ejecucion
+
+1. Completar Actividad 0 para iniciar Nivel 3 con decision formal.
+2. Completar Actividad 1 para evitar cambios de formato tardios.
+3. Completar Actividad 2 antes de Voronoi/control espacial.
+4. Completar Actividades 3 y 4 en paralelo cuando el contrato de datos este estable.
+5. Completar Actividades 5, 6 y 7 para construir la demo visible.
+6. Completar Actividad 8 para validar que no sea un caso aislado.
+7. Completar Actividades 9 y 10 para cierre tecnico y entrega final.
+
+## Criterios De Cierre Nivel 3
+
+- [ ] Decision de inicio registrada.
+- [ ] Readiness Nivel 3 sin fallos.
+- [ ] Contrato de datos Nivel 3 documentado.
+- [ ] Tracks rectificados o fallback documentado.
+- [ ] Metricas tacticas generadas.
+- [ ] Eventos avanzados generados.
+- [ ] Highlights rankeados y validados visualmente.
+- [ ] Voronoi, grafo y mini-mapa generados.
+- [ ] Dashboard ligero disponible.
+- [ ] Reel/demo local documentado con manifest.
+- [ ] Validacion multi-clip completada.
+- [ ] Tests unitarios verdes.
+- [ ] Gate de cierre Nivel 3 con `0 fail`.
+- [ ] README y documentacion principal actualizados.
+- [ ] Sin archivos pesados versionados.
+
+## Comandos De Gate Esperados
+
+```bash
+env MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python -m unittest discover -s tests -q
+.venv/bin/python scripts/check_level3_readiness.py
+.venv/bin/python scripts/check_level3_closure.py
+```

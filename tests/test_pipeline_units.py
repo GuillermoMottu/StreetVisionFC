@@ -38,6 +38,7 @@ from scripts.build_level2_demo_package import build_demo_facts
 from scripts.clean_detections import parse_top_k
 from scripts.check_level2_readiness import ReadinessCheck
 from scripts.check_level2_closure import docs_are_current
+from scripts.check_level3_readiness import ClipSelection, ReadinessCheck as Level3ReadinessCheck, write_report
 from scripts.run_level2_multiclip import ClipSpec, clip_row, clip_specs_from_config, sports_frames
 from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
@@ -247,6 +248,25 @@ class PipelineUnitTests(unittest.TestCase):
 
         self.assertEqual(check.check_id, "demo")
         self.assertEqual(check.status, "pass")
+
+    def test_level3_readiness_report_shape(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            output_dir = Path(tmp)
+            checks = [
+                Level3ReadinessCheck("decision", "pass", "DECISIONS.md", "registered"),
+                Level3ReadinessCheck("clips", "pass", "clip_selection.csv", "selected"),
+            ]
+            clips = (
+                ClipSelection("video_595", "principal", "selected", "clip", "best highlight candidate"),
+                ClipSelection("video_667", "secundario", "selected", "clip", "multi-clip contrast"),
+            )
+
+            write_report(checks, clips, output_dir)
+
+            self.assertTrue((output_dir / "readiness_checks.csv").exists())
+            self.assertTrue((output_dir / "clip_selection.csv").exists())
+            self.assertTrue((output_dir / "config.yaml").exists())
+            self.assertIn("Estado: `desbloqueado`", (output_dir / "summary.md").read_text(encoding="utf-8"))
 
     def test_level2_metrics_possession_distance_and_speed(self) -> None:
         rows = []

@@ -270,7 +270,8 @@ Videos anotados completos pueden generarse localmente en la laptop, pero no debe
 - [x] Eventos Nivel 1 y Nivel 2 generados con datos reales.
 - [x] Visualizaciones Nivel 1 y Nivel 2 generadas.
 - [x] Nivel 2 implementado y documentado.
-- [ ] Nivel 3 no iniciado; queda sujeto a gate/decision posterior al cierre Nivel 2.
+- [x] Nivel 2 cerrado con gate tecnico reproducible.
+- [x] Nivel 3 iniciado de forma controlada con readiness `10 pass`, `0 fail`.
 
 ---
 

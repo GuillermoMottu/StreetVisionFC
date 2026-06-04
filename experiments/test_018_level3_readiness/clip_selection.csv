@@ -1,0 +1,4 @@
+clip_id,role,status,evidence,rationale
+video_595,principal,selected,experiments/test_017_level2_closure/video_595,"Mejor candidato narrativo: 61 frames observados, ByteTrack denso y highlight provisional con confianza 0.717."
+video_667,secundario,selected,experiments/test_017_level2_closure/video_667,"Clip de contraste multi-clip: 61 frames observados, mas robots visibles y eventos descartados utiles para validar degradacion."
+video_480,diagnostico,kept,experiments/test_017_level2_closure/video_480,Se mantiene como diagnostico porque la muestra existente no detecta balon y requiere prompts pesados en MSI.

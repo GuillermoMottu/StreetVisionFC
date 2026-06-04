@@ -122,4 +122,6 @@ Checklist operativo: `docs/TODO_LEVEL2.md`.
 
 ## Backlog Nivel 3
 
-Nivel 3 no esta iniciado. Queda listo para gate/decision cuando el cierre Nivel 2 pase sin checks fallidos.
+Nivel 3 esta iniciado de forma controlada. La Actividad 0 queda enfocada en decision formal, seleccion de clips y gate de readiness.
+
+Todo operativo detallado: `docs/TODO_LEVEL3.md`.

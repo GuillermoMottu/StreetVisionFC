@@ -170,3 +170,26 @@ Nivel 2 se considera cerrado solo si `scripts/check_level2_closure.py` pasa con 
 
 **Consecuencia:**
 Nivel 3 queda listo para gate/decision, no iniciado automaticamente. La rectificacion/homografia queda como recomendacion para Nivel 3, no requisito de cierre Nivel 2.
+
+---
+
+## DEC-012 - Inicio controlado Nivel 3
+
+**Estado:** Aprobada
+
+**Contexto:**
+Nivel 2 quedo cerrado en `experiments/test_017_level2_closure/` con `8 pass` y `0 fail`. Existen dos clips densos con ByteTrack y eventos Nivel 2 (`video_595`, `video_667`) mas un diagnostico formal de `video_480`.
+
+**Decision:**
+Nivel 3 queda iniciado de forma controlada como extension avanzada. La Actividad 0 debe crear el gate reproducible `scripts/check_level3_readiness.py`, seleccionar clips de trabajo y registrar evidencia ligera en `experiments/test_018_level3_readiness/`.
+
+El alcance inicial queda limitado a planeacion ejecutable y validacion de readiness; no requiere inferencia SAM 3 nueva. `video_595` sera el clip principal por su highlight provisional con mayor confianza, `video_667` sera el clip secundario de contraste multi-clip y `video_480` seguira como diagnostico de balon.
+
+**Riesgos:**
+- La homografia/rectificacion de Nivel 3 sera aproximada y puede fallar si el campo no queda suficientemente visible.
+- La identidad de equipos sigue limitada porque los tracks actuales conservan clases neutrales en varios casos.
+- Las oclusiones y cambios de ID pueden afectar cadenas de pases, control espacial y narrativa.
+- Videos, checkpoints, renders y outputs pesados deben permanecer fuera de Git.
+
+**Consecuencia:**
+Nivel 3 avanza a implementacion solo si `scripts/check_level3_readiness.py` termina con `0 fail`. El criterio de salida de Nivel 3 sera una demo avanzada reproducible con evidencia ligera, no arbitraje oficial ni sistema en tiempo real.

@@ -12,7 +12,8 @@ La documentacion base esta en `FutBotMX_documentacion_markdown/`.
 ## Estado actual
 
 - Nivel 1 validado con SAM 3 real, ROI, ByteTrack, eventos y evidencia ligera.
-- Nivel 2 implementado y en cierre tecnico con gate hacia decision de Nivel 3.
+- Nivel 2 cerrado con gate tecnico reproducible.
+- Nivel 3 iniciado de forma controlada con readiness `10 pass`, `0 fail`.
 - Estructura base del repositorio creada y usada en laptop MSI/escritorio.
 - Dependencias de escritorio definidas en `requirements-dev.txt`.
 - Dependencias GPU definidas en `requirements-gpu.txt`.
@@ -45,6 +46,7 @@ Validar gates:
 ```bash
 .venv/bin/python scripts/check_level2_readiness.py
 .venv/bin/python scripts/check_level2_closure.py
+.venv/bin/python scripts/check_level3_readiness.py
 ```
 
 Inspeccionar un video local:
@@ -86,6 +88,7 @@ python scripts\run_visualizations.py --tracks experiments\test_003_tracking\trac
 - `test_004_events`: eventos Nivel 1 recalculados con tracks reales.
 - `test_012` a `test_016`: metricas, eventos, visualizaciones, multi-clip y demo Nivel 2.
 - `test_017_level2_closure`: cierre tecnico Nivel 2 y gate hacia Nivel 3.
+- `test_018_level3_readiness`: decision formal, seleccion de clips y readiness Nivel 3.
 
 ## Regla principal
 
