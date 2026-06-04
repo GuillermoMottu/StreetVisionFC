@@ -6,15 +6,12 @@ from collections import defaultdict
 from dataclasses import asdict, dataclass
 from pathlib import Path
 import sys
-from typing import Iterable
-
-import numpy as np
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.io.detections import FrameDetections, load_detections
-from futbotmx.tracking import TrackRow, track_detections, write_tracks_csv
+from futbotmx.tracking import ByteTrackUnavailableError, TrackRow, run_bytetrack, track_detections, write_tracks_csv
 from futbotmx.video_io import inspect_video
 from futbotmx.visualization import write_heatmap, write_overlay_frame
 
@@ -92,71 +89,6 @@ def write_metrics_csv(metrics: list[TrackingMetric], path: str | Path) -> None:
             row["mean_track_length"] = f"{metric.mean_track_length:.6f}"
             row["max_step_px"] = f"{metric.max_step_px:.6f}"
             writer.writerow(row)
-
-
-def run_bytetrack(
-    frames: list[FrameDetections],
-    frame_rate: float,
-    track_activation_threshold: float,
-    lost_track_buffer: int,
-    minimum_matching_threshold: float,
-) -> list[TrackRow]:
-    try:
-        import supervision as sv
-    except ImportError as exc:
-        raise RuntimeError("supervision is not installed; ByteTrack comparison is unavailable") from exc
-
-    class_names = sorted({detection.class_name for frame in frames for detection in frame.detections})
-    trackers = {
-        class_name: sv.ByteTrack(
-            track_activation_threshold=track_activation_threshold,
-            lost_track_buffer=lost_track_buffer,
-            minimum_matching_threshold=minimum_matching_threshold,
-            frame_rate=frame_rate,
-            minimum_consecutive_frames=1,
-        )
-        for class_name in class_names
-    }
-    rows: list[TrackRow] = []
-    for frame in sorted(frames, key=lambda item: item.frame):
-        detections_by_class: dict[str, list] = defaultdict(list)
-        for detection in frame.detections:
-            detections_by_class[detection.class_name].append(detection)
-
-        for class_name in class_names:
-            detections = detections_by_class[class_name]
-            if detections:
-                xyxy = np.array([detection.bbox for detection in detections], dtype=float)
-                confidence = np.array([detection.confidence for detection in detections], dtype=float)
-                class_id = np.zeros(len(detections), dtype=int)
-            else:
-                xyxy = np.empty((0, 4), dtype=float)
-                confidence = np.empty((0,), dtype=float)
-                class_id = np.empty((0,), dtype=int)
-
-            sv_detections = sv.Detections(xyxy=xyxy, confidence=confidence, class_id=class_id)
-            tracked = trackers[class_name].update_with_detections(sv_detections)
-            if tracked.tracker_id is None:
-                continue
-
-            for index, tracker_id in enumerate(tracked.tracker_id):
-                x1, y1, x2, y2 = (float(value) for value in tracked.xyxy[index])
-                rows.append(
-                    TrackRow(
-                        frame=frame.frame,
-                        track_id=f"{class_name}_bt_{int(tracker_id):02d}",
-                        class_name=class_name,
-                        x=(x1 + x2) / 2,
-                        y=(y1 + y2) / 2,
-                        bbox_x1=x1,
-                        bbox_y1=y1,
-                        bbox_x2=x2,
-                        bbox_y2=y2,
-                        confidence=float(tracked.confidence[index]) if tracked.confidence is not None else 1.0,
-                        team=_team_for_class(class_name),
-                    )
-                )
-    return rows
 
 
 def representative_frames(frames: list[FrameDetections]) -> list[int]:
@@ -242,14 +174,6 @@ def choose_recommended_tracker(metrics: list[TrackingMetric]) -> str:
     return "bytetrack" if score(bytetrack) > score(simple) else "simple"
 
 
-def _team_for_class(class_name: str) -> str:
-    if class_name.startswith("ally"):
-        return "ally"
-    if class_name.startswith("opponent"):
-        return "opponent"
-    return "neutral"
-
-
 def main() -> int:
     parser = argparse.ArgumentParser(description="Compare real tracking stability on filtered SAM 3 detections.")
     parser.add_argument("--config", default="configs/default.yaml")
@@ -271,6 +195,9 @@ def main() -> int:
     write_config_snapshot(config, experiment / "config.yaml")
 
     frames = load_detections(args.detections)
+    video_metadata = inspect_video(args.video) if args.video else None
+    heatmap_width = video_metadata.width if video_metadata else int(config.get("visualization", {}).get("width", 1360))
+    heatmap_height = video_metadata.height if video_metadata else int(config.get("visualization", {}).get("height", 1808))
     simple_rows = track_detections(
         frames,
         max_distance_px=args.max_distance_px,
@@ -283,7 +210,7 @@ def main() -> int:
     bytetrack_rows: list[TrackRow] = []
     if not args.skip_bytetrack:
         try:
-            frame_rate = inspect_video(args.video).fps if args.video else 30.0
+            frame_rate = video_metadata.fps if video_metadata else 30.0
             bytetrack_rows = run_bytetrack(
                 frames,
                 frame_rate=frame_rate,
@@ -294,15 +221,15 @@ def main() -> int:
             write_tracks_csv(bytetrack_rows, experiment / "tracks_bytetrack.csv")
             all_metrics.extend(summarize_tracks("bytetrack", bytetrack_rows))
             bytetrack_available = True
-        except RuntimeError as exc:
+        except ByteTrackUnavailableError as exc:
             (experiment / "bytetrack_unavailable.md").write_text(f"# ByteTrack unavailable\n\n{exc}\n", encoding="utf-8")
 
     write_metrics_csv(all_metrics, experiment / "metrics.csv")
 
     if simple_rows:
-        write_heatmap(experiment / "tracks_simple.csv", experiment / "heatmap_simple.png", width=1360, height=1808)
+        write_heatmap(experiment / "tracks_simple.csv", experiment / "heatmap_simple.png", width=heatmap_width, height=heatmap_height)
     if bytetrack_rows:
-        write_heatmap(experiment / "tracks_bytetrack.csv", experiment / "heatmap_bytetrack.png", width=1360, height=1808)
+        write_heatmap(experiment / "tracks_bytetrack.csv", experiment / "heatmap_bytetrack.png", width=heatmap_width, height=heatmap_height)
 
     overlay_frames = representative_frames(frames)
     if args.video and not args.skip_overlays:

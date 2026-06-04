@@ -8,8 +8,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-
-NUMERIC_TRACK_FIELDS = ("frame", "x", "y", "bbox_x1", "bbox_y1", "bbox_x2", "bbox_y2", "confidence")
+from futbotmx.tracking import read_tracks_csv
 
 
 @dataclass(frozen=True)
@@ -25,27 +24,17 @@ class PossessionRun:
     position_end: dict[str, float]
 
 
-def read_tracks_csv(path: str | Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    with Path(path).open("r", newline="", encoding="utf-8") as handle:
-        for row in csv.DictReader(handle):
-            for key in NUMERIC_TRACK_FIELDS:
-                if key in row and row[key] != "":
-                    row[key] = float(row[key])
-            row["frame"] = int(row["frame"])
-            row.setdefault("team", "unknown")
-            rows.append(row)
-    return rows
-
-
 def _distance(a: dict[str, Any], b: dict[str, Any]) -> float:
     return math.hypot(float(a["x"]) - float(b["x"]), float(a["y"]) - float(b["y"]))
 
 
-def _zone(row: dict[str, Any], field_width: float) -> str:
-    if float(row["x"]) < field_width / 3:
+def _zone(row: dict[str, Any], field_width: float, field_height: float, zone_axis: str = "x") -> str:
+    axis = "y" if zone_axis == "y" else "x"
+    span = field_height if axis == "y" else field_width
+    position = float(row[axis])
+    if position < span / 3:
         return "defensive_third"
-    if float(row["x"]) < 2 * field_width / 3:
+    if position < 2 * span / 3:
         return "middle_third"
     return "attacking_third"
 
@@ -116,6 +105,8 @@ def _possession_samples(
     rows: list[dict[str, Any]],
     possession_distance_px: float,
     field_width: float,
+    field_height: float,
+    zone_axis: str,
 ) -> dict[int, dict[str, Any]]:
     samples: dict[int, dict[str, Any]] = {}
     for frame, frame_rows in sorted(_by_frame(rows).items()):
@@ -133,7 +124,7 @@ def _possession_samples(
                 "ball_id": ball["track_id"],
                 "distance_px": distance_px,
                 "ball": ball,
-                "zone": _zone(ball, field_width),
+                "zone": _zone(ball, field_width, field_height, zone_axis),
             }
     return samples
 
@@ -142,8 +133,10 @@ def _build_possession_runs(
     rows: list[dict[str, Any]],
     possession_distance_px: float,
     field_width: float,
+    field_height: float,
+    zone_axis: str,
 ) -> list[PossessionRun]:
-    samples = _possession_samples(rows, possession_distance_px, field_width)
+    samples = _possession_samples(rows, possession_distance_px, field_width, field_height, zone_axis)
     all_frames = sorted({int(row["frame"]) for row in rows})
     runs: list[PossessionRun] = []
     active: dict[str, Any] | None = None
@@ -200,24 +193,31 @@ def _build_possession_runs(
     return runs
 
 
-def _ball_speeds(rows: list[dict[str, Any]], fps: float, field_width: float) -> list[dict[str, Any]]:
-    balls = sorted([row for row in rows if row["class_name"] == "ball"], key=lambda item: item["frame"])
+def _ball_speeds(rows: list[dict[str, Any]], fps: float, field_width: float, field_height: float, zone_axis: str) -> list[dict[str, Any]]:
+    by_track: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for row in rows:
+        if row["class_name"] == "ball":
+            by_track[str(row["track_id"])].append(row)
+
     speeds: list[dict[str, Any]] = []
-    for previous, current in zip(balls, balls[1:]):
-        frame_delta = max(1, int(current["frame"]) - int(previous["frame"]))
-        dt = frame_delta / fps if fps > 0 else 1.0
-        speed = _distance(previous, current) / dt if dt > 0 else 0.0
-        speeds.append(
-            {
-                "frame_start": int(previous["frame"]),
-                "frame_end": int(current["frame"]),
-                "speed_px_per_sec": speed,
-                "zone": _zone(current, field_width),
-                "position_start": {"x": float(previous["x"]), "y": float(previous["y"])},
-                "position_end": {"x": float(current["x"]), "y": float(current["y"])},
-                "ball_id": current["track_id"],
-            }
-        )
+    for track_id, balls in sorted(by_track.items()):
+        ordered = sorted(balls, key=lambda item: item["frame"])
+        for previous, current in zip(ordered, ordered[1:]):
+            frame_delta = max(1, int(current["frame"]) - int(previous["frame"]))
+            dt = frame_delta / fps if fps > 0 else 1.0
+            speed = _distance(previous, current) / dt if dt > 0 else 0.0
+            speeds.append(
+                {
+                    "frame_start": int(previous["frame"]),
+                    "frame_end": int(current["frame"]),
+                    "speed_px_per_sec": speed,
+                    "zone": _zone(current, field_width, field_height, zone_axis),
+                    "position_start": {"x": float(previous["x"]), "y": float(previous["y"])},
+                    "position_end": {"x": float(current["x"]), "y": float(current["y"])},
+                    "ball_id": track_id,
+                    "is_discontinuous": False,
+                }
+            )
     return speeds
 
 
@@ -248,11 +248,11 @@ def detect_level2_events(
     interception_max_gap = int(config.get("interception_max_gap_frames", 12))
     interception_min_speed = float(config.get("interception_min_speed_px_per_sec", 120))
     highlight_min_speed = float(config.get("highlight_min_speed_px_per_sec", 250))
+    zone_axis = str(config.get("zone_axis", "x"))
 
     events: list[dict[str, Any]] = []
-    runs = _build_possession_runs(rows, possession_distance, field_width)
-    speeds = _ball_speeds(rows, fps, field_width)
-    speed_by_end = {item["frame_end"]: item for item in speeds}
+    runs = _build_possession_runs(rows, possession_distance, field_width, field_height, zone_axis)
+    speeds = _ball_speeds(rows, fps, field_width, field_height, zone_axis)
     max_speed = max(speeds, key=lambda item: item["speed_px_per_sec"]) if speeds else None
 
     for run in runs:
@@ -290,6 +290,7 @@ def detect_level2_events(
             item
             for item in speeds
             if previous.frame_end <= item["frame_start"] and item["frame_end"] <= current.frame_start
+            and item["ball_id"] in {previous.ball_id, current.ball_id}
         ]
         best_speed = max(speed_candidates, key=lambda item: item["speed_px_per_sec"]) if speed_candidates else None
         speed_value = float(best_speed["speed_px_per_sec"]) if best_speed else 0.0
@@ -380,6 +381,8 @@ def detect_level2_events(
             notes=notes,
             speed_px_per_sec=round(float(max_speed["speed_px_per_sec"]), 3) if max_speed else 0.0,
             min_speed_px_per_sec=highlight_min_speed,
+            ball_track_continuity="same_track" if max_speed else "unavailable",
+            zone_axis=zone_axis,
         )
     )
     return events

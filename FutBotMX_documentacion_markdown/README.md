@@ -46,7 +46,7 @@ Incluye:
 - Mejoras de tracking.
 - Visualizaciones más claras.
 
-Solo se inicia si Nivel 1 queda estable.
+Estado: implementado y en cierre tecnico con evidencia ligera versionable.
 
 ## Nivel 3 — Extensión avanzada
 
@@ -59,7 +59,7 @@ Incluye:
 - Dashboard.
 - Reel/demo final más elaborado.
 
-Solo se inicia si Nivel 2 tiene resultados documentados.
+Estado: no iniciado; queda listo para decision mediante gate de cierre Nivel 2.
 
 ---
 
@@ -265,13 +265,12 @@ Videos anotados completos pueden generarse localmente en la laptop, pero no debe
 
 # Estado actual
 
-- [ ] Nivel 1 en desarrollo.
-- [ ] SAM 3 pendiente de validación en laptop MSI.
-- [ ] Tracking pendiente de prueba real.
-- [ ] Eventos pendientes de validación con datos reales.
-- [ ] Visualizaciones pendientes de generación.
-- [ ] Nivel 2 pendiente.
-- [ ] Nivel 3 pendiente.
+- [x] Nivel 1 validado con SAM 3 real en laptop MSI.
+- [x] Tracking real comparado y ByteTrack recomendado para evidencia deportiva.
+- [x] Eventos Nivel 1 y Nivel 2 generados con datos reales.
+- [x] Visualizaciones Nivel 1 y Nivel 2 generadas.
+- [x] Nivel 2 implementado y documentado.
+- [ ] Nivel 3 no iniciado; queda sujeto a gate/decision posterior al cierre Nivel 2.
 
 ---
 

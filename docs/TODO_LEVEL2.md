@@ -1,6 +1,6 @@
 # TODO Nivel 2
 
-Nivel 2 queda desbloqueado despues de la validacion Nivel 1 con `10 pass`, `0 warn`, `0 fail` en `experiments/evidence_level1/validation_report.md`.
+Nivel 2 fue implementado despues de la validacion Nivel 1 con `10 pass`, `0 warn`, `0 fail` en `experiments/evidence_level1/validation_report.md`. El cierre tecnico se valida con `scripts/check_level2_closure.py`.
 
 ## Estado De Desbloqueo
 
@@ -60,8 +60,20 @@ Evidencia: `experiments/test_015_level2_multiclip/`.
 
 Evidencia: `experiments/test_016_level2_demo/`.
 
-## Comando De Gate
+## Prioridad 6 - Cierre Tecnico Nivel 2
+
+- [x] Resolver discrepancias de documentacion vivas.
+- [x] Centralizar lectura de tracks.
+- [x] Extraer ByteTrack reutilizable.
+- [x] Evitar velocidades de balon cruzando `track_id`.
+- [x] Configurar eje de zonas Nivel 2 con `zone_axis`.
+- [x] Crear gate de cierre Nivel 2.
+- [ ] Generar evidencia densa final en `experiments/test_017_level2_closure/`.
+
+## Comandos De Gate
 
 ```bash
-python scripts/check_level2_readiness.py
+env MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python -m unittest discover -s tests -q
+.venv/bin/python scripts/check_level2_readiness.py
+.venv/bin/python scripts/check_level2_closure.py
 ```

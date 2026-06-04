@@ -105,7 +105,7 @@ Checklist operativo de la laptop: `docs/TODO_LAPTOP_MSI.md`.
 
 ## Nivel 2 - Extension Intermedia
 
-Estado operativo: desbloqueado por `experiments/test_011_level2_unlock/summary.md`.
+Estado operativo: implementado; cierre tecnico en `experiments/test_017_level2_closure/`.
 
 Checklist operativo: `docs/TODO_LEVEL2.md`.
 
@@ -118,7 +118,8 @@ Checklist operativo: `docs/TODO_LEVEL2.md`.
 - [x] Prioridad 3 - Visualizaciones Nivel 2.
 - [x] Prioridad 4 - Multi-clip real.
 - [x] Prioridad 5 - Demo Nivel 2.
+- [x] Gate de cierre tecnico Nivel 2 agregado: `scripts/check_level2_closure.py`.
 
-## Backlog bloqueado
+## Backlog Nivel 3
 
-Nivel 3 permanece bloqueado hasta documentar Nivel 2 con resultados.
+Nivel 3 no esta iniciado. Queda listo para gate/decision cuando el cierre Nivel 2 pase sin checks fallidos.

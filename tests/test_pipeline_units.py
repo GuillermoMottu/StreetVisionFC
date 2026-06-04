@@ -18,7 +18,7 @@ from futbotmx.io.detections import (
     save_detections,
 )
 from futbotmx.metrics import compute_level2_metrics
-from futbotmx.tracking import TrackRow, track_detections, write_tracks_csv
+from futbotmx.tracking import TrackRow, read_tracks_csv, track_detections, write_tracks_csv
 from futbotmx.visualization import write_heatmap
 from futbotmx.visualization.level2 import (
     build_heatmap_specs,
@@ -37,7 +37,8 @@ from scripts.build_level1_evidence_package import mib
 from scripts.build_level2_demo_package import build_demo_facts
 from scripts.clean_detections import parse_top_k
 from scripts.check_level2_readiness import ReadinessCheck
-from scripts.run_level2_multiclip import ClipSpec, clip_row, sports_frames
+from scripts.check_level2_closure import docs_are_current
+from scripts.run_level2_multiclip import ClipSpec, clip_row, clip_specs_from_config, sports_frames
 from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
     choose_recommended_tracker,
@@ -186,6 +187,24 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(metrics[0].max_frame_gap, 1)
         self.assertEqual(choose_recommended_tracker(metrics), "simple")
 
+    def test_shared_tracks_reader_preserves_csv_contract(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tracks_path = Path(tmp) / "tracks.csv"
+            write_tracks_csv(
+                [
+                    TrackRow(1, "ball_01", "ball", 10, 11, 8, 9, 12, 13, 0.9),
+                    TrackRow(2, "robot_01", "robot", 20, 21, 18, 19, 22, 23, 0.8),
+                ],
+                tracks_path,
+            )
+
+            rows = read_tracks_csv(tracks_path)
+
+            self.assertEqual(rows[0]["frame"], 1)
+            self.assertEqual(rows[0]["track_id"], "ball_01")
+            self.assertEqual(rows[0]["x"], 10.0)
+            self.assertEqual(rows[1]["team"], "unknown")
+
     def test_event_validation_diagnostics(self) -> None:
         rows = [
             {"frame": 1, "track_id": "ball_01", "class_name": "ball", "x": 10.0, "y": 10.0},
@@ -333,6 +352,60 @@ class PipelineUnitTests(unittest.TestCase):
             interceptions = [event for event in events if event["event_type"] == "interception"]
             self.assertTrue(any(event["reliability"] == "provisional" for event in interceptions))
 
+    def test_level2_events_do_not_cross_ball_track_ids_for_speed(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tracks_path = Path(tmp) / "tracks.csv"
+            write_tracks_csv(
+                [
+                    TrackRow(0, "ball_01", "ball", 10, 10, 8, 8, 12, 12, 0.9),
+                    TrackRow(1, "ball_01", "ball", 11, 10, 9, 8, 13, 12, 0.9),
+                    TrackRow(2, "ball_02", "ball", 300, 10, 298, 8, 302, 12, 0.9),
+                ],
+                tracks_path,
+            )
+
+            events = detect_level2_events(
+                tracks_path,
+                fps=10,
+                field_width=400,
+                field_height=200,
+                config={
+                    "rule_version": "level2_events_v0.1",
+                    "highlight_min_speed_px_per_sec": 100,
+                },
+            )
+
+            highlight = [event for event in events if event["event_type"] == "highlight_play"][0]
+            self.assertEqual(highlight["reliability"], "descartado")
+            self.assertLess(highlight["evidence"]["signals"]["speed_px_per_sec"], 100)
+
+    def test_level2_events_zone_axis_y(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tracks_path = Path(tmp) / "tracks.csv"
+            write_tracks_csv(
+                [
+                    TrackRow(0, "ball_01", "ball", 10, 10, 8, 8, 12, 12, 0.9),
+                    TrackRow(1, "ball_01", "ball", 20, 80, 18, 78, 22, 82, 0.9),
+                ],
+                tracks_path,
+            )
+
+            events = detect_level2_events(
+                tracks_path,
+                fps=10,
+                field_width=300,
+                field_height=90,
+                config={
+                    "rule_version": "level2_events_v0.1",
+                    "highlight_min_speed_px_per_sec": 1,
+                    "zone_axis": "y",
+                },
+            )
+
+            highlight = [event for event in events if event["event_type"] == "highlight_play"][0]
+            self.assertEqual(highlight["zone"], "attacking_third")
+            self.assertEqual(highlight["evidence"]["signals"]["zone_axis"], "y")
+
     def test_level2_visualizations_write_lightweight_outputs(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -403,6 +476,44 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(row["role"], "diagnostic")
         self.assertEqual(row["ball_detections"], 0)
         self.assertEqual(row["robot_detections"], 5)
+
+    def test_level2_multiclip_loads_clips_from_config(self) -> None:
+        config = {
+            "level2_multiclip": {
+                "clips": [
+                    {
+                        "clip_id": "video_595",
+                        "role": "candidate",
+                        "width": 1344,
+                        "height": 1792,
+                        "fps": 59.7,
+                        "detections": "detections.json",
+                        "notes": "dense closure",
+                    }
+                ]
+            }
+        }
+
+        specs = clip_specs_from_config(config)
+
+        self.assertEqual(len(specs), 1)
+        self.assertEqual(specs[0].clip_id, "video_595")
+        self.assertEqual(specs[0].width, 1344)
+
+    def test_level2_closure_docs_check_fails_on_obsolete_status(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "FutBotMX_documentacion_markdown").mkdir()
+            (root / "docs").mkdir()
+            (root / "README.md").write_text("SAM 3 real pendiente de validacion en laptop MSI.\n", encoding="utf-8")
+            (root / "FutBotMX_documentacion_markdown/README.md").write_text("Nivel 2 cerrado.\n", encoding="utf-8")
+            (root / "FutBotMX_documentacion_markdown/EVENTS_DEFINITION.md").write_text("Eventos validados.\n", encoding="utf-8")
+            (root / "docs/TASK_LIST_DETAILED.md").write_text("Nivel 3 listo para gate/decision.\n", encoding="utf-8")
+
+            ok, notes = docs_are_current(root)
+
+            self.assertFalse(ok)
+            self.assertIn("SAM 3 real pendiente", notes)
 
     def test_level2_demo_facts_summarize_inputs(self) -> None:
         facts = build_demo_facts(

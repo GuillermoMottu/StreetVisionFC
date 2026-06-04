@@ -119,6 +119,7 @@ def write_summary(
         f"- Min frames recuperacion: `{event_config['recovery_min_frames']}`.",
         f"- Gap max intercepcion: `{event_config['interception_max_gap_frames']}` frames.",
         f"- Velocidad min highlight: `{event_config['highlight_min_speed_px_per_sec']}px/s`.",
+        f"- Eje de zonas: `{event_config['zone_axis']}`.",
         "",
         "## Eventos",
         "",
@@ -180,6 +181,7 @@ def main() -> int:
     event_config.setdefault("interception_max_gap_frames", 12)
     event_config.setdefault("interception_min_speed_px_per_sec", 120)
     event_config.setdefault("highlight_min_speed_px_per_sec", 250)
+    event_config.setdefault("zone_axis", "x")
 
     experiment = Path(args.experiment)
     experiment.mkdir(parents=True, exist_ok=True)

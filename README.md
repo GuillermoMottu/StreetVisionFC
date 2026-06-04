@@ -11,15 +11,16 @@ La documentacion base esta en `FutBotMX_documentacion_markdown/`.
 
 ## Estado actual
 
-- Nivel 1 en preparacion con pipeline base de escritorio implementado.
-- Estructura base del repositorio creada.
+- Nivel 1 validado con SAM 3 real, ROI, ByteTrack, eventos y evidencia ligera.
+- Nivel 2 implementado y en cierre tecnico con gate hacia decision de Nivel 3.
+- Estructura base del repositorio creada y usada en laptop MSI/escritorio.
 - Dependencias de escritorio definidas en `requirements-dev.txt`.
 - Dependencias GPU definidas en `requirements-gpu.txt`.
-- Configuracion inicial en `configs/default.yaml`.
+- Configuracion Nivel 2 en `configs/default.yaml`.
 - Python 3.12.10 instalado para este escritorio.
 - Entorno virtual `.venv` creado con dependencias de desarrollo.
-- Ingesta de video, tracking simple, eventos Nivel 1 y heatmap basico implementados.
-- SAM 3 real pendiente de validacion en laptop MSI.
+- Ingesta, SAM 3, tracking, eventos, metricas Nivel 2 y visualizaciones implementadas.
+- Videos completos, checkpoints y demos MP4 permanecen fuera de Git.
 
 ## Configuracion del escritorio
 
@@ -35,8 +36,15 @@ Activar entorno:
 
 Ejecutar pruebas:
 
-```powershell
-python -m unittest discover -s tests
+```bash
+env MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python -m unittest discover -s tests -q
+```
+
+Validar gates:
+
+```bash
+.venv/bin/python scripts/check_level2_readiness.py
+.venv/bin/python scripts/check_level2_closure.py
 ```
 
 Inspeccionar un video local:
@@ -71,12 +79,13 @@ python scripts\run_visualizations.py --tracks experiments\test_003_tracking\trac
 
 ## Estado de experimentos
 
-- `test_000_environment_check`: completado parcialmente en escritorio; GPU pendiente en laptop.
-- `test_001_video_ingestion`: validado con prueba unitaria sintetica; clip real pendiente.
-- `test_002_sam3_segmentation`: bloqueado hasta laptop MSI.
-- `test_003_tracking`: validado con detecciones sinteticas.
-- `test_004_events`: validado con tracks sinteticos.
-- `test_005_visualizations`: heatmap sintetico generado.
+- `test_000_environment_check`: entorno base documentado.
+- `test_001_video_ingestion`: clips reales inspeccionados.
+- `test_002_sam3_segmentation`: SAM 3 real ejecutado en laptop MSI.
+- `test_003_tracking`: tracking real comparado, ByteTrack recomendado.
+- `test_004_events`: eventos Nivel 1 recalculados con tracks reales.
+- `test_012` a `test_016`: metricas, eventos, visualizaciones, multi-clip y demo Nivel 2.
+- `test_017_level2_closure`: cierre tecnico Nivel 2 y gate hacia Nivel 3.
 
 ## Regla principal
 

@@ -89,11 +89,11 @@ No se debe declarar un evento como validado sin evidencia.
 
 | Evento | Nivel | Estado |
 |---|---|---|
-| Posesión | Nivel 1 | Pendiente de validar |
-| Pase simple | Nivel 1 | Pendiente de validar |
-| Tiro aproximado | Nivel 1 | Pendiente de validar |
-| Colisión básica | Nivel 1 | Pendiente de validar |
-| Zona de actividad básica | Nivel 1 | Pendiente de validar |
+| Posesión | Nivel 1 | Validado inicial con tracks reales |
+| Pase simple | Nivel 1 | Implementado; no observado como confiable en ventana base |
+| Tiro aproximado | Nivel 1 | Implementado; descartado en ventana base por jitter |
+| Colisión básica | Nivel 1 | Validado provisional con tracks reales |
+| Zona de actividad básica | Nivel 1 | Validado con tracks reales |
 
 ---
 
@@ -104,7 +104,7 @@ No se debe declarar un evento como validado sin evidencia.
 | Intercepción | Nivel 2 | Implementado inicial |
 | Recuperación | Nivel 2 | Implementado inicial |
 | Jugada destacada | Nivel 2 | Implementado inicial |
-| Timeline de posesión | Nivel 2 | Pendiente |
+| Timeline de posesión | Nivel 2 | Implementado |
 
 ---
 

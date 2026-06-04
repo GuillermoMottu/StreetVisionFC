@@ -155,3 +155,18 @@ Nivel 2 queda desbloqueado para planeacion e implementacion inicial. El trabajo 
 
 **Consecuencia:**
 Nivel 3 permanece bloqueado hasta que Nivel 2 tenga resultados documentados. Los videos/checkpoints siguen fuera de Git.
+
+---
+
+## DEC-011 - Cierre tecnico Nivel 2 y gate hacia Nivel 3
+
+**Estado:** Aprobada
+
+**Contexto:**
+Nivel 2 ya cuenta con metricas, eventos, visualizaciones, comparacion multi-clip y demo ligera. Antes de iniciar Nivel 3 se requiere cerrar discrepancias de documentacion, corregir deudas tecnicas y generar un gate reproducible de cierre.
+
+**Decision:**
+Nivel 2 se considera cerrado solo si `scripts/check_level2_closure.py` pasa con evidencia densa para clips candidatos, diagnostico formal de `video_480`, tests verdes y sin archivos pesados versionados.
+
+**Consecuencia:**
+Nivel 3 queda listo para gate/decision, no iniciado automaticamente. La rectificacion/homografia queda como recomendacion para Nivel 3, no requisito de cierre Nivel 2.

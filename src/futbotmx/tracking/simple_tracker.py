@@ -27,7 +27,7 @@ def _distance(a: tuple[float, float], b: tuple[float, float]) -> float:
     return math.hypot(a[0] - b[0], a[1] - b[1])
 
 
-def _team_for_class(class_name: str) -> str:
+def team_for_class(class_name: str) -> str:
     if class_name.startswith("ally"):
         return "ally"
     if class_name.startswith("opponent"):
@@ -79,7 +79,7 @@ def track_detections(
                     bbox_x2=x2,
                     bbox_y2=y2,
                     confidence=detection.confidence,
-                    team=_team_for_class(detection.class_name),
+                    team=team_for_class(detection.class_name),
                 )
             )
     return rows
