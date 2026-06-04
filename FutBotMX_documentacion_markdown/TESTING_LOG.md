@@ -8,6 +8,64 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_016_level2_demo`
+
+## Fecha
+
+`2026-06-03`
+
+## Equipo utilizado
+
+Escritorio Linux.
+
+## Codigo usado
+
+Commit base: `0572315`.
+
+## Configuracion
+
+- Script: `scripts/build_level2_demo_package.py`.
+- Visualizaciones fuente: `experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/`.
+- Metricas fuente: `experiments/test_012_level2_metrics/video_836_real_metrics_120_180/level2_metrics.json`.
+- Eventos fuente: `experiments/test_013_level2_events/video_836_real_events_120_180/level2_events.json`.
+- Comparacion multi-clip: `experiments/test_015_level2_multiclip/multiclip_comparison.csv`.
+
+## Resultados
+
+- Demo ligera generada en `experiments/test_016_level2_demo/demo_board.png`.
+- Capturas ligeras copiadas: timeline de eventos, timeline de posesion, heatmap de balon y heatmap de robots.
+- Demo local documentada en `demo_local.md`.
+- Resumen final Nivel 2 generado en `LEVEL2_FINAL_SUMMARY.md`.
+- Manifest generado en `demo_manifest.csv`.
+- No se genero ni versiono video MP4; cualquier video local futuro debe quedar en `outputs/videos/`, ruta ignorada por Git.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/build_level2_demo_package.py
+experiments/test_016_level2_demo/demo_board.png
+experiments/test_016_level2_demo/event_timeline.png
+experiments/test_016_level2_demo/possession_timeline.png
+experiments/test_016_level2_demo/heatmap_class_ball.png
+experiments/test_016_level2_demo/heatmap_class_robot.png
+experiments/test_016_level2_demo/demo_manifest.csv
+experiments/test_016_level2_demo/demo_local.md
+experiments/test_016_level2_demo/LEVEL2_FINAL_SUMMARY.md
+experiments/test_016_level2_demo/config.yaml
+```
+
+## Conclusion
+
+Prioridad 5 de Nivel 2 queda completada con un paquete demo ligero y resumen final de entrega. Nivel 2 queda documentado con resultados y evidencia versionable, sin videos pesados en Git.
+
+## Siguiente accion
+
+Revisar entrega final Nivel 2 y decidir si se desbloquea planeacion de Nivel 3.
+
+---
+
+## Test ID
+
 `test_015_level2_multiclip`
 
 ## Fecha

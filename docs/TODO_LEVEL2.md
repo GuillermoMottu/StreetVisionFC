@@ -54,9 +54,11 @@ Evidencia: `experiments/test_015_level2_multiclip/`.
 
 ## Prioridad 5 - Demo Nivel 2
 
-- [ ] Generar demo local con timeline/metricas.
-- [ ] Versionar solo capturas ligeras y resumen.
-- [ ] Preparar resumen final Nivel 2 para entrega.
+- [x] Generar demo local con timeline/metricas.
+- [x] Versionar solo capturas ligeras y resumen.
+- [x] Preparar resumen final Nivel 2 para entrega.
+
+Evidencia: `experiments/test_016_level2_demo/`.
 
 ## Comando De Gate
 
