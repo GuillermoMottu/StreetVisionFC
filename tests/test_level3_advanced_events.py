@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 import sys
+from tempfile import TemporaryDirectory
 import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
@@ -12,6 +13,7 @@ from futbotmx.level3 import (
     build_highlight_events,
     build_pass_chain_events,
     possession_segments,
+    write_narrative,
 )
 
 
@@ -130,6 +132,54 @@ class Level3AdvancedEventsTests(unittest.TestCase):
         self.assertIn("presion_o_disputa", highlights[0]["reason"])
         self.assertIn("lvl2_evt_000001", highlights[0]["source_event_ids"])
 
+    def test_highlight_ranking_orders_candidates_by_score(self) -> None:
+        config = AdvancedEventsConfig(ball_speed_reference_norm_per_sec=0.5)
+        slow = speed_segment(frame_start=10, speed=0.1)
+        fast = speed_segment(frame_start=12, speed=0.5)
+
+        _, highlights = build_highlight_events([], [slow, fast], [], [], {}, config, start_index=1)
+
+        self.assertEqual(len(highlights), 2)
+        self.assertEqual(highlights[0]["frame_start"], 12)
+        self.assertGreater(float(highlights[0]["score"]), float(highlights[1]["score"]))
+
+    def test_narrative_writer_keeps_conservative_language(self) -> None:
+        config = AdvancedEventsConfig(primary_clip="video_test", highlight_top_n=1)
+        events = [
+            {
+                "event_id": "lvl3_evt_000001",
+                "event_type": "advanced_highlight",
+                "event_subtype": "speed_pressure_zone",
+                "clip_id": "video_test",
+                "frame_start": 10,
+                "frame_end": 11,
+                "time_start_sec": 1.0,
+                "time_end_sec": 1.1,
+                "reliability": "provisional",
+            }
+        ]
+        highlights = [
+            {
+                "clip_id": "video_test",
+                "highlight_id": "lvl3_evt_000001",
+                "rank": 1,
+                "score": 70.0,
+                "frame_start": 10,
+                "frame_end": 11,
+                "confidence": 0.8,
+                "reason": "velocidad_norm=0.500; zona=middle_third",
+            }
+        ]
+        with TemporaryDirectory() as tmpdir:
+            path = Path(tmpdir) / "level3_narrative.md"
+
+            write_narrative(path, events, highlights, config)
+
+            text = path.read_text(encoding="utf-8")
+            self.assertIn("Clip principal: `video_test`", text)
+            self.assertIn("Rank `1`", text)
+            self.assertIn("no afirma goles", text)
+
 
 def possession_sample(frame: int, robot_id: str) -> dict[str, str]:
     return {
@@ -144,6 +194,23 @@ def possession_sample(frame: int, robot_id: str) -> dict[str, str]:
         "confidence": "0.75",
         "reliability": "provisional",
         "notes": "synthetic",
+    }
+
+
+def speed_segment(frame_start: int, speed: float) -> dict[str, object]:
+    return {
+        "clip_id": "video_test",
+        "ball_id": "ball_01",
+        "frame_start": frame_start,
+        "frame_end": frame_start + 1,
+        "time_start_sec": frame_start / 10,
+        "time_end_sec": (frame_start + 1) / 10,
+        "speed_norm_per_sec": speed,
+        "distance_norm": speed / 10,
+        "zone": "middle_third",
+        "position_start": {"x_norm": 0.4, "y_norm": 0.5},
+        "position_end": {"x_norm": 0.45, "y_norm": 0.5},
+        "confidence": 0.8,
     }
 
 

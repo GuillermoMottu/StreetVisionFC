@@ -14,6 +14,7 @@ from futbotmx.level3 import (
     build_level3_metric_rows,
     compute_interactions,
     compute_spatial_control,
+    grid_cells,
     spatial_control_for_frame,
 )
 
@@ -46,6 +47,18 @@ def track(
 
 
 class Level3TacticalTests(unittest.TestCase):
+    def test_grid_cells_cover_centers_and_tactical_zones(self) -> None:
+        config = TacticalConfig(grid_x=2, grid_y=3)
+
+        cells = grid_cells(config)
+
+        self.assertEqual(len(cells), 6)
+        self.assertAlmostEqual(float(cells[0]["x_norm"]), 0.25)
+        self.assertAlmostEqual(float(cells[0]["y_norm"]), 1.0 / 6.0)
+        self.assertEqual(cells[0]["zone"], "defensive_third")
+        self.assertEqual(cells[2]["zone"], "middle_third")
+        self.assertEqual(cells[4]["zone"], "attacking_third")
+
     def test_spatial_control_assigns_grid_cells_to_nearest_robot(self) -> None:
         config = TacticalConfig(grid_x=2, grid_y=1)
         rows = [

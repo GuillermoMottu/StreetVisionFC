@@ -453,38 +453,38 @@ Cerrar Nivel 3 con un gate reproducible equivalente al cierre tecnico de Nivel 2
 
 ### Tarea 9.1 - Pruebas unitarias
 
-- [ ] Agregar pruebas de homografia/transformacion de puntos.
-- [ ] Agregar pruebas de grilla de control espacial.
-- [ ] Agregar pruebas de ranking de highlights.
-- [ ] Agregar pruebas de generacion de narrativa.
-- [ ] Agregar pruebas de lectura/escritura de esquemas Nivel 3.
+- [x] Agregar pruebas de homografia/transformacion de puntos.
+- [x] Agregar pruebas de grilla de control espacial.
+- [x] Agregar pruebas de ranking de highlights.
+- [x] Agregar pruebas de generacion de narrativa.
+- [x] Agregar pruebas de lectura/escritura de esquemas Nivel 3.
 
 ### Tarea 9.2 - Pruebas de integracion ligeras
 
-- [ ] Crear fixtures pequenos con tracks sinteticos.
-- [ ] Verificar que el pipeline Nivel 3 produce CSV/JSON esperados.
-- [ ] Verificar que visualizaciones basicas se generan sin video pesado.
-- [ ] Verificar que el dashboard referencia assets existentes.
+- [x] Crear fixtures pequenos con tracks sinteticos.
+- [x] Verificar que el pipeline Nivel 3 produce CSV/JSON esperados.
+- [x] Verificar que visualizaciones basicas se generan sin video pesado.
+- [x] Verificar que el dashboard referencia assets existentes.
 
 ### Tarea 9.3 - Gate de cierre Nivel 3
 
-- [ ] Implementar `scripts/check_level3_closure.py`.
-- [ ] Validar tests unitarios verdes.
-- [ ] Validar readiness Nivel 3.
-- [ ] Validar artefactos de spatial model.
-- [ ] Validar artefactos de metricas tacticas.
-- [ ] Validar artefactos de eventos avanzados.
-- [ ] Validar visualizaciones avanzadas.
-- [ ] Validar dashboard y reel manifest.
-- [ ] Validar multi-clip.
-- [ ] Validar ausencia de archivos pesados versionados.
-- [ ] Exportar `closure_checks.csv`.
-- [ ] Crear `experiments/test_027_level3_closure/summary.md`.
+- [x] Implementar `scripts/check_level3_closure.py`.
+- [x] Validar tests unitarios verdes.
+- [x] Validar readiness Nivel 3.
+- [x] Validar artefactos de spatial model.
+- [x] Validar artefactos de metricas tacticas.
+- [x] Validar artefactos de eventos avanzados.
+- [x] Validar visualizaciones avanzadas.
+- [x] Validar dashboard y reel manifest.
+- [x] Validar multi-clip.
+- [x] Validar ausencia de archivos pesados versionados.
+- [x] Exportar `closure_checks.csv`.
+- [x] Crear `experiments/test_027_level3_closure/summary.md`.
 
 ### Criterio de aceptacion
 
-- [ ] `scripts/check_level3_closure.py` termina con `0 fail`.
-- [ ] La carpeta de cierre declara Nivel 3 completado.
+- [x] `scripts/check_level3_closure.py` termina con `0 fail`.
+- [x] La carpeta de cierre declara Nivel 3 completado.
 
 ## Actividad 10 - Documentacion Final
 
@@ -536,21 +536,21 @@ Actualizar la documentacion principal para que la entrega final explique clarame
 
 ## Criterios De Cierre Nivel 3
 
-- [ ] Decision de inicio registrada.
-- [ ] Readiness Nivel 3 sin fallos.
-- [ ] Contrato de datos Nivel 3 documentado.
-- [ ] Tracks rectificados o fallback documentado.
-- [ ] Metricas tacticas generadas.
-- [ ] Eventos avanzados generados.
-- [ ] Highlights rankeados y validados visualmente.
-- [ ] Voronoi, grafo y mini-mapa generados.
-- [ ] Dashboard ligero disponible.
-- [ ] Reel/demo local documentado con manifest.
-- [ ] Validacion multi-clip completada.
-- [ ] Tests unitarios verdes.
-- [ ] Gate de cierre Nivel 3 con `0 fail`.
+- [x] Decision de inicio registrada.
+- [x] Readiness Nivel 3 sin fallos.
+- [x] Contrato de datos Nivel 3 documentado.
+- [x] Tracks rectificados o fallback documentado.
+- [x] Metricas tacticas generadas.
+- [x] Eventos avanzados generados.
+- [x] Highlights rankeados y validados visualmente.
+- [x] Voronoi, grafo y mini-mapa generados.
+- [x] Dashboard ligero disponible.
+- [x] Reel/demo local documentado con manifest.
+- [x] Validacion multi-clip completada.
+- [x] Tests unitarios verdes.
+- [x] Gate de cierre Nivel 3 con `0 fail`.
 - [ ] README y documentacion principal actualizados.
-- [ ] Sin archivos pesados versionados.
+- [x] Sin archivos pesados versionados.
 
 ## Comandos De Gate Esperados
 

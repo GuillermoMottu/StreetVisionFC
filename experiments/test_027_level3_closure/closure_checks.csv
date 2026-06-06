@@ -1,0 +1,12 @@
+check_id,status,evidence,notes
+unit_tests_green,pass,env MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python -m unittest discover -s tests -q,OK
+level3_readiness_green,pass,scripts/check_level3_readiness.py,Wrote Level 3 readiness report to /home/guillermo/Documentos/StreetVisionFC/experiments/test_018_level3_readiness; 10 rows pass
+level3_data_contract,pass,experiments/test_019_level3_data_contract,5 required paths present; 7 schemas
+level3_spatial_model,pass,experiments/test_020_level3_spatial_model,"7 required paths present; usable_clips=2, track_rows=512"
+level3_tactical_metrics,pass,experiments/test_021_level3_tactical_metrics,"7 required paths present; metrics=25, interaction_samples=485"
+level3_advanced_events,pass,experiments/test_022_level3_advanced_events,"5 required paths present; events=144, highlights=142, overlays=6"
+level3_visualizations,pass,experiments/test_023_level3_visualizations,5 required paths present; 21 rows
+level3_dashboard,pass,experiments/test_024_level3_dashboard,4 required paths present; manifest_rows=15
+level3_reel,pass,experiments/test_025_level3_reel,"5 required paths present; segments=4, manifest_rows=21"
+level3_multiclip,pass,experiments/test_026_level3_multiclip,9 required paths present; generated_clips=2
+no_tracked_heavy_files,pass,git ls-files,no tracked heavy files

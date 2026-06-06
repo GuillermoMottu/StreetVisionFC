@@ -9,6 +9,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from futbotmx.level3 import (
+    LEVEL3_HIGHLIGHTS_FIELDS,
     LEVEL3_TRACKS_FIELDS,
     read_csv_artifact,
     validate_required_fields,
@@ -76,6 +77,37 @@ class Level3ContractTests(unittest.TestCase):
             self.assertEqual(loaded[0]["clip_id"], "video_595")
             self.assertEqual(loaded[0]["track_id"], "ball_bt_01")
             self.assertEqual(loaded[0]["calibration_status"], "pending")
+
+    def test_csv_artifact_writer_roundtrips_level3_highlights(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "level3_highlights.csv"
+            row = {field: "" for field in LEVEL3_HIGHLIGHTS_FIELDS}
+            row.update(
+                {
+                    "clip_id": "video_595",
+                    "highlight_id": "lvl3_evt_000001",
+                    "rank": 1,
+                    "score": 82.5,
+                    "event_type": "advanced_highlight",
+                    "frame_start": 122,
+                    "frame_end": 123,
+                    "time_start_sec": 2.043,
+                    "time_end_sec": 2.06,
+                    "primary_track_id": "small_robot_bt_01",
+                    "secondary_track_ids": "ball_bt_01",
+                    "zone": "defensive_third",
+                    "confidence": 0.89,
+                    "reliability": "provisional",
+                    "reason": "velocidad_norm=0.272; respaldo_level2",
+                }
+            )
+
+            write_csv_artifact(path, "level3_highlights.csv", [row])
+            loaded = read_csv_artifact(path)
+
+            self.assertEqual(loaded[0]["highlight_id"], "lvl3_evt_000001")
+            self.assertEqual(loaded[0]["event_type"], "advanced_highlight")
+            self.assertEqual(loaded[0]["reliability"], "provisional")
 
 
 if __name__ == "__main__":
