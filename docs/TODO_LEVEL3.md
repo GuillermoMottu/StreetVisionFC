@@ -326,37 +326,37 @@ Crear un dashboard local o estatico que concentre metricas, eventos, highlights 
 
 ### Tarea 6.1 - Definir formato del dashboard
 
-- [ ] Decidir si sera HTML estatico, Markdown enriquecido o app ligera local.
-- [ ] Evitar arquitectura SaaS, login, backend complejo o dependencias innecesarias.
-- [ ] Definir secciones: resumen, metricas, timeline, highlights, visualizaciones, evidencia.
+- [x] Decidir si sera HTML estatico, Markdown enriquecido o app ligera local.
+- [x] Evitar arquitectura SaaS, login, backend complejo o dependencias innecesarias.
+- [x] Definir secciones: resumen, metricas, timeline, highlights, visualizaciones, evidencia.
 
 ### Tarea 6.2 - Construir resumen visual
 
-- [ ] Mostrar score de highlights.
-- [ ] Mostrar posesion y control espacial.
-- [ ] Mostrar distancia/velocidad clave.
-- [ ] Mostrar numero de interacciones y cadenas de pases.
-- [ ] Mostrar clip principal y clips secundarios analizados.
+- [x] Mostrar score de highlights.
+- [x] Mostrar posesion y control espacial.
+- [x] Mostrar distancia/velocidad clave.
+- [x] Mostrar numero de interacciones y cadenas de pases.
+- [x] Mostrar clip principal y clips secundarios analizados.
 
 ### Tarea 6.3 - Integrar assets
 
-- [ ] Incluir mini-mapa.
-- [ ] Incluir Voronoi.
-- [ ] Incluir grafo de interaccion.
-- [ ] Incluir storyboard de highlights.
-- [ ] Incluir links relativos a CSV/JSON/Markdown de evidencia.
+- [x] Incluir mini-mapa.
+- [x] Incluir Voronoi.
+- [x] Incluir grafo de interaccion.
+- [x] Incluir storyboard de highlights.
+- [x] Incluir links relativos a CSV/JSON/Markdown de evidencia.
 
 ### Tarea 6.4 - Empaquetar dashboard
 
-- [ ] Crear `experiments/test_024_level3_dashboard/`.
-- [ ] Crear `dashboard_manifest.csv`.
-- [ ] Crear `summary.md`.
-- [ ] Documentar comando de generacion.
+- [x] Crear `experiments/test_024_level3_dashboard/`.
+- [x] Crear `dashboard_manifest.csv`.
+- [x] Crear `summary.md`.
+- [x] Documentar comando de generacion.
 
 ### Criterio de aceptacion
 
-- [ ] El dashboard se puede abrir localmente sin depender de archivos pesados versionados.
-- [ ] El dashboard explica Nivel 3 con evidencia visual y metrica.
+- [x] El dashboard se puede abrir localmente sin depender de archivos pesados versionados.
+- [x] El dashboard explica Nivel 3 con evidencia visual y metrica.
 
 ## Actividad 7 - Reel Final Y Demo De Presentacion
 

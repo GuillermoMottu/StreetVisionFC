@@ -1,0 +1,16 @@
+asset_id,asset_type,path,source_artifact,is_versioned,notes
+dashboard_html,html,dashboard.html,experiments/test_021_level3_tactical_metrics/level3_metrics.csv|experiments/test_021_level3_tactical_metrics/level3_metrics.json|experiments/test_021_level3_tactical_metrics/interaction_edges.csv|experiments/test_022_level3_advanced_events/level3_highlights.csv|experiments/test_022_level3_advanced_events/level3_events.json|experiments/test_022_level3_advanced_events/level3_narrative.md|experiments/test_023_level3_visualizations/visualization_manifest.csv,true,Static local dashboard.
+summary,md,summary.md,dashboard.html,true,Dashboard generation summary.
+config,yaml,config.yaml,configs/default.yaml,true,Configuration snapshot.
+dashboard_manifest,csv,dashboard_manifest.csv,dashboard.html,true,Dashboard asset manifest.
+metrics_csv,csv,../test_021_level3_tactical_metrics/level3_metrics.csv,experiments/test_021_level3_tactical_metrics/level3_metrics.csv,true,Linked evidence artifact.
+metrics_json,json,../test_021_level3_tactical_metrics/level3_metrics.json,experiments/test_021_level3_tactical_metrics/level3_metrics.json,true,Linked evidence artifact.
+interaction_edges_csv,csv,../test_021_level3_tactical_metrics/interaction_edges.csv,experiments/test_021_level3_tactical_metrics/interaction_edges.csv,true,Linked evidence artifact.
+highlights_csv,csv,../test_022_level3_advanced_events/level3_highlights.csv,experiments/test_022_level3_advanced_events/level3_highlights.csv,true,Linked evidence artifact.
+events_json,json,../test_022_level3_advanced_events/level3_events.json,experiments/test_022_level3_advanced_events/level3_events.json,true,Linked evidence artifact.
+narrative_md,md,../test_022_level3_advanced_events/level3_narrative.md,experiments/test_022_level3_advanced_events/level3_narrative.md,true,Linked evidence artifact.
+visualization_manifest_csv,csv,../test_023_level3_visualizations/visualization_manifest.csv,experiments/test_023_level3_visualizations/visualization_manifest.csv,true,Linked evidence artifact.
+highlight_storyboard,png,../test_023_level3_visualizations/highlight_storyboard.png,experiments/test_022_level3_advanced_events/level3_highlights.csv,true,"Storyboard combines frame reference, minimap and text."
+interaction_graph,png,../test_023_level3_visualizations/interaction_graph.png,experiments/test_021_level3_tactical_metrics/interaction_graph.json,true,"Edges styled by possession, dispute, pressure and proximity."
+voronoi_video_595_120,png,../test_023_level3_visualizations/voronoi_frame_video_595_120.png,experiments/test_021_level3_tactical_metrics/voronoi_frames.csv,true,Voronoi minimap clipped to normalized field.
+voronoi_original_video_595_120,png,../test_023_level3_visualizations/voronoi_original_frame_video_595_120.png,experiments/test_017_level2_closure/video_595/overlay_lvl2_evt_000001_frame_120.png,true,Projected onto existing Level 2 lightweight overlay.
