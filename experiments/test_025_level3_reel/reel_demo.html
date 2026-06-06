@@ -1,0 +1,121 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FutBotMX Nivel 3 Reel</title>
+<style>
+:root {
+  --ink: #17201b;
+  --muted: #5b675f;
+  --line: #c9d6ce;
+  --field: #e9f4ea;
+  --paper: #fbfcfa;
+  --panel: #ffffff;
+  --blue: #315f9b;
+  --green: #2f6f4f;
+  --amber: #a36d1f;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+main {
+  width: min(1120px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 22px 0 36px;
+}
+header {
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 16px;
+}
+header p {
+  margin: 0 0 5px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 0 0 8px;
+  font-size: 38px;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+h2 {
+  margin: 0;
+  font-size: 17px;
+  letter-spacing: 0;
+}
+header span,
+article p,
+.render p {
+  color: var(--muted);
+  font-size: 13px;
+}
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+  padding: 18px 0;
+}
+article {
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+article img {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: contain;
+  display: block;
+  background: var(--field);
+}
+article h2,
+article p {
+  padding: 0 10px;
+}
+article h2 {
+  padding-top: 10px;
+}
+.render {
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+a {
+  color: var(--blue);
+  text-underline-offset: 2px;
+}
+@media (max-width: 760px) {
+  main {
+    width: min(100vw - 20px, 1120px);
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  h1 {
+    font-size: 30px;
+  }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+<p>FutBotMX Nivel 3</p>
+<h1>Reel final y demo de presentacion</h1>
+<span>4 segmentos | 12.0s sugeridos | MP4 local no versionado</span>
+</header>
+<section class="grid">
+<article><a href="reel_thumb_rank_01_video_595_frame_122.png"><img src="reel_thumb_rank_01_video_595_frame_122.png" alt="Segmento 1"></a><h2>Rank 1 | video_595</h2><p>Frames 122-123 | score 82.9 | conf 0.89</p><p>velocidad_norm=0.272 | posesion_candidata | zona=defensive_third</p></article><article><a href="reel_thumb_rank_02_video_595_frame_128.png"><img src="reel_thumb_rank_02_video_595_frame_128.png" alt="Segmento 2"></a><h2>Rank 2 | video_595</h2><p>Frames 128-129 | score 81.4 | conf 0.83</p><p>velocidad_norm=0.271 | posesion_candidata | zona=defensive_third</p></article><article><a href="reel_thumb_rank_03_video_595_frame_133.png"><img src="reel_thumb_rank_03_video_595_frame_133.png" alt="Segmento 3"></a><h2>Rank 3 | video_595</h2><p>Frames 133-135 | score 81.1 | conf 0.81</p><p>velocidad_norm=0.271 | posesion_candidata | zona=defensive_third</p></article><article><a href="reel_thumb_rank_04_video_595_frame_124.png"><img src="reel_thumb_rank_04_video_595_frame_124.png" alt="Segmento 4"></a><h2>Rank 4 | video_595</h2><p>Frames 124-125 | score 80.9 | conf 0.84</p><p>velocidad_norm=0.265 | posesion_candidata | zona=defensive_third</p></article>
+</section>
+<section class="render">
+<h2>Render local</h2>
+<p><a href="reel_render_plan.md">reel_render_plan.md</a> | <a href="reel_segments.csv">reel_segments.csv</a> | <a href="reel_manifest.csv">reel_manifest.csv</a></p>
+<p><a href="../test_024_level3_dashboard/dashboard.html">Dashboard Nivel 3</a></p>
+</section>
+</main>
+</body>
+</html>

@@ -366,38 +366,38 @@ Preparar material final para mostrar el resultado avanzado de FutBotMX de forma 
 
 ### Tarea 7.1 - Seleccionar momentos del reel
 
-- [ ] Usar `level3_highlights.csv` para elegir momentos.
-- [ ] Elegir entre tres y cinco segmentos cortos.
-- [ ] Priorizar jugadas con buen tracking y visualizacion clara.
-- [ ] Documentar frames/timestamps seleccionados.
+- [x] Usar `level3_highlights.csv` para elegir momentos.
+- [x] Elegir entre tres y cinco segmentos cortos.
+- [x] Priorizar jugadas con buen tracking y visualizacion clara.
+- [x] Documentar frames/timestamps seleccionados.
 
 ### Tarea 7.2 - Crear overlay narrativo
 
-- [ ] Mostrar IDs y trails.
-- [ ] Mostrar evento actual.
-- [ ] Mostrar mini-mapa o indicador tactico cuando sea legible.
-- [ ] Mostrar texto narrativo breve por highlight.
-- [ ] Evitar saturar el frame con informacion.
+- [x] Mostrar IDs y trails.
+- [x] Mostrar evento actual.
+- [x] Mostrar mini-mapa o indicador tactico cuando sea legible.
+- [x] Mostrar texto narrativo breve por highlight.
+- [x] Evitar saturar el frame con informacion.
 
 ### Tarea 7.3 - Generar reel local
 
-- [ ] Crear script o comando documentado para renderizar reel.
-- [ ] Mantener MP4 pesado fuera de Git.
-- [ ] Exportar thumbnails ligeros.
-- [ ] Exportar `reel_manifest.csv` con rutas locales o descripcion de archivos no versionados.
+- [x] Crear script o comando documentado para renderizar reel.
+- [x] Mantener MP4 pesado fuera de Git.
+- [x] Exportar thumbnails ligeros.
+- [x] Exportar `reel_manifest.csv` con rutas locales o descripcion de archivos no versionados.
 
 ### Tarea 7.4 - Crear paquete de demo
 
-- [ ] Crear `experiments/test_025_level3_reel/summary.md`.
-- [ ] Incluir capturas ligeras del reel.
-- [ ] Incluir descripcion de narrativa.
-- [ ] Incluir comandos para regenerar el reel.
+- [x] Crear `experiments/test_025_level3_reel/summary.md`.
+- [x] Incluir capturas ligeras del reel.
+- [x] Incluir descripcion de narrativa.
+- [x] Incluir comandos para regenerar el reel.
 
 ### Criterio de aceptacion
 
-- [ ] Existe una demo final local reproducible.
-- [ ] Existe evidencia ligera versionable suficiente para GitHub.
-- [ ] El reel no depende de afirmar precision no validada.
+- [x] Existe una demo final local reproducible.
+- [x] Existe evidencia ligera versionable suficiente para GitHub.
+- [x] El reel no depende de afirmar precision no validada.
 
 ## Actividad 8 - Validacion Multi-Clip Nivel 3
 
