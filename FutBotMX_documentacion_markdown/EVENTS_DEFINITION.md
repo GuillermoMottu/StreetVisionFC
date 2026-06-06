@@ -112,10 +112,11 @@ No se debe declarar un evento como validado sin evidencia.
 
 | Evento | Nivel | Estado |
 |---|---|---|
-| Cadena de pases | Nivel 3 | Pendiente |
-| Highlight avanzado | Nivel 3 | Pendiente |
-| Narrativa deportiva | Nivel 3 | Pendiente |
-| Grafo de interacción | Nivel 3 | Pendiente |
+| Cadena de pases | Nivel 3 | Implementada como candidata/dudosa cuando falta equipo confiable |
+| Highlight avanzado | Nivel 3 | Implementado con ranking, score y confianza |
+| Narrativa deportiva | Nivel 3 | Implementada por reglas conservadoras |
+| Grafo de interacción | Nivel 3 | Implementado por proximidad, posesion candidata, presion y disputa |
+| Revision visual ligera | Nivel 3 | Implementada con overlays y estado `confiable`, `provisional` o `descartado` |
 
 ---
 
@@ -284,6 +285,81 @@ Una jugada destacada inicial se marca cuando existe velocidad alta del balon, zo
 
 ---
 
+## 8.9 Cadena de pases Nivel 3
+
+Una cadena de pases Nivel 3 agrupa tramos consecutivos de posesion candidata cuando el balon cambia de robot dentro de una ventana corta.
+
+### Entradas
+
+- `level3_tracks.csv`.
+- `interaction_metrics.csv`.
+- Posesion candidata por proximidad.
+- Equipo del robot cuando exista.
+
+### Logica actual
+
+1. Reutilizar posesiones Nivel 2 cuando existan.
+2. Usar fallback desde interacciones Nivel 3 si no hay timeline reutilizable.
+3. Agrupar cambios de poseedor dentro de `max_pass_gap_frames`.
+4. Marcar como `same_team_chain` solo si el equipo esta identificado.
+5. Marcar como `dudoso_sin_equipo` cuando los tracks sigan `neutral` o `unknown`.
+
+---
+
+## 8.10 Highlight avanzado Nivel 3
+
+Un highlight avanzado combina velocidad normalizada del balon, posesion candidata, presion/disputa, zona y respaldo Nivel 2.
+
+### Entradas
+
+- `level3_tracks.csv`.
+- `interaction_metrics.csv`.
+- `interaction_edges.csv`.
+- `level2_events.json`.
+
+### Logica actual
+
+1. Calcular segmentos de velocidad del balon en coordenadas normalizadas.
+2. Sumar peso por presion, disputa o posesion candidata en la ventana del evento.
+3. Sumar peso por zona critica y respaldo Nivel 2.
+4. Penalizar baja confianza.
+5. Exportar `level3_highlights.csv` con `rank`, `score`, `confidence`, `reliability` y `reason`.
+
+---
+
+## 8.11 Narrativa deportiva Nivel 3
+
+La narrativa Nivel 3 genera texto breve y conservador para highlights y cadenas candidatas.
+
+### Salida
+
+- `experiments/test_022_level3_advanced_events/level3_narrative.md`.
+
+### Regla de lenguaje
+
+La narrativa puede decir `highlight provisional`, `posesion candidata`, `presion/disputa candidata` o `secuencia compatible`, pero no debe afirmar goles, faltas, pases oficiales ni decisiones arbitrales sin evidencia suficiente.
+
+---
+
+## 8.12 Grafo de interaccion Nivel 3
+
+El grafo de interaccion agrega aristas entre robots y balon cuando hay proximidad, posesion candidata, presion o disputa durante varios frames.
+
+### Salidas
+
+- `interaction_graph.json`.
+- `interaction_edges.csv`.
+- `interaction_graph.png`.
+
+### Logica actual
+
+1. Crear nodos por robot y balon.
+2. Agregar aristas por tipo de interaccion.
+3. Ponderar por duracion, distancia y confianza.
+4. Usar el grafo para dashboard, visualizaciones y comparacion multi-clip.
+
+---
+
 # 9. Limitaciones
 
 - Los eventos son heurísticos.
@@ -292,6 +368,9 @@ Una jugada destacada inicial se marca cuando existe velocidad alta del balon, zo
 - Los tiros pueden confundirse con despejes.
 - Las colisiones pueden ser falsas por perspectiva.
 - Las recuperaciones e intercepciones Nivel 2 dependen de continuidad de IDs y pueden fallar con oclusion.
+- Los eventos Nivel 3 dependen de homografia aproximada, proximidad y equipos frecuentemente neutrales.
+- Las cadenas de pase Nivel 3 siguen siendo dudosas si no hay asignacion confiable de equipo.
+- Los highlights Nivel 3 son candidatos rankeados para demo y revision, no hechos deportivos oficiales.
 - La confiabilidad `confiable`, `provisional` o `descartado` no reemplaza validacion visual humana.
 - No se debe afirmar precisión final sin validación humana.
 

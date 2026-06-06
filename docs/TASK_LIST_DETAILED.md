@@ -122,9 +122,26 @@ Checklist operativo: `docs/TODO_LEVEL2.md`.
 
 ## Backlog Nivel 3
 
-Nivel 3 esta iniciado de forma controlada. La Actividad 0 queda enfocada en decision formal, seleccion de clips y gate de readiness.
+Nivel 3 esta completado tecnicamente como demo avanzada reproducible. El cierre esta en `experiments/test_027_level3_closure/` con `11 pass` y `0 fail`.
 
 Todo operativo detallado: `docs/TODO_LEVEL3.md`.
 
 - [x] Actividad 0 - Gate de inicio y alcance.
 - [x] Actividad 1 - Contrato de datos Nivel 3.
+- [x] Actividad 2 - Rectificacion espacial y mini-mapa.
+- [x] Actividad 3 - Metricas tacticas avanzadas.
+- [x] Actividad 4 - Eventos avanzados Nivel 3.
+- [x] Actividad 5 - Visualizaciones avanzadas.
+- [x] Actividad 6 - Dashboard ligero Nivel 3.
+- [x] Actividad 7 - Reel final y demo de presentacion.
+- [x] Actividad 8 - Validacion multi-clip Nivel 3.
+- [x] Actividad 9 - Pruebas, calidad y gate de cierre.
+- [x] Actividad 10 - Documentacion final.
+
+Artefactos de lectura final:
+
+- `README.md`.
+- `experiments/test_027_level3_closure/LEVEL3_CLOSURE_SUMMARY.md`.
+- `experiments/test_024_level3_dashboard/dashboard.html`.
+- `experiments/test_025_level3_reel/reel_demo.html`.
+- `experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv`.

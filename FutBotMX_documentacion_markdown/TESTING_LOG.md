@@ -8,6 +8,91 @@ Toda prueba pesada ejecutada en la laptop MSI debe documentarse aquí o en un ar
 
 ## Test ID
 
+`test_027_level3_closure`
+
+## Fecha
+
+`2026-06-06`
+
+## Equipo utilizado
+
+Escritorio Linux.
+
+## Codigo usado
+
+Commit base: `aa7799f`.
+
+## Configuracion
+
+- Script: `scripts/check_level3_closure.py`.
+- Readiness: `scripts/check_level3_readiness.py`.
+- Tests: `env MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python -m unittest discover -s tests -q`.
+- Evidencia Nivel 3: `experiments/test_018_level3_readiness/` a `experiments/test_026_level3_multiclip/`.
+
+## Resultados
+
+- Gate de cierre Nivel 3 generado en `experiments/test_027_level3_closure/`.
+- Checks: `11 pass`, `0 fail`.
+- Suite unitaria: `54` tests OK.
+- Multi-clip validado con `video_595` y `video_667`.
+- No hay videos completos, checkpoints, modelos ni MP4 versionados.
+
+## Archivos subidos a GitHub
+
+```text
+scripts/check_level3_closure.py
+tests/test_level3_integration.py
+experiments/test_027_level3_closure/closure_checks.csv
+experiments/test_027_level3_closure/summary.md
+```
+
+## Conclusion
+
+Nivel 3 queda tecnicamente completado. La documentacion final debe orientar a evaluadores hacia dashboard, reel local, comparacion multi-clip, resumen de cierre y limitaciones.
+
+## Siguiente accion
+
+Mantener README y `LEVEL3_CLOSURE_SUMMARY.md` como punto de entrada para evaluacion; cualquier mejora posterior debe tratarse como iteracion nueva.
+
+---
+
+## Test ID
+
+`test_026_level3_multiclip`
+
+## Fecha
+
+`2026-06-06`
+
+## Equipo utilizado
+
+Escritorio Linux.
+
+## Codigo usado
+
+Commit base: `6dd0da0`.
+
+## Configuracion
+
+- Script: `scripts/run_level3_multiclip.py`.
+- Clips: `video_595` como principal y `video_667` como secundario.
+- Fuente Nivel 2: `experiments/test_017_level2_closure/`.
+
+## Resultados
+
+- `video_595`: `82` highlights, score top `82.868076`, `57` interacciones, `1` arista, homografia `0.824417`.
+- `video_667`: `60` highlights, score top `74.044923`, `428` interacciones, `8` aristas, homografia `0.738172`.
+- Ambos clips quedan con revision visual ligera `provisional` por equipos neutrales y homografia aproximada.
+- Comparacion generada en `experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv`.
+
+## Conclusion
+
+Nivel 3 no queda limitado a un solo clip: las reglas corren sobre dos clips con degradaciones documentadas. `video_667` presenta mas interacciones y homografia mas provisional; `video_595` conserva highlights top mas altos.
+
+---
+
+## Test ID
+
 `test_016_level2_demo`
 
 ## Fecha

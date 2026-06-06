@@ -33,12 +33,23 @@ Las visualizaciones de FutBotMX deben mostrar de forma clara:
 
 ## Nivel 3 — Avanzado
 
-- Voronoi.
-- Grafos de interacción.
-- Dashboard.
-- Highlights.
-- Narrativa deportiva.
-- Reel final.
+- Voronoi en mini-mapa y, cuando existe referencia ligera, proyeccion sobre overlay Nivel 2.
+- Grafos de interacción con aristas ponderadas.
+- Mini-mapas de highlights con trails de robots y balon.
+- Storyboard de highlights.
+- Dashboard HTML estatico local.
+- Narrativa deportiva conservadora.
+- Reel final local documentado con MP4 fuera de Git.
+
+Artefactos principales:
+
+```text
+experiments/test_023_level3_visualizations/highlight_storyboard.png
+experiments/test_023_level3_visualizations/interaction_graph.png
+experiments/test_024_level3_dashboard/dashboard.html
+experiments/test_025_level3_reel/reel_demo.html
+experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv
+```
 
 ---
 
@@ -63,6 +74,8 @@ Ejemplos:
 experiments/test_003_tracking/screenshots/frame_001.png
 experiments/test_004_events/event_timeline.png
 experiments/test_005_heatmap/heatmap_ball.png
+experiments/test_023_level3_visualizations/highlight_storyboard.png
+experiments/test_025_level3_reel/reel_contact_sheet.png
 ```
 
 ---
@@ -143,6 +156,9 @@ El README debe incluir:
 - Mapa de calor.
 - Fragmento de JSON de eventos.
 - Tabla de métricas.
+- Capturas Nivel 3: storyboard, grafo de interacción o mini-mapa.
+- Link al dashboard HTML local.
+- Link al resumen final Nivel 3.
 - Explicación del flujo de dos equipos.
 - Estado de Nivel 1, Nivel 2 y Nivel 3.
 
@@ -161,6 +177,10 @@ El README debe incluir:
 | Recuperación | Cambio de equipo |
 | Zona de actividad | Heatmap |
 | Jugada destacada | Clip local o timestamp |
+| Highlight avanzado | Storyboard, overlay de validacion, mini-mapa |
+| Cadena de pases candidata | Narrativa y grafo de interacción |
+| Presion/disputa | Grafo de interacción y mini-mapa |
+| Control espacial | Voronoi en mini-mapa |
 
 ---
 
@@ -194,3 +214,17 @@ Toda visualización usada para afirmar avance debe estar respaldada por:
 - Summary markdown.
 - Equipo usado.
 - Fecha.
+- CSV/JSON fuente cuando aplique.
+- Manifest de versionado cuando aplique.
+
+## 11. Estado final Nivel 3
+
+Nivel 3 queda visualmente cerrado con:
+
+- `visualization_manifest.csv` en `experiments/test_023_level3_visualizations/`.
+- Dashboard ligero en `experiments/test_024_level3_dashboard/`.
+- Reel/demo local en `experiments/test_025_level3_reel/`.
+- Validacion multi-clip en `experiments/test_026_level3_multiclip/`.
+- Gate de cierre en `experiments/test_027_level3_closure/`.
+
+Las visualizaciones Nivel 3 son evidencia de una demo avanzada aproximada. No deben interpretarse como medicion oficial de cancha ni arbitraje automatico.

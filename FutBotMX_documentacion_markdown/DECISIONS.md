@@ -193,3 +193,23 @@ El alcance inicial queda limitado a planeacion ejecutable y validacion de readin
 
 **Consecuencia:**
 Nivel 3 avanza a implementacion solo si `scripts/check_level3_readiness.py` termina con `0 fail`. El criterio de salida de Nivel 3 sera una demo avanzada reproducible con evidencia ligera, no arbitraje oficial ni sistema en tiempo real.
+
+---
+
+## DEC-013 - Cierre tecnico Nivel 3 y documentacion final
+
+**Estado:** Aprobada
+
+**Contexto:**
+Nivel 3 ya cuenta con contrato de datos, rectificacion espacial, metricas tacticas, eventos avanzados, visualizaciones, dashboard, reel local, validacion multi-clip y gate de cierre. El cierre tecnico en `experiments/test_027_level3_closure/` reporta `11 pass` y `0 fail`.
+
+**Decision:**
+Nivel 3 se declara tecnicamente completado como demo avanzada reproducible. La documentacion final debe apuntar a README, `LEVEL3_CLOSURE_SUMMARY.md`, dashboard, reel local, comparacion multi-clip y artefactos ligeros de evidencia.
+
+**Alcance:**
+- Nivel 3 es analisis tactico aproximado, no arbitraje oficial.
+- La homografia, control espacial, highlights y cadenas de pases siguen siendo candidatos por reglas.
+- Los videos completos, MP4 finales, checkpoints y renders pesados permanecen fuera de Git.
+
+**Consecuencia:**
+La entrega final puede presentarse desde GitHub con evidencia ligera. Cualquier mejora posterior debe tratarse como iteracion nueva y no como requisito para el cierre tecnico actual.

@@ -56,11 +56,11 @@ Desarrollar un pipeline funcional de visión por computadora para analizar parti
 
 El proyecto conserva los **3 niveles definidos originalmente**. No se elimina ningún nivel.
 
-La implementación será progresiva:
+La implementación fue progresiva:
 
 - **Nivel 1:** MVP obligatorio y primera meta funcional.
-- **Nivel 2:** extensión intermedia si Nivel 1 queda estable.
-- **Nivel 3:** extensión avanzada solo si el pipeline base funciona correctamente y el tiempo lo permite.
+- **Nivel 2:** extensión intermedia cerrada tecnicamente.
+- **Nivel 3:** extensión avanzada completada como demo reproducible con evidencia ligera.
 
 ---
 
@@ -131,7 +131,9 @@ Mejorar la calidad del análisis deportivo y de las visualizaciones.
 
 ## 6.3 Nivel 3 — Extensión avanzada
 
-El Nivel 3 representa el máximo alcance deseable. Solo debe abordarse si Nivel 1 y Nivel 2 están estables.
+El Nivel 3 representa el máximo alcance deseable y queda completado tecnicamente en `experiments/test_027_level3_closure/` con `11 pass` y `0 fail`.
+
+Nivel 3 no convierte FutBotMX en arbitraje oficial, SaaS, streaming en tiempo real ni medicion reglamentaria exacta. Es una demo avanzada reproducible que combina homografia aproximada, metricas tacticas, eventos candidatos, visualizaciones, dashboard, reel local y validacion multi-clip.
 
 ### Objetivo
 
@@ -141,21 +143,23 @@ Generar una demo más destacada con visualizaciones avanzadas y narrativa deport
 
 | Área | Funcionalidad |
 |---|---|
-| Visualización avanzada | Diagramas de Voronoi, grafos de interacción, mini-mapa |
-| Narrativa | Anotaciones deportivas más expresivas |
-| Highlights | Detección y exportación de jugadas destacadas |
-| Dashboard | Resumen visual del partido |
-| Reel/demo | Material final para presentación |
+| Rectificacion | Coordenadas normalizadas con homografia aproximada o fallback documentado |
+| Visualización avanzada | Diagramas de Voronoi, grafos de interacción, mini-mapa y storyboard |
+| Narrativa | Anotaciones deportivas generadas por reglas conservadoras |
+| Highlights | Detección, ranking y validacion ligera de jugadas destacadas |
+| Dashboard | Resumen visual HTML estatico local |
+| Reel/demo | Material final para presentación, con MP4 local fuera de Git |
 | Análisis táctico | Control espacial aproximado e interacción entre robots |
+| Multi-clip | Comparacion entre `video_595` y `video_667` con degradaciones documentadas |
 
 ### Condiciones para avanzar a Nivel 3
 
-- Nivel 2 documentado con resultados.
-- Eventos intermedios funcionando con evidencia.
-- Visualizaciones mínimas ya generadas.
-- Pipeline reproducible desde GitHub.
-- No existen errores críticos pendientes en segmentación o tracking.
-- Hay tiempo suficiente para implementar sin comprometer entrega final.
+- [x] Nivel 2 documentado con resultados.
+- [x] Eventos intermedios funcionando con evidencia.
+- [x] Visualizaciones mínimas ya generadas.
+- [x] Pipeline reproducible desde GitHub.
+- [x] No existen errores críticos pendientes en segmentación o tracking.
+- [x] Hay tiempo suficiente para implementar sin comprometer entrega final.
 
 ---
 
@@ -267,12 +271,13 @@ No se deben subir directamente archivos pesados como checkpoints de modelos, vid
 
 ## Nivel 3 avanzado
 
-- Voronoi.
-- Grafos de interacción.
-- Highlights.
-- Narrativa.
-- Dashboard.
-- Reel final.
+- Voronoi y mini-mapa: `experiments/test_023_level3_visualizations/`.
+- Grafos de interacción: `interaction_graph.png` y `interaction_graph.json`.
+- Highlights y narrativa: `experiments/test_022_level3_advanced_events/`.
+- Dashboard: `experiments/test_024_level3_dashboard/dashboard.html`.
+- Reel final local: `experiments/test_025_level3_reel/reel_demo.html` y manifest de MP4 no versionado.
+- Validacion multi-clip: `experiments/test_026_level3_multiclip/`.
+- Cierre tecnico: `experiments/test_027_level3_closure/`.
 
 ---
 
