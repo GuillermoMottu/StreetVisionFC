@@ -114,48 +114,48 @@ Convertir posiciones de camara a coordenadas aproximadas de cancha para habilita
 
 ### Tarea 2.1 - Definir modelo de cancha
 
-- [ ] Crear representacion normalizada de cancha con ejes `x_norm`, `y_norm`.
-- [ ] Definir dimensiones relativas de campo, porterias y zonas tacticas.
-- [ ] Definir sistema de coordenadas consistente con `zone_axis` de Nivel 2.
-- [ ] Documentar convencion de origen, direccion y unidades.
+- [x] Crear representacion normalizada de cancha con ejes `x_norm`, `y_norm`.
+- [x] Definir dimensiones relativas de campo, porterias y zonas tacticas.
+- [x] Definir sistema de coordenadas consistente con `zone_axis` de Nivel 2.
+- [x] Documentar convencion de origen, direccion y unidades.
 
 ### Tarea 2.2 - Calibrar homografia aproximada
 
-- [ ] Crear `field_calibration.json` con puntos de referencia por clip.
-- [ ] Permitir calibracion manual por cuatro esquinas si la deteccion automatica no es confiable.
-- [ ] Implementar transformacion de puntos de imagen a cancha.
-- [ ] Implementar fallback sin homografia para clips donde no se vea suficiente campo.
-- [ ] Registrar confianza de calibracion por clip.
+- [x] Crear `field_calibration.json` con puntos de referencia por clip.
+- [x] Permitir calibracion manual por cuatro esquinas si la deteccion automatica no es confiable.
+- [x] Implementar transformacion de puntos de imagen a cancha.
+- [x] Implementar fallback sin homografia para clips donde no se vea suficiente campo.
+- [x] Registrar confianza de calibracion por clip.
 
 ### Tarea 2.3 - Generar tracks rectificados
 
-- [ ] Leer `tracks_level2.csv`.
-- [ ] Calcular centroides rectificados para robots y balon.
-- [ ] Exportar `level3_tracks.csv`.
-- [ ] Conservar columnas originales para trazabilidad.
-- [ ] Marcar filas con transformacion no confiable.
+- [x] Leer `tracks_level2.csv`.
+- [x] Calcular centroides rectificados para robots y balon.
+- [x] Exportar `level3_tracks.csv`.
+- [x] Conservar columnas originales para trazabilidad.
+- [x] Marcar filas con transformacion no confiable.
 
 ### Tarea 2.4 - Validar visualmente la rectificacion
 
-- [ ] Crear mini-mapa base `minimap_base.png`.
-- [ ] Dibujar trayectorias rectificadas sobre mini-mapa.
-- [ ] Comparar contra overlay original en frames seleccionados.
-- [ ] Crear capturas ligeras de validacion.
-- [ ] Documentar errores visuales y supuestos.
+- [x] Crear mini-mapa base `minimap_base.png`.
+- [x] Dibujar trayectorias rectificadas sobre mini-mapa.
+- [x] Comparar contra overlay original en frames seleccionados.
+- [x] Crear capturas ligeras de validacion.
+- [x] Documentar errores visuales y supuestos.
 
 ### Artefactos esperados
 
-- [ ] `experiments/test_020_level3_spatial_model/config.yaml`.
-- [ ] `experiments/test_020_level3_spatial_model/field_calibration.json`.
-- [ ] `experiments/test_020_level3_spatial_model/level3_tracks.csv`.
-- [ ] `experiments/test_020_level3_spatial_model/minimap_tracks.png`.
-- [ ] `experiments/test_020_level3_spatial_model/summary.md`.
+- [x] `experiments/test_020_level3_spatial_model/config.yaml`.
+- [x] `experiments/test_020_level3_spatial_model/field_calibration.json`.
+- [x] `experiments/test_020_level3_spatial_model/level3_tracks.csv`.
+- [x] `experiments/test_020_level3_spatial_model/minimap_tracks.png`.
+- [x] `experiments/test_020_level3_spatial_model/summary.md`.
 
 ### Criterio de aceptacion
 
-- [ ] Al menos un clip principal tiene tracks rectificados utilizables.
-- [ ] La transformacion conserva IDs, frames y clases.
-- [ ] El mini-mapa no contradice visualmente el movimiento observado.
+- [x] Al menos un clip principal tiene tracks rectificados utilizables.
+- [x] La transformacion conserva IDs, frames y clases.
+- [x] El mini-mapa no contradice visualmente el movimiento observado.
 
 ## Actividad 3 - Metricas Tacticas Avanzadas
 
