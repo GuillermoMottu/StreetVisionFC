@@ -220,49 +220,50 @@ Detectar eventos de mayor valor narrativo: cadenas de pases, highlights avanzado
 
 ### Tarea 4.1 - Cadenas de pases
 
-- [ ] Reutilizar segmentos de posesion de Nivel 2.
-- [ ] Detectar cambios de posesion entre robots del mismo equipo.
-- [ ] Agrupar pases consecutivos en cadenas.
-- [ ] Registrar inicio, fin, robots involucrados, frames y confianza.
-- [ ] Marcar cadenas dudosas cuando falte equipo o el balon tenga tracking inestable.
+- [x] Reutilizar segmentos de posesion de Nivel 2.
+- [x] Detectar cambios de posesion entre robots del mismo equipo.
+- [x] Agrupar pases consecutivos en cadenas.
+- [x] Registrar inicio, fin, robots involucrados, frames y confianza.
+- [x] Marcar cadenas dudosas cuando falte equipo o el balon tenga tracking inestable.
 
 ### Tarea 4.2 - Highlights avanzados
 
-- [ ] Crear score de highlight por velocidad del balon.
-- [ ] Sumar peso por cambio de posesion.
-- [ ] Sumar peso por cercania a porteria o zona critica.
-- [ ] Sumar peso por presion/interaccion entre robots.
-- [ ] Penalizar eventos con baja confianza de tracking.
-- [ ] Exportar ranking en `level3_highlights.csv`.
+- [x] Crear score de highlight por velocidad del balon.
+- [x] Sumar peso por cambio de posesion.
+- [x] Sumar peso por cercania a porteria o zona critica.
+- [x] Sumar peso por presion/interaccion entre robots.
+- [x] Penalizar eventos con baja confianza de tracking.
+- [x] Exportar ranking en `level3_highlights.csv`.
 
 ### Tarea 4.3 - Narrativa deportiva
 
-- [ ] Crear reglas de texto para jugadas destacadas.
-- [ ] Generar frases por evento con timestamp/frame.
-- [ ] Indicar motivo del highlight: pase, recuperacion, presion, tiro aproximado, actividad en zona.
-- [ ] Evitar afirmar goles o reglas oficiales si no hay evidencia suficiente.
-- [ ] Exportar `level3_narrative.md`.
+- [x] Crear reglas de texto para jugadas destacadas.
+- [x] Generar frases por evento con timestamp/frame.
+- [x] Indicar motivo del highlight: pase, recuperacion, presion, tiro aproximado, actividad en zona.
+- [x] Evitar afirmar goles o reglas oficiales si no hay evidencia suficiente.
+- [x] Exportar `level3_narrative.md`.
 
 ### Tarea 4.4 - Overlays de validacion de eventos
 
-- [ ] Crear PNG por highlight top.
-- [ ] Incluir ID de robots, balon, trayectoria corta y etiqueta del evento.
-- [ ] Incluir confianza del evento.
-- [ ] Crear `overlay_validation.csv`.
+- [x] Crear PNG por highlight top.
+- [x] Incluir ID de robots, balon, trayectoria corta y etiqueta del evento.
+- [x] Incluir confianza del evento.
+- [x] Crear `overlay_validation.csv`.
 
 ### Artefactos esperados
 
-- [ ] `experiments/test_022_level3_advanced_events/level3_events.json`.
-- [ ] `experiments/test_022_level3_advanced_events/level3_highlights.csv`.
-- [ ] `experiments/test_022_level3_advanced_events/level3_narrative.md`.
-- [ ] `experiments/test_022_level3_advanced_events/overlay_validation.csv`.
-- [ ] `experiments/test_022_level3_advanced_events/summary.md`.
+- [x] `experiments/test_022_level3_advanced_events/level3_events.json`.
+- [x] `experiments/test_022_level3_advanced_events/level3_highlights.csv`.
+- [x] `experiments/test_022_level3_advanced_events/level3_narrative.md`.
+- [x] `experiments/test_022_level3_advanced_events/overlay_validation.csv`.
+- [x] `experiments/test_022_level3_advanced_events/summary.md`.
+- [x] `experiments/test_022_level3_advanced_events/overlay_highlight_*.png`.
 
 ### Criterio de aceptacion
 
-- [ ] Hay al menos tres highlights rankeados en el clip principal o se documenta por que no existen.
-- [ ] Cada evento tiene confianza y explicacion.
-- [ ] La narrativa no sobrepromete precision no demostrada.
+- [x] Hay al menos tres highlights rankeados en el clip principal o se documenta por que no existen.
+- [x] Cada evento tiene confianza y explicacion.
+- [x] La narrativa no sobrepromete precision no demostrada.
 
 ## Actividad 5 - Visualizaciones Avanzadas
 
