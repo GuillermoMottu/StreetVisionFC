@@ -1,0 +1,385 @@
+{
+  "rule_version": "level3_tactical_metrics_v0.1",
+  "source": {
+    "tracks": "experiments/test_026_level3_multiclip/video_667/spatial_model/level3_tracks.csv",
+    "coordinate_system": "normalized_visible_field",
+    "grid": {
+      "x": 24,
+      "y": 16,
+      "cells": 384
+    }
+  },
+  "summary": {
+    "clips_analyzed": 1,
+    "frames_analyzed": 61,
+    "metrics_exported": 17,
+    "control_tracks": 4,
+    "interaction_samples": 428,
+    "interaction_edges": 8
+  },
+  "spatial_control": {
+    "aggregate_by_track": [
+      {
+        "clip_id": "video_667",
+        "track_id": "small_robot_bt_01",
+        "class_name": "small_robot",
+        "team": "neutral",
+        "frames": 61,
+        "mean_control_percent": 15.782958,
+        "max_control_percent": 16.666667,
+        "dominant_zone": "middle_third",
+        "control_mode": "track_fallback",
+        "confidence": 0.896965
+      },
+      {
+        "clip_id": "video_667",
+        "track_id": "small_robot_bt_02",
+        "class_name": "small_robot",
+        "team": "neutral",
+        "frames": 61,
+        "mean_control_percent": 47.032958,
+        "max_control_percent": 48.697917,
+        "dominant_zone": "attacking_third",
+        "control_mode": "track_fallback",
+        "confidence": 0.912462
+      },
+      {
+        "clip_id": "video_667",
+        "track_id": "small_robot_bt_03",
+        "class_name": "small_robot",
+        "team": "neutral",
+        "frames": 61,
+        "mean_control_percent": 36.782787,
+        "max_control_percent": 39.322917,
+        "dominant_zone": "defensive_third",
+        "control_mode": "track_fallback",
+        "confidence": 0.932505
+      },
+      {
+        "clip_id": "video_667",
+        "track_id": "small_robot_bt_04",
+        "class_name": "small_robot",
+        "team": "neutral",
+        "frames": 1,
+        "mean_control_percent": 24.479167,
+        "max_control_percent": 24.479167,
+        "dominant_zone": "middle_third",
+        "control_mode": "track_fallback",
+        "confidence": 0.59375
+      }
+    ],
+    "frame_summary_sample": [
+      {
+        "clip_id": "video_667",
+        "frame": 120,
+        "time_sec": 2.01,
+        "robot_count": 4,
+        "control_mode": "track_fallback",
+        "entropy": 0.926674,
+        "confidence": 0.616345
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 121,
+        "time_sec": 2.027,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.914599,
+        "confidence": 0.684347
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 122,
+        "time_sec": 2.043,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.914599,
+        "confidence": 0.684347
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 123,
+        "time_sec": 2.06,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.914599,
+        "confidence": 0.68723
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 124,
+        "time_sec": 2.077,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.914599,
+        "confidence": 0.685308
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 125,
+        "time_sec": 2.094,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.914599,
+        "confidence": 0.682425
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 126,
+        "time_sec": 2.11,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.914599,
+        "confidence": 0.682425
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 127,
+        "time_sec": 2.127,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.914599,
+        "confidence": 0.675696
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 128,
+        "time_sec": 2.144,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.914599,
+        "confidence": 0.685308
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 129,
+        "time_sec": 2.161,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.917299,
+        "confidence": 0.688192
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 130,
+        "time_sec": 2.177,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.916921,
+        "confidence": 0.687231
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 131,
+        "time_sec": 2.194,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.916921,
+        "confidence": 0.683386
+      }
+    ],
+    "voronoi_representative_frames": [
+      {
+        "clip_id": "video_667",
+        "frame": 120,
+        "time_sec": 2.01,
+        "robot_count": 4,
+        "control_mode": "track_fallback",
+        "entropy": 0.926674,
+        "interaction_signals": 6,
+        "selection_reason": "timeline_or_interaction_representative",
+        "confidence": 0.616345
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 150,
+        "time_sec": 2.512,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.927475,
+        "interaction_signals": 5,
+        "selection_reason": "timeline_or_interaction_representative",
+        "confidence": 0.666085
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 180,
+        "time_sec": 3.015,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.919591,
+        "interaction_signals": 5,
+        "selection_reason": "timeline_or_interaction_representative",
+        "confidence": 0.67858
+      },
+      {
+        "clip_id": "video_667",
+        "frame": 145,
+        "time_sec": 2.429,
+        "robot_count": 3,
+        "control_mode": "track_fallback",
+        "entropy": 0.931083,
+        "interaction_signals": 6,
+        "selection_reason": "timeline_or_interaction_representative",
+        "confidence": 0.676658
+      }
+    ]
+  },
+  "interactions": {
+    "counts_by_type": {
+      "dispute_cluster": 61,
+      "possession_candidate": 88,
+      "pressure_candidate": 122,
+      "robot_ball_distance": 96,
+      "robot_proximity": 61
+    },
+    "top_edges": [
+      {
+        "clip_id": "video_667",
+        "source": "small_robot_bt_01",
+        "target": "small_robot_bt_02",
+        "edge_type": "robot_proximity",
+        "frames": 61,
+        "duration_sec": 1.021046,
+        "frame_start": 120,
+        "frame_end": 180,
+        "mean_distance_norm": 0.185519,
+        "weight": 34.362905,
+        "confidence": 0.667834,
+        "reliability": "provisional",
+        "evidence_frames": "120|121|122|123|124|125|126|127|128|129|130|131",
+        "notes": "aggregated from normalized proximity samples"
+      },
+      {
+        "clip_id": "video_667",
+        "source": "small_robot_bt_01",
+        "target": "small_robot_bt_02",
+        "edge_type": "pressure_candidate",
+        "frames": 61,
+        "duration_sec": 1.021046,
+        "frame_start": 120,
+        "frame_end": 180,
+        "mean_distance_norm": 0.185519,
+        "weight": 33.756465,
+        "confidence": 0.656048,
+        "reliability": "provisional",
+        "evidence_frames": "120|121|122|123|124|125|126|127|128|129|130|131",
+        "notes": "aggregated from normalized proximity samples"
+      },
+      {
+        "clip_id": "video_667",
+        "source": "small_robot_bt_02",
+        "target": "ball_bt_01",
+        "edge_type": "dispute_cluster",
+        "frames": 61,
+        "duration_sec": 1.021046,
+        "frame_start": 120,
+        "frame_end": 180,
+        "mean_distance_norm": 0.219695,
+        "weight": 33.247968,
+        "confidence": 0.664793,
+        "reliability": "provisional",
+        "evidence_frames": "120|121|122|123|124|125|126|127|128|129|130|131",
+        "notes": "aggregated from normalized proximity samples"
+      },
+      {
+        "clip_id": "video_667",
+        "source": "small_robot_bt_02",
+        "target": "ball_bt_01",
+        "edge_type": "possession_candidate",
+        "frames": 61,
+        "duration_sec": 1.021046,
+        "frame_start": 120,
+        "frame_end": 180,
+        "mean_distance_norm": 0.219695,
+        "weight": 32.658906,
+        "confidence": 0.653015,
+        "reliability": "provisional",
+        "evidence_frames": "120|121|122|123|124|125|126|127|128|129|130|131",
+        "notes": "aggregated from normalized proximity samples"
+      },
+      {
+        "clip_id": "video_667",
+        "source": "small_robot_bt_02",
+        "target": "small_robot_bt_03",
+        "edge_type": "pressure_candidate",
+        "frames": 61,
+        "duration_sec": 1.021046,
+        "frame_start": 120,
+        "frame_end": 180,
+        "mean_distance_norm": 0.276583,
+        "weight": 31.766337,
+        "confidence": 0.664793,
+        "reliability": "provisional",
+        "evidence_frames": "120|121|122|123|124|125|126|127|128|129|130|131",
+        "notes": "aggregated from normalized proximity samples"
+      },
+      {
+        "clip_id": "video_667",
+        "source": "small_robot_bt_03",
+        "target": "ball_bt_01",
+        "edge_type": "dispute_cluster",
+        "frames": 61,
+        "duration_sec": 1.021046,
+        "frame_start": 120,
+        "frame_end": 180,
+        "mean_distance_norm": 0.276583,
+        "weight": 31.766337,
+        "confidence": 0.664793,
+        "reliability": "provisional",
+        "evidence_frames": "120|121|122|123|124|125|126|127|128|129|130|131",
+        "notes": "aggregated from normalized proximity samples"
+      },
+      {
+        "clip_id": "video_667",
+        "source": "small_robot_bt_03",
+        "target": "ball_bt_01",
+        "edge_type": "ball_proximity",
+        "frames": 34,
+        "duration_sec": 0.569108,
+        "frame_start": 147,
+        "frame_end": 180,
+        "mean_distance_norm": 0.28442,
+        "weight": 17.481583,
+        "confidence": 0.660403,
+        "reliability": "provisional",
+        "evidence_frames": "147|148|149|150|151|152|153|154|155|156|157|158",
+        "notes": "aggregated from normalized proximity samples"
+      },
+      {
+        "clip_id": "video_667",
+        "source": "small_robot_bt_03",
+        "target": "ball_bt_01",
+        "edge_type": "possession_candidate",
+        "frames": 27,
+        "duration_sec": 0.451938,
+        "frame_start": 120,
+        "frame_end": 146,
+        "mean_distance_norm": 0.266714,
+        "weight": 14.076941,
+        "confidence": 0.660424,
+        "reliability": "provisional",
+        "evidence_frames": "120|121|122|123|124|125|126|127|128|129|130|131",
+        "notes": "aggregated from normalized proximity samples"
+      }
+    ]
+  },
+  "pass_chains": {
+    "status": "not_computed_in_activity_3",
+    "next_stage": "Actividad 4 reutilizara posesion/interacciones."
+  },
+  "highlights": {
+    "status": "not_ranked_in_activity_3",
+    "next_stage": "Actividad 4 combinara velocidad, presion y zona."
+  },
+  "assumptions": [
+    "Spatial control uses nearest-robot assignment over a normalized grid.",
+    "Voronoi is approximated by the same clipped grid cells, avoiding heavy geometry dependencies.",
+    "Teams are neutral/unknown in current tracks, so control falls back to individual robot ownership."
+  ],
+  "limitations": [
+    "Homography remains approximate and inherited from Activity 2.",
+    "Pressure and possession are proximity candidates, not physical contact or official possession.",
+    "Graph edge weights are comparative within this demo and should not be read as official tactical metrics."
+  ]
+}

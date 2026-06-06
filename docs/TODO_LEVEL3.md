@@ -407,43 +407,43 @@ Demostrar que Nivel 3 no funciona solo en un clip aislado y documentar donde fal
 
 ### Tarea 8.1 - Ejecutar pipeline Nivel 3 en clip principal
 
-- [ ] Generar tracks rectificados.
-- [ ] Generar metricas tacticas.
-- [ ] Generar eventos avanzados.
-- [ ] Generar visualizaciones.
-- [ ] Generar dashboard/demo.
+- [x] Generar tracks rectificados.
+- [x] Generar metricas tacticas.
+- [x] Generar eventos avanzados.
+- [x] Generar visualizaciones.
+- [x] Generar dashboard/demo.
 
 ### Tarea 8.2 - Ejecutar pipeline Nivel 3 en clip secundario
 
-- [ ] Repetir calculos sin reescribir reglas para un solo clip.
-- [ ] Comparar diferencias de camara, iluminacion, oclusion y estabilidad de balon.
-- [ ] Registrar fallos o degradaciones.
+- [x] Repetir calculos sin reescribir reglas para un solo clip.
+- [x] Comparar diferencias de camara, iluminacion, oclusion y estabilidad de balon.
+- [x] Registrar fallos o degradaciones.
 
 ### Tarea 8.3 - Comparar resultados
 
-- [ ] Crear `level3_multiclip_comparison.csv`.
-- [ ] Comparar numero de highlights.
-- [ ] Comparar control espacial agregado.
-- [ ] Comparar numero de interacciones.
-- [ ] Comparar confiabilidad media.
+- [x] Crear `level3_multiclip_comparison.csv`.
+- [x] Comparar numero de highlights.
+- [x] Comparar control espacial agregado.
+- [x] Comparar numero de interacciones.
+- [x] Comparar confiabilidad media.
 
 ### Tarea 8.4 - Revision humana
 
-- [ ] Revisar overlays de highlights top.
-- [ ] Marcar `confiable`, `provisional` o `descartado`.
-- [ ] Documentar ejemplos de falsos positivos.
-- [ ] Documentar casos donde la homografia no sea suficiente.
+- [x] Revisar overlays de highlights top.
+- [x] Marcar `confiable`, `provisional` o `descartado`.
+- [x] Documentar ejemplos de falsos positivos.
+- [x] Documentar casos donde la homografia no sea suficiente.
 
 ### Artefactos esperados
 
-- [ ] `experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv`.
-- [ ] `experiments/test_026_level3_multiclip/summary.md`.
-- [ ] Subcarpetas por clip con `config.yaml`, `summary.md` y evidencia ligera.
+- [x] `experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv`.
+- [x] `experiments/test_026_level3_multiclip/summary.md`.
+- [x] Subcarpetas por clip con `config.yaml`, `summary.md` y evidencia ligera.
 
 ### Criterio de aceptacion
 
-- [ ] Al menos dos clips tienen salida Nivel 3 documentada.
-- [ ] Las limitaciones se reportan explicitamente.
+- [x] Al menos dos clips tienen salida Nivel 3 documentada.
+- [x] Las limitaciones se reportan explicitamente.
 
 ## Actividad 9 - Pruebas, Calidad Y Gate De Cierre
 

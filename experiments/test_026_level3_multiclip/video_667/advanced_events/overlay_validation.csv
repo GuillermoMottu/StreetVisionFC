@@ -1,0 +1,7 @@
+clip_id,highlight_id,rank,frame_start,frame_end,asset_path,confidence,status,notes
+video_667,lvl3_evt_000057,1,175,176,overlay_highlight_01_video_667_frame_175.png,0.850961,generated,"Minimap validation overlay with IDs, short ball/robot trace and event label."
+video_667,lvl3_evt_000055,2,173,174,overlay_highlight_02_video_667_frame_173.png,0.853891,generated,"Minimap validation overlay with IDs, short ball/robot trace and event label."
+video_667,lvl3_evt_000058,3,176,177,overlay_highlight_03_video_667_frame_176.png,0.854867,generated,"Minimap validation overlay with IDs, short ball/robot trace and event label."
+video_667,lvl3_evt_000045,4,163,164,overlay_highlight_04_video_667_frame_163.png,0.85975,generated,"Minimap validation overlay with IDs, short ball/robot trace and event label."
+video_667,lvl3_evt_000051,5,169,170,overlay_highlight_05_video_667_frame_169.png,0.858774,generated,"Minimap validation overlay with IDs, short ball/robot trace and event label."
+video_667,lvl3_evt_000049,6,167,168,overlay_highlight_06_video_667_frame_167.png,0.863656,generated,"Minimap validation overlay with IDs, short ball/robot trace and event label."

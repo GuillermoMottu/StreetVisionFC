@@ -1,0 +1,9 @@
+clip_id,source,target,edge_type,frames,duration_sec,frame_start,frame_end,mean_distance_norm,weight,confidence,reliability,evidence_frames,notes
+video_667,small_robot_bt_01,small_robot_bt_02,pressure_candidate,61,1.021046,120,180,0.185519,33.756465,0.656048,provisional,120|121|122|123|124|125|126|127|128|129|130|131,aggregated from normalized proximity samples
+video_667,small_robot_bt_01,small_robot_bt_02,robot_proximity,61,1.021046,120,180,0.185519,34.362905,0.667834,provisional,120|121|122|123|124|125|126|127|128|129|130|131,aggregated from normalized proximity samples
+video_667,small_robot_bt_02,ball_bt_01,dispute_cluster,61,1.021046,120,180,0.219695,33.247968,0.664793,provisional,120|121|122|123|124|125|126|127|128|129|130|131,aggregated from normalized proximity samples
+video_667,small_robot_bt_02,ball_bt_01,possession_candidate,61,1.021046,120,180,0.219695,32.658906,0.653015,provisional,120|121|122|123|124|125|126|127|128|129|130|131,aggregated from normalized proximity samples
+video_667,small_robot_bt_02,small_robot_bt_03,pressure_candidate,61,1.021046,120,180,0.276583,31.766337,0.664793,provisional,120|121|122|123|124|125|126|127|128|129|130|131,aggregated from normalized proximity samples
+video_667,small_robot_bt_03,ball_bt_01,ball_proximity,34,0.569108,147,180,0.28442,17.481583,0.660403,provisional,147|148|149|150|151|152|153|154|155|156|157|158,aggregated from normalized proximity samples
+video_667,small_robot_bt_03,ball_bt_01,dispute_cluster,61,1.021046,120,180,0.276583,31.766337,0.664793,provisional,120|121|122|123|124|125|126|127|128|129|130|131,aggregated from normalized proximity samples
+video_667,small_robot_bt_03,ball_bt_01,possession_candidate,27,0.451938,120,146,0.266714,14.076941,0.660424,provisional,120|121|122|123|124|125|126|127|128|129|130|131,aggregated from normalized proximity samples

@@ -1,0 +1,2 @@
+clip_id,source,target,edge_type,frames,duration_sec,frame_start,frame_end,mean_distance_norm,weight,confidence,reliability,evidence_frames,notes
+video_595,small_robot_bt_01,ball_bt_01,possession_candidate,57,0.953115,120,180,0.199227,33.005998,0.694415,provisional,120|121|122|123|124|125|126|127|128|129|130|131,aggregated from normalized proximity samples
