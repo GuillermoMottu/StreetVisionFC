@@ -165,49 +165,52 @@ Agregar analisis tactico aproximado basado en espacio, proximidad e interaccione
 
 ### Tarea 3.1 - Calcular control espacial aproximado
 
-- [ ] Implementar control por proximidad usando grilla de cancha.
-- [ ] Asignar cada celda al robot mas cercano.
-- [ ] Separar control por equipo cuando exista asignacion de equipo.
-- [ ] Crear fallback por robot individual cuando no exista equipo confiable.
-- [ ] Exportar porcentaje de control por frame y agregado por clip.
+- [x] Implementar control por proximidad usando grilla de cancha.
+- [x] Asignar cada celda al robot mas cercano.
+- [x] Separar control por equipo cuando exista asignacion de equipo.
+- [x] Crear fallback por robot individual cuando no exista equipo confiable.
+- [x] Exportar porcentaje de control por frame y agregado por clip.
 
 ### Tarea 3.2 - Calcular Voronoi tactico
 
-- [ ] Generar regiones tipo Voronoi sobre coordenadas rectificadas.
-- [ ] Recortar regiones a limites de cancha.
-- [ ] Ignorar robots con tracking no confiable.
-- [ ] Guardar frames representativos para eventos importantes.
-- [ ] Comparar resultado contra grilla de control espacial.
+- [x] Generar regiones tipo Voronoi sobre coordenadas rectificadas.
+- [x] Recortar regiones a limites de cancha.
+- [x] Ignorar robots con tracking no confiable.
+- [x] Guardar frames representativos para eventos importantes.
+- [x] Comparar resultado contra grilla de control espacial.
 
 ### Tarea 3.3 - Medir presion e interaccion
 
-- [ ] Calcular distancia robot-balon rectificada.
-- [ ] Calcular distancia entre robots cercanos.
-- [ ] Detectar presion sobre poseedor del balon.
-- [ ] Detectar clusters de robots en disputa.
-- [ ] Exportar `interaction_metrics.csv`.
+- [x] Calcular distancia robot-balon rectificada.
+- [x] Calcular distancia entre robots cercanos.
+- [x] Detectar presion sobre poseedor del balon.
+- [x] Detectar clusters de robots en disputa.
+- [x] Exportar `interaction_metrics.csv`.
 
 ### Tarea 3.4 - Construir grafo de interaccion
 
-- [ ] Crear nodos por robot y balon.
-- [ ] Crear aristas por proximidad, disputa, posesion o pase.
-- [ ] Ponderar aristas por duracion/confianza.
-- [ ] Exportar `interaction_graph.json`.
-- [ ] Exportar tabla `interaction_edges.csv`.
+- [x] Crear nodos por robot y balon.
+- [x] Crear aristas por proximidad, disputa, posesion o pase.
+- [x] Ponderar aristas por duracion/confianza.
+- [x] Exportar `interaction_graph.json`.
+- [x] Exportar tabla `interaction_edges.csv`.
 
 ### Artefactos esperados
 
-- [ ] `experiments/test_021_level3_tactical_metrics/level3_metrics.csv`.
-- [ ] `experiments/test_021_level3_tactical_metrics/level3_metrics.json`.
-- [ ] `experiments/test_021_level3_tactical_metrics/interaction_metrics.csv`.
-- [ ] `experiments/test_021_level3_tactical_metrics/interaction_graph.json`.
-- [ ] `experiments/test_021_level3_tactical_metrics/summary.md`.
+- [x] `experiments/test_021_level3_tactical_metrics/level3_metrics.csv`.
+- [x] `experiments/test_021_level3_tactical_metrics/level3_metrics.json`.
+- [x] `experiments/test_021_level3_tactical_metrics/interaction_metrics.csv`.
+- [x] `experiments/test_021_level3_tactical_metrics/interaction_graph.json`.
+- [x] `experiments/test_021_level3_tactical_metrics/summary.md`.
+- [x] `experiments/test_021_level3_tactical_metrics/spatial_control.csv`.
+- [x] `experiments/test_021_level3_tactical_metrics/voronoi_frames.csv`.
+- [x] `experiments/test_021_level3_tactical_metrics/interaction_edges.csv`.
 
 ### Criterio de aceptacion
 
-- [ ] Las metricas tacticas se calculan sin depender de video pesado.
-- [ ] Los resultados son comparables entre al menos dos clips.
-- [ ] Cada metrica indica supuestos y nivel de confianza.
+- [x] Las metricas tacticas se calculan sin depender de video pesado.
+- [x] Los resultados son comparables entre al menos dos clips.
+- [x] Cada metrica indica supuestos y nivel de confianza.
 
 ## Actividad 4 - Eventos Avanzados Nivel 3
 
