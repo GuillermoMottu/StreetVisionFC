@@ -273,47 +273,50 @@ Crear visualizaciones que hagan visible el valor de Nivel 3: Voronoi, grafo, min
 
 ### Tarea 5.1 - Visualizacion Voronoi
 
-- [ ] Crear script `scripts/run_level3_visualizations.py`.
-- [ ] Renderizar Voronoi sobre mini-mapa.
-- [ ] Renderizar Voronoi sobre frame original si la calibracion lo permite.
-- [ ] Exportar imagen por highlight relevante.
-- [ ] Documentar limitaciones por perspectiva.
+- [x] Crear script `scripts/run_level3_visualizations.py`.
+- [x] Renderizar Voronoi sobre mini-mapa.
+- [x] Renderizar Voronoi sobre frame original si la calibracion lo permite.
+- [x] Exportar imagen por highlight relevante.
+- [x] Documentar limitaciones por perspectiva.
 
 ### Tarea 5.2 - Visualizacion de grafo de interaccion
 
-- [ ] Renderizar nodos de robots y balon.
-- [ ] Dibujar aristas con grosor segun duracion o frecuencia.
-- [ ] Diferenciar posesion, disputa y proximidad.
-- [ ] Exportar `interaction_graph.png`.
+- [x] Renderizar nodos de robots y balon.
+- [x] Dibujar aristas con grosor segun duracion o frecuencia.
+- [x] Diferenciar posesion, disputa y proximidad.
+- [x] Exportar `interaction_graph.png`.
 
 ### Tarea 5.3 - Mini-mapa animable o secuencial
 
-- [ ] Crear mini-mapa con trails de robots y balon.
-- [ ] Marcar zonas de actividad.
-- [ ] Marcar evento actual cuando exista.
-- [ ] Exportar PNG ligeros por frames clave.
-- [ ] Si se genera GIF, mantenerlo pequeno o dejarlo fuera de Git con manifest.
+- [x] Crear mini-mapa con trails de robots y balon.
+- [x] Marcar zonas de actividad.
+- [x] Marcar evento actual cuando exista.
+- [x] Exportar PNG ligeros por frames clave.
+- [x] Si se genera GIF, mantenerlo pequeno o dejarlo fuera de Git con manifest.
 
 ### Tarea 5.4 - Storyboard de highlights
 
-- [ ] Crear una lamina por highlight con mini-mapa, frame original y texto corto.
-- [ ] Exportar `highlight_storyboard.png`.
-- [ ] Crear `highlight_storyboard_manifest.csv`.
+- [x] Crear una lamina por highlight con mini-mapa, frame original y texto corto.
+- [x] Exportar `highlight_storyboard.png`.
+- [x] Crear `highlight_storyboard_manifest.csv`.
 
 ### Artefactos esperados
 
-- [ ] `experiments/test_023_level3_visualizations/voronoi_frame_*.png`.
-- [ ] `experiments/test_023_level3_visualizations/interaction_graph.png`.
-- [ ] `experiments/test_023_level3_visualizations/minimap_highlight_*.png`.
-- [ ] `experiments/test_023_level3_visualizations/highlight_storyboard.png`.
-- [ ] `experiments/test_023_level3_visualizations/visualization_manifest.csv`.
-- [ ] `experiments/test_023_level3_visualizations/summary.md`.
+- [x] `experiments/test_023_level3_visualizations/config.yaml`.
+- [x] `experiments/test_023_level3_visualizations/voronoi_frame_*.png`.
+- [x] `experiments/test_023_level3_visualizations/voronoi_original_frame_*.png`.
+- [x] `experiments/test_023_level3_visualizations/interaction_graph.png`.
+- [x] `experiments/test_023_level3_visualizations/minimap_highlight_*.png`.
+- [x] `experiments/test_023_level3_visualizations/highlight_storyboard.png`.
+- [x] `experiments/test_023_level3_visualizations/highlight_storyboard_manifest.csv`.
+- [x] `experiments/test_023_level3_visualizations/visualization_manifest.csv`.
+- [x] `experiments/test_023_level3_visualizations/summary.md`.
 
 ### Criterio de aceptacion
 
-- [ ] Las visualizaciones son legibles como capturas estaticas.
-- [ ] Cada imagen esta respaldada por datos CSV/JSON.
-- [ ] No se versionan renders pesados.
+- [x] Las visualizaciones son legibles como capturas estaticas.
+- [x] Cada imagen esta respaldada por datos CSV/JSON.
+- [x] No se versionan renders pesados.
 
 ## Actividad 6 - Dashboard Ligero Nivel 3
 
