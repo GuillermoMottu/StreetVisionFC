@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+from dataclasses import replace
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -82,6 +83,26 @@ class Level3DashboardTests(unittest.TestCase):
             self.assertGreater(dashboard_html.stat().st_size, 0)
             self.assertTrue(any(row["asset_id"] == "dashboard_html" for row in context["manifest"]))
             self.assertTrue(any(row["asset_id"] == "highlight_storyboard" for row in context["manifest"]))
+
+    def test_human_review_discards_highlight_from_dashboard_top_list(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = create_fixture(root)
+            review_csv = root / "review" / "human_review.csv"
+            write_csv(
+                review_csv,
+                [
+                    {"highlight_id": "lvl3_evt_test", "review_status": "descartado", "reviewer": "tester", "reviewed_at": "2026-06-07", "notes": "false positive"},
+                    {"highlight_id": "lvl3_evt_other", "review_status": "confiable", "reviewer": "tester", "reviewed_at": "2026-06-07", "notes": "usable"},
+                ],
+                ["highlight_id", "review_status", "reviewer", "reviewed_at", "notes"],
+            )
+            reviewed = replace(config, human_review_csv=review_csv.as_posix())
+
+            context = build_dashboard_context(reviewed)
+
+            self.assertEqual(context["top_highlights"][0]["highlight_id"], "lvl3_evt_other")
+            self.assertEqual(context["summary"]["discarded_highlights"], 1)
 
 
 def create_fixture(root: Path) -> Level3DashboardConfig:
@@ -167,7 +188,25 @@ def create_fixture(root: Path) -> Level3DashboardConfig:
                 "reliability": "provisional",
                 "reason": "synthetic",
                 "source_event_ids": "lvl2_evt_test",
-            }
+            },
+            {
+                "clip_id": "video_test",
+                "highlight_id": "lvl3_evt_other",
+                "rank": 2,
+                "score": 80.0,
+                "event_type": "advanced_highlight",
+                "frame_start": 12,
+                "frame_end": 13,
+                "time_start_sec": 1.2,
+                "time_end_sec": 1.3,
+                "primary_track_id": "robot_a",
+                "secondary_track_ids": "ball_01",
+                "zone": "middle_third",
+                "confidence": 0.78,
+                "reliability": "provisional",
+                "reason": "synthetic secondary",
+                "source_event_ids": "lvl2_evt_test",
+            },
         ],
         [
             "clip_id",

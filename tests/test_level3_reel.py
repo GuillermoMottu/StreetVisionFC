@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import json
+from dataclasses import replace
 from pathlib import Path
 import sys
 from tempfile import TemporaryDirectory
@@ -60,6 +61,28 @@ class Level3ReelTests(unittest.TestCase):
             self.assertTrue((output_dir / "reel_contact_sheet.png").exists())
             self.assertFalse((Path(config.local_reel_path)).exists())
             self.assertTrue(any(row["asset_id"] == "local_reel_mp4" and row["is_versioned"] == "false" for row in context["manifest"]))
+
+    def test_human_review_discards_highlight_from_reel_selection(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            config = create_fixture(root, segment_count=3)
+            review_csv = root / "review" / "human_review.csv"
+            write_csv(
+                review_csv,
+                [
+                    {"highlight_id": "lvl3_evt_001", "review_status": "descartado", "reviewer": "tester", "reviewed_at": "2026-06-07", "notes": "false positive"},
+                    {"highlight_id": "lvl3_evt_002", "review_status": "confiable", "reviewer": "tester", "reviewed_at": "2026-06-07", "notes": "usable"},
+                    {"highlight_id": "lvl3_evt_003", "review_status": "provisional", "reviewer": "tester", "reviewed_at": "2026-06-07", "notes": "usable"},
+                ],
+                ["highlight_id", "review_status", "reviewer", "reviewed_at", "notes"],
+            )
+            reviewed = replace(config, human_review_csv=review_csv.as_posix())
+
+            context = build_reel_context(reviewed)
+
+            self.assertEqual(context["segments"][0]["highlight_id"], "lvl3_evt_002")
+            self.assertIn("review=confiable", context["segments"][0]["selection_reason"])
+            self.assertEqual(context["summary"]["discarded_highlights"], 1)
 
 
 def create_fixture(root: Path, segment_count: int) -> Level3ReelConfig:

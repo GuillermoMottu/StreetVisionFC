@@ -54,6 +54,8 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
         "- Arquitectura: sin backend, sin login, sin dependencias nuevas.",
         f"- Clips integrados: `{', '.join(summary['clip_ids'])}`.",
         f"- Highlights enlazados: `{summary['highlights']}`.",
+        f"- Highlights con revision humana: `{summary['reviewed_highlights']}`.",
+        f"- Highlights descartados por revision: `{summary['discarded_highlights']}`.",
         f"- Metricas CSV: `{summary['metrics']}`.",
         f"- Eventos avanzados: `{summary['events']}`.",
         f"- Muestras de interaccion: `{summary['interaction_samples']}`.",
@@ -65,8 +67,9 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
         "- Resumen con score de highlight, conteos de metricas, interacciones, aristas y cadenas.",
         "- Metricas por clip y control medio por robot.",
         "- Visualizaciones: storyboard, grafo, Voronoi en mini-mapa y Voronoi proyectado.",
-        "- Highlights y aristas principales.",
-        "- Evidencia con links relativos a CSV, JSON, Markdown y manifest.",
+            "- Highlights y aristas principales.",
+            "- Revision humana opcional aplicada a highlights sin borrar el ranking original.",
+            "- Evidencia con links relativos a CSV, JSON, Markdown y manifest.",
         "",
         "## Assets Integrados",
         "",
@@ -133,6 +136,7 @@ def main() -> int:
     parser.add_argument("--narrative", default="experiments/test_022_level3_advanced_events/level3_narrative.md")
     parser.add_argument("--visualizations-dir", default="experiments/test_023_level3_visualizations")
     parser.add_argument("--visualization-manifest", default="experiments/test_023_level3_visualizations/visualization_manifest.csv")
+    parser.add_argument("--human-review", default="")
     parser.add_argument("--top-highlights", type=int, default=6)
     parser.add_argument("--top-edges", type=int, default=5)
     args = parser.parse_args()
@@ -146,6 +150,7 @@ def main() -> int:
         narrative_md=args.narrative,
         visualizations_dir=args.visualizations_dir,
         visualization_manifest_csv=args.visualization_manifest,
+        human_review_csv=args.human_review,
         output_dir=args.experiment,
         top_highlights=args.top_highlights,
         top_edges=args.top_edges,

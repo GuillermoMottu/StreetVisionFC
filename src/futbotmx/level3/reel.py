@@ -29,6 +29,8 @@ SEGMENT_FIELDS = [
     "score",
     "confidence",
     "reliability",
+    "review_status",
+    "reviewer",
     "zone",
     "event_label",
     "narration",
@@ -37,6 +39,7 @@ SEGMENT_FIELDS = [
     "reference_frame_path",
     "thumbnail_path",
     "selection_reason",
+    "review_notes",
 ]
 
 MANIFEST_FIELDS = ["asset_id", "asset_type", "path", "source_artifact", "is_versioned", "role", "notes"]
@@ -52,6 +55,7 @@ class Level3ReelConfig:
     storyboard_manifest_csv: str = "experiments/test_023_level3_visualizations/highlight_storyboard_manifest.csv"
     visualizations_dir: str = "experiments/test_023_level3_visualizations"
     dashboard_html: str = "experiments/test_024_level3_dashboard/dashboard.html"
+    human_review_csv: str = ""
     output_dir: str = "experiments/test_025_level3_reel"
     local_reel_path: str = "local_outputs/level3_reel/futbotmx_level3_reel.mp4"
     segment_count: int = 4
@@ -62,6 +66,15 @@ class Level3ReelConfig:
 def read_csv_rows(path: str | Path) -> list[dict[str, str]]:
     with Path(path).open("r", newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+def read_optional_csv_rows(path: str | Path) -> list[dict[str, str]]:
+    if not path:
+        return []
+    candidate = Path(path)
+    if not candidate.exists():
+        return []
+    return read_csv_rows(candidate)
 
 
 def read_json(path: str | Path) -> Any:
@@ -104,8 +117,9 @@ def build_reel_context(config: Level3ReelConfig) -> dict[str, Any]:
     overlays = read_csv_rows(config.overlay_validation_csv)
     visualizations = read_csv_rows(config.visualization_manifest_csv)
     storyboard_rows = read_csv_rows(config.storyboard_manifest_csv)
+    review_rows = read_optional_csv_rows(config.human_review_csv)
     events_by_id = {str(event["event_id"]): event for event in events if "event_id" in event}
-    segments = select_reel_segments(highlights, events_by_id, overlays, visualizations, storyboard_rows, config)
+    segments = select_reel_segments(highlights, events_by_id, overlays, visualizations, storyboard_rows, config, review_rows)
     return {
         "config": config,
         "rule_version": RULE_VERSION,
@@ -115,12 +129,15 @@ def build_reel_context(config: Level3ReelConfig) -> dict[str, Any]:
         "overlays": overlays,
         "visualizations": visualizations,
         "storyboard_rows": storyboard_rows,
+        "review_rows": review_rows,
         "summary": {
             "segments": len(segments),
             "clips": sorted({segment["clip_id"] for segment in segments}),
             "duration_sec": round(len(segments) * config.segment_duration_sec, 3),
             "top_score": float(segments[0]["score"]) if segments else 0.0,
             "min_confidence": min((float(segment["confidence"]) for segment in segments), default=0.0),
+            "reviewed_highlights": len(review_rows),
+            "discarded_highlights": sum(1 for row in review_rows if row.get("review_status") == "descartado"),
         },
     }
 
@@ -132,15 +149,20 @@ def select_reel_segments(
     visualization_rows: list[dict[str, str]],
     storyboard_rows: list[dict[str, str]],
     config: Level3ReelConfig,
+    review_rows: list[dict[str, str]] | None = None,
 ) -> list[dict[str, Any]]:
     target_count = min(5, max(3, config.segment_count))
     overlay_by_highlight = {row["highlight_id"]: row for row in overlay_rows}
     minimap_by_highlight = {row["event_id"]: row for row in visualization_rows if row.get("asset_id", "").startswith("minimap_highlight")}
     storyboard_by_highlight = {row["highlight_id"]: row for row in storyboard_rows}
+    review_by_highlight = {row["highlight_id"]: row for row in (review_rows or [])}
     candidates: list[dict[str, str]] = []
     fallback: list[dict[str, str]] = []
     for row in highlights:
         highlight_id = str(row["highlight_id"])
+        review = review_by_highlight.get(highlight_id, {})
+        if review.get("review_status") == "descartado":
+            continue
         has_overlay = highlight_id in overlay_by_highlight
         has_minimap = highlight_id in minimap_by_highlight or storyboard_by_highlight.get(highlight_id, {}).get("minimap_path")
         confidence = float(row["confidence"])
@@ -150,7 +172,8 @@ def select_reel_segments(
             fallback.append(row)
     selected: list[dict[str, str]] = []
     seen_ids: set[str] = set()
-    for row in candidates + fallback + highlights:
+    selectable = [row for row in highlights if review_by_highlight.get(str(row["highlight_id"]), {}).get("review_status") != "descartado"]
+    for row in candidates + fallback + selectable:
         highlight_id = str(row["highlight_id"])
         if highlight_id in seen_ids:
             continue
@@ -165,6 +188,8 @@ def select_reel_segments(
         minimap = minimap_by_highlight.get(highlight_id, {})
         storyboard = storyboard_by_highlight.get(highlight_id, {})
         event = events_by_id.get(highlight_id, {})
+        review = review_by_highlight.get(highlight_id, {})
+        review_status = str(review.get("review_status", "sin_revision") or "sin_revision")
         overlay_path = _optional_join(config.advanced_events_dir, overlay.get("asset_path", ""))
         minimap_path = _optional_join(config.visualizations_dir, minimap.get("path") or storyboard.get("minimap_path", ""))
         reference_path = storyboard.get("reference_frame_path", "")
@@ -183,6 +208,8 @@ def select_reel_segments(
                 "score": highlight["score"],
                 "confidence": highlight["confidence"],
                 "reliability": highlight["reliability"],
+                "review_status": review_status,
+                "reviewer": review.get("reviewer", ""),
                 "zone": highlight["zone"],
                 "event_label": _event_label(highlight),
                 "narration": _narration_for(highlight, event),
@@ -190,7 +217,8 @@ def select_reel_segments(
                 "minimap_path": minimap_path,
                 "reference_frame_path": reference_path,
                 "thumbnail_path": thumbnail_name,
-                "selection_reason": _selection_reason(highlight, overlay_path, minimap_path, reference_path, config),
+                "selection_reason": _selection_reason(highlight, overlay_path, minimap_path, reference_path, config, review_status),
+                "review_notes": review.get("notes", ""),
             }
         )
     return segments
@@ -206,6 +234,7 @@ def draw_reel_thumbnail(output_path: str | Path, segment: dict[str, Any]) -> Non
         f"Rank {segment['rank']} | {segment['clip_id']}\n"
         f"Frames {segment['frame_start']}-{segment['frame_end']}\n"
         f"Score {float(segment['score']):.1f} | Conf {float(segment['confidence']):.2f}\n"
+        f"Revision {segment.get('review_status', 'sin_revision')}\n"
         f"{segment['event_label']}\n\n"
         f"{textwrap.fill(str(segment['narration']), width=34)}"
     )
@@ -249,7 +278,8 @@ def write_reel_narrative(path: str | Path, segments: list[dict[str, Any]], confi
     for segment in segments:
         lines.append(
             f"- Segmento `{segment['segment_id']}` rank `{segment['rank']}` `{segment['clip_id']}` "
-            f"frames `{segment['frame_start']}-{segment['frame_end']}`: {segment['narration']}"
+            f"frames `{segment['frame_start']}-{segment['frame_end']}` "
+            f"revision `{segment.get('review_status', 'sin_revision')}`: {segment['narration']}"
         )
     lines.extend(
         [
@@ -332,7 +362,8 @@ def render_reel_demo_html(context: dict[str, Any]) -> str:
             f'<a href="{_esc(thumb)}"><img src="{_esc(thumb)}" alt="Segmento {int(segment["rank"])}"></a>'
             f"<h2>Rank {_esc(segment['rank'])} | {_esc(segment['clip_id'])}</h2>"
             f"<p>Frames {_esc(segment['frame_start'])}-{_esc(segment['frame_end'])} | "
-            f"score {float(segment['score']):.1f} | conf {float(segment['confidence']):.2f}</p>"
+            f"score {float(segment['score']):.1f} | conf {float(segment['confidence']):.2f} | "
+            f"revision {_esc(segment.get('review_status', 'sin_revision'))}</p>"
             f"<p>{_esc(segment['event_label'])}</p>"
             "</article>"
         )
@@ -403,6 +434,8 @@ def reel_manifest_rows(config: Level3ReelConfig, context: dict[str, Any]) -> lis
         "visualization_manifest_csv": config.visualization_manifest_csv,
         "storyboard_manifest_csv": config.storyboard_manifest_csv,
     }
+    if config.human_review_csv:
+        source_paths["human_review_csv"] = config.human_review_csv
     for asset_id, path in source_paths.items():
         rows.append(_manifest_row(asset_id, Path(path).suffix.lstrip(".") or "artifact", _rel_path(path, output_dir), path, True, "evidence", "Linked source artifact."))
     return rows
@@ -440,10 +473,19 @@ def _narration_for(highlight: dict[str, str], event: dict[str, Any]) -> str:
     )
 
 
-def _selection_reason(highlight: dict[str, str], overlay_path: str, minimap_path: str, reference_path: str, config: Level3ReelConfig) -> str:
+def _selection_reason(
+    highlight: dict[str, str],
+    overlay_path: str,
+    minimap_path: str,
+    reference_path: str,
+    config: Level3ReelConfig,
+    review_status: str,
+) -> str:
     reasons = ["ranking_highlight"]
     if float(highlight["confidence"]) >= config.min_confidence:
         reasons.append(f"confidence>={config.min_confidence:.2f}")
+    if review_status != "sin_revision":
+        reasons.append(f"review={review_status}")
     if overlay_path:
         reasons.append("overlay_evento")
     if minimap_path:

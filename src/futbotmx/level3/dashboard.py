@@ -23,6 +23,7 @@ class Level3DashboardConfig:
     narrative_md: str = "experiments/test_022_level3_advanced_events/level3_narrative.md"
     visualizations_dir: str = "experiments/test_023_level3_visualizations"
     visualization_manifest_csv: str = "experiments/test_023_level3_visualizations/visualization_manifest.csv"
+    human_review_csv: str = ""
     output_dir: str = "experiments/test_024_level3_dashboard"
     top_highlights: int = 6
     top_edges: int = 5
@@ -31,6 +32,15 @@ class Level3DashboardConfig:
 def read_csv_rows(path: str | Path) -> list[dict[str, str]]:
     with Path(path).open("r", newline="", encoding="utf-8") as handle:
         return list(csv.DictReader(handle))
+
+
+def read_optional_csv_rows(path: str | Path) -> list[dict[str, str]]:
+    if not path:
+        return []
+    candidate = Path(path)
+    if not candidate.exists():
+        return []
+    return read_csv_rows(candidate)
 
 
 def read_json(path: str | Path) -> Any:
@@ -66,6 +76,8 @@ def build_dashboard_context(config: Level3DashboardConfig) -> dict[str, Any]:
     metrics_json = read_json(config.metrics_json)
     edge_rows = read_csv_rows(config.interaction_edges_csv)
     highlight_rows = sorted(read_csv_rows(config.highlights_csv), key=lambda row: int(row["rank"]))
+    review_rows = read_optional_csv_rows(config.human_review_csv)
+    reviewed_highlights = apply_human_review(highlight_rows, review_rows)
     events = read_json(config.events_json)
     visualization_rows = read_csv_rows(config.visualization_manifest_csv)
     clip_metrics = _clip_metrics(metrics_rows)
@@ -73,7 +85,7 @@ def build_dashboard_context(config: Level3DashboardConfig) -> dict[str, Any]:
     event_counts = Counter(str(event.get("event_type", "unknown")) for event in events)
     reliability_counts = Counter(str(event.get("reliability", "unknown")) for event in events)
     pass_chains = [event for event in events if str(event.get("event_type")) == "pass_chain"]
-    top_highlights = highlight_rows[: config.top_highlights]
+    top_highlights = selectable_highlights(reviewed_highlights)[: config.top_highlights]
     top_edges = sorted(edge_rows, key=lambda row: float(row.get("weight") or 0), reverse=True)[: config.top_edges]
     primary_clip = top_highlights[0]["clip_id"] if top_highlights else ""
     clips = sorted(clip_metrics)
@@ -87,6 +99,8 @@ def build_dashboard_context(config: Level3DashboardConfig) -> dict[str, Any]:
         "narrative_md": config.narrative_md,
         "visualization_manifest_csv": config.visualization_manifest_csv,
     }
+    if config.human_review_csv:
+        source_paths["human_review_csv"] = config.human_review_csv
     return {
         "config": config,
         "rule_version": RULE_VERSION,
@@ -96,6 +110,8 @@ def build_dashboard_context(config: Level3DashboardConfig) -> dict[str, Any]:
         "metrics_json": metrics_json,
         "edge_rows": edge_rows,
         "highlight_rows": highlight_rows,
+        "review_rows": review_rows,
+        "reviewed_highlights": reviewed_highlights,
         "events": events,
         "visualization_rows": visualization_rows,
         "clip_metrics": clip_metrics,
@@ -107,7 +123,7 @@ def build_dashboard_context(config: Level3DashboardConfig) -> dict[str, Any]:
         "top_edges": top_edges,
         "visual_assets": visual_assets,
         "source_paths": source_paths,
-        "summary": _dashboard_summary(metrics_json, metrics_rows, highlight_rows, events, edge_rows, pass_chains),
+        "summary": _dashboard_summary(metrics_json, metrics_rows, reviewed_highlights, events, edge_rows, pass_chains, review_rows),
         "output_dir": output_dir,
     }
 
@@ -185,13 +201,18 @@ def _dashboard_summary(
     events: list[dict[str, Any]],
     edge_rows: list[dict[str, str]],
     pass_chains: list[dict[str, Any]],
+    review_rows: list[dict[str, str]],
 ) -> dict[str, Any]:
     json_summary = metrics_json.get("summary", {}) if isinstance(metrics_json, dict) else {}
-    top_score = float(highlights[0]["score"]) if highlights else 0.0
+    top_selectable = selectable_highlights(highlights)
+    top_score = float(top_selectable[0]["score"]) if top_selectable else 0.0
     clip_ids = sorted({str(row["clip_id"]) for row in metrics_rows if row.get("clip_id")})
     interaction_samples = int(float(json_summary.get("interaction_samples", 0)))
     if not interaction_samples:
         interaction_samples = sum(int(float(row.get("value") or 0)) for row in metrics_rows if row.get("metric_name") == "interaction_samples")
+    review_counts = Counter(str(row.get("review_status", "sin_revision") or "sin_revision") for row in highlights)
+    if not review_rows:
+        review_counts = Counter({"sin_revision": len(highlights)})
     return {
         "clips": len(clip_ids),
         "clip_ids": clip_ids,
@@ -203,7 +224,30 @@ def _dashboard_summary(
         "graph_edges": len(edge_rows),
         "pass_chains": len(pass_chains),
         "frames_analyzed": int(float(json_summary.get("frames_analyzed", 0))),
+        "reviewed_highlights": len(review_rows),
+        "kept_highlights": sum(1 for row in highlights if row.get("review_status") != "descartado"),
+        "discarded_highlights": sum(1 for row in highlights if row.get("review_status") == "descartado"),
+        "review_counts": dict(sorted(review_counts.items())),
     }
+
+
+def apply_human_review(highlights: list[dict[str, str]], review_rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    by_id = {str(row.get("highlight_id", "")): row for row in review_rows}
+    enriched: list[dict[str, str]] = []
+    for row in highlights:
+        review = by_id.get(str(row.get("highlight_id", "")), {})
+        item = dict(row)
+        item["review_status"] = str(review.get("review_status", "sin_revision") or "sin_revision")
+        item["reviewer"] = str(review.get("reviewer", ""))
+        item["reviewed_at"] = str(review.get("reviewed_at", ""))
+        item["review_notes"] = str(review.get("notes", ""))
+        enriched.append(item)
+    return enriched
+
+
+def selectable_highlights(highlights: list[dict[str, str]]) -> list[dict[str, str]]:
+    kept = [row for row in highlights if row.get("review_status") != "descartado"]
+    return kept if kept else highlights
 
 
 def _clip_metrics(metrics_rows: list[dict[str, str]]) -> dict[str, dict[str, dict[str, str]]]:
@@ -259,6 +303,7 @@ def _summary_html(summary: dict[str, Any]) -> str:
     cards = [
         ("Score top", f"{summary['top_highlight_score']:.1f}", "highlight provisional rank 1"),
         ("Highlights", str(summary["highlights"]), "ranking completo"),
+        ("Revision", str(summary["kept_highlights"]), f"descartados {summary['discarded_highlights']}"),
         ("Metricas", str(summary["metrics"]), "CSV Nivel 3"),
         ("Interacciones", str(summary["interaction_samples"]), "muestras tacticas"),
         ("Aristas", str(summary["graph_edges"]), "grafo agregado"),
@@ -356,6 +401,7 @@ def _highlights_html(context: dict[str, Any]) -> str:
         f"<td>{_esc(row['frame_start'])}-{_esc(row['frame_end'])}</td>"
         f"<td>{float(row['score']):.1f}</td>"
         f"<td>{float(row['confidence']):.2f}</td>"
+        f"<td>{_esc(row.get('review_status', 'sin_revision'))}</td>"
         f"<td>{_esc(row['reason'])}</td>"
         "</tr>"
         for row in context["top_highlights"]
@@ -374,14 +420,15 @@ def _highlights_html(context: dict[str, Any]) -> str:
     )
     event_counts = ", ".join(f"{key}: {value}" for key, value in sorted(context["event_counts"].items()))
     reliability_counts = ", ".join(f"{key}: {value}" for key, value in sorted(context["reliability_counts"].items()))
+    review_counts = ", ".join(f"{key}: {value}" for key, value in sorted(context["summary"]["review_counts"].items()))
     return f"""
 <section class="timeline-band" aria-label="Highlights y grafo">
   <div class="section-heading">
     <h2>Highlights</h2>
-    <p>{_esc(event_counts)} | {_esc(reliability_counts)}</p>
+    <p>{_esc(event_counts)} | {_esc(reliability_counts)} | revision {_esc(review_counts)}</p>
   </div>
   <table>
-    <thead><tr><th>Rank</th><th>Clip</th><th>Frames</th><th>Score</th><th>Conf.</th><th>Motivo</th></tr></thead>
+    <thead><tr><th>Rank</th><th>Clip</th><th>Frames</th><th>Score</th><th>Conf.</th><th>Revision</th><th>Motivo</th></tr></thead>
     <tbody>{highlight_rows}</tbody>
   </table>
   <div class="section-heading secondary-heading">
@@ -485,7 +532,7 @@ h2 {
 }
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(135px, 1fr));
   gap: 10px;
   list-style: none;
   padding: 18px 0;

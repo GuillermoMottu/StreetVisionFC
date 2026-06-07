@@ -60,6 +60,8 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
         f"- Duracion sugerida: `{summary['duration_sec']:.1f}` segundos.",
         f"- Score top: `{summary['top_score']:.1f}`.",
         f"- Confianza minima seleccionada: `{summary['min_confidence']:.2f}`.",
+        f"- Highlights con revision humana: `{summary['reviewed_highlights']}`.",
+        f"- Highlights descartados por revision: `{summary['discarded_highlights']}`.",
         f"- Manifest rows: `{len(manifest)}`.",
         "- MP4 final: local y no versionado.",
         "",
@@ -79,6 +81,7 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
             "",
             "- Cada thumbnail combina overlay de evento, mini-mapa y texto breve.",
             "- Los overlays muestran IDs/trails cuando existen en la evidencia Nivel 3.",
+            "- Si existe `human_review.csv`, los highlights descartados no entran al reel.",
             "- El lenguaje queda como highlight/proximidad/posesion candidata; no afirma goles ni decisiones oficiales.",
             "",
             "## Render Local",
@@ -143,6 +146,7 @@ def main() -> int:
     parser.add_argument("--storyboard-manifest", default="experiments/test_023_level3_visualizations/highlight_storyboard_manifest.csv")
     parser.add_argument("--visualizations-dir", default="experiments/test_023_level3_visualizations")
     parser.add_argument("--dashboard-html", default="experiments/test_024_level3_dashboard/dashboard.html")
+    parser.add_argument("--human-review", default="")
     parser.add_argument("--local-reel-path", default="local_outputs/level3_reel/futbotmx_level3_reel.mp4")
     parser.add_argument("--segment-count", type=int, default=4)
     parser.add_argument("--segment-duration-sec", type=float, default=3.0)
@@ -158,6 +162,7 @@ def main() -> int:
         storyboard_manifest_csv=args.storyboard_manifest,
         visualizations_dir=args.visualizations_dir,
         dashboard_html=args.dashboard_html,
+        human_review_csv=args.human_review,
         output_dir=args.experiment,
         local_reel_path=args.local_reel_path,
         segment_count=args.segment_count,
