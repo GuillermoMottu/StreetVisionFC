@@ -203,5 +203,6 @@ live_playback:
   - live_highlights.csv
   - minimap_frame_sample.json
   - video_metadata.json
+  - endpoint_manifest.json
   - live_playback_manifest.csv
   - summary.md

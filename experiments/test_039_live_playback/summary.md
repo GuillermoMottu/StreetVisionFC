@@ -30,8 +30,16 @@
 - `live_highlights.csv`.
 - `minimap_frame_sample.json`.
 - `video_metadata.json`.
+- `endpoint_manifest.json`.
 - `config.yaml`.
 - `live_playback_manifest.csv`.
+
+## Backend Local
+
+- Endpoints fijos: `/manifest.json`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.
+- Politica de video: solo se sirve el `clip_id` configurado; no se aceptan rutas arbitrarias por query.
+- Video pesado: permanece fuera de Git y queda marcado como `is_versioned=false`.
+- Si el video no existe en otro equipo, el reproductor muestra aviso local y conserva datos/overlays versionados.
 
 ## Sincronizacion
 

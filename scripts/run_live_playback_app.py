@@ -14,6 +14,7 @@ def main() -> int:
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--experiment", default=str(DEFAULT_EXPERIMENT_DIR))
     parser.add_argument("--clip-id", default="video_595")
+    parser.add_argument("--video", default=None, help="Override the configured local video path.")
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8766)
     parser.add_argument("--smoke-test", action="store_true", help="Write lightweight playback evidence and exit.")
@@ -23,7 +24,7 @@ def main() -> int:
     config_path = Path(args.config)
     output_dir = Path(args.experiment)
     if args.smoke_test:
-        context = run_smoke_test(root, config_path, output_dir, clip_id=args.clip_id)
+        context = run_smoke_test(root, config_path, output_dir, clip_id=args.clip_id, video_path=args.video)
         summary = context["summary"]
         print(
             "Wrote live playback evidence to "
@@ -31,7 +32,7 @@ def main() -> int:
             f"{summary['highlight_count']} highlights)"
         )
         return 0 if summary["validation_errors"] == 0 else 1
-    serve_live_playback_app(root, config_path, output_dir, args.host, args.port, clip_id=args.clip_id)
+    serve_live_playback_app(root, config_path, output_dir, args.host, args.port, clip_id=args.clip_id, video_path=args.video)
     return 0
 
 

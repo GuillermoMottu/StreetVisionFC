@@ -12,14 +12,20 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from futbotmx.live_playback import (
     LivePlaybackConfig,
     available_frame_numbers,
+    backend_endpoint_manifest,
     build_live_playback_context,
     build_live_playback_package,
+    calibration_payload,
     client_payload,
+    csv_response_text,
     frame_from_timestamp,
     live_playback_config_from_project,
+    minimap_payload_for_frame,
     playback_clips_from_config,
     render_playback_html,
+    resolve_requested_video,
     resolve_overlay_frame,
+    run_smoke_test,
     selected_playback_clip,
     sync_summary_from_frames,
     timestamp_from_frame,
@@ -119,10 +125,13 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue((output_dir / "live_events.json").exists())
             self.assertTrue((output_dir / "live_highlights.csv").exists())
             self.assertTrue((output_dir / "video_metadata.json").exists())
+            self.assertTrue((output_dir / "endpoint_manifest.json").exists())
             summary = (output_dir / "summary.md").read_text(encoding="utf-8")
             self.assertIn("Playback Vivo Con Overlays Precomputados", summary)
             self.assertIn("Tracks normalizados: `2`", summary)
             self.assertIn("Conversion: `frame = round(currentTime * fps)`", summary)
+            endpoint_manifest = json.loads((output_dir / "endpoint_manifest.json").read_text(encoding="utf-8"))
+            self.assertTrue(any(endpoint["path"] == "/tracks.csv" for endpoint in endpoint_manifest["endpoints"]))
 
     def test_client_payload_is_small_frontend_contract(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -139,6 +148,7 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertEqual(payload["available_frames"], [120])
             self.assertEqual(payload["sync"]["max_frame_gap"], 0)
             self.assertEqual(payload["video_metadata"]["configured_frame_count"], 4)
+            self.assertEqual(payload["endpoints"]["manifest"], "/manifest.json")
 
     def test_frame_timestamp_conversion_and_resolution_prefers_previous_frame(self) -> None:
         self.assertEqual(frame_from_timestamp(2.01, 60.0), 121)
@@ -176,6 +186,76 @@ class LivePlaybackTests(unittest.TestCase):
         frames = available_frame_numbers([{"frame": "123"}, {"frame": "120"}, {"frame": "123"}])
 
         self.assertEqual(frames, [120, 123])
+
+    def test_backend_endpoint_manifest_documents_fixed_routes_and_video_policy(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            create_source_artifacts(root)
+            context = build_live_playback_context(root, fixture_playback_config(root))
+
+            manifest = backend_endpoint_manifest(context)
+            endpoint_paths = {endpoint["path"] for endpoint in manifest["endpoints"]}
+
+            self.assertIn("/manifest.json", endpoint_paths)
+            self.assertIn("/tracks.csv", endpoint_paths)
+            self.assertIn("/events.json", endpoint_paths)
+            self.assertIn("/highlights.csv", endpoint_paths)
+            self.assertIn("/minimap.json?frame=120", endpoint_paths)
+            self.assertIn("/calibration.json", endpoint_paths)
+            self.assertIn("/video-metadata.json", endpoint_paths)
+            self.assertIn("/video?clip_id=video_fixture", endpoint_paths)
+            self.assertEqual(manifest["path_policy"]["artifacts"], "fixed endpoint names only; no arbitrary filesystem path endpoint")
+            self.assertFalse(manifest["video"]["is_versioned"])
+
+    def test_csv_response_and_minimap_endpoint_payloads_are_reproducible(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            create_source_artifacts(root)
+            context = build_live_playback_context(root, fixture_playback_config(root))
+
+            tracks_csv = csv_response_text(context["tracks"], ("clip_id", "frame", "track_id"))
+            minimap = minimap_payload_for_frame(context, frame=120)
+            calibration = calibration_payload(context)
+
+            self.assertTrue(tracks_csv.startswith("clip_id,frame,track_id\n"))
+            self.assertIn("ball_bt_01", tracks_csv)
+            self.assertEqual(minimap["frame"], 120)
+            self.assertEqual(len(minimap["points"]), 2)
+            self.assertEqual(calibration["status"], "rectified")
+            self.assertEqual(calibration["confidence"], 0.8)
+
+    def test_video_request_only_serves_configured_clip_and_blocks_path_query(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            playback_config = fixture_playback_config(root)
+
+            resolved = resolve_requested_video(playback_config, {"clip_id": ["video_fixture"]})
+
+            self.assertEqual(resolved, Path(playback_config.video_path))
+            with self.assertRaises(PermissionError):
+                resolve_requested_video(playback_config, {"clip_id": ["video_fixture"], "path": ["../../secret.mov"]})
+            with self.assertRaises(FileNotFoundError):
+                resolve_requested_video(playback_config, {"clip_id": ["other_clip"]})
+
+    def test_smoke_test_accepts_video_override_and_documents_missing_video(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            create_source_artifacts(root)
+            config_path = write_project_config(root)
+            missing_video = root / "missing.mov"
+
+            context = run_smoke_test(
+                root,
+                config_path,
+                Path("experiments/test_039_live_playback"),
+                clip_id="video_fixture",
+                video_path=missing_video.as_posix(),
+            )
+
+            manifest = backend_endpoint_manifest(context)
+
+            self.assertFalse(context["video_metadata"].video_exists)
+            self.assertIn("Video local no disponible", manifest["video"]["missing_note"])
 
 
 def fixture_playback_config(root: Path) -> LivePlaybackConfig:

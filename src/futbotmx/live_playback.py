@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import csv
 import html
+import io
 import json
 import mimetypes
 import sys
@@ -256,6 +257,104 @@ def sync_summary_from_frames(playback_config: LivePlaybackConfig, frames: list[i
     }
 
 
+def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
+    config: LivePlaybackConfig = context["config"]
+    video_metadata: VideoMetadata = context["video_metadata"]
+    endpoints = [
+        _endpoint_row("/health", "text/plain", "status", "Backend health check."),
+        _endpoint_row("/playback.html", "text/html", "ui", "Playback UI with video and canvas overlay."),
+        _endpoint_row("/data.json", "application/json", "combined_data", "Combined payload for simple clients."),
+        _endpoint_row("/manifest.json", "application/json", "manifest", "Endpoint and artifact manifest."),
+        _endpoint_row("/tracks.csv", "text/csv", "tracks", "Normalized live tracks."),
+        _endpoint_row("/events.json", "application/json", "events", "Normalized live events."),
+        _endpoint_row("/highlights.csv", "text/csv", "highlights", "Normalized live highlights."),
+        _endpoint_row("/minimap.json?frame=120", "application/json", "minimap", "Frame-specific minimap payload."),
+        _endpoint_row("/calibration.json", "application/json", "calibration", "Calibration status inferred from normalized tracks."),
+        _endpoint_row("/video-metadata.json", "application/json", "video_metadata", "Configured video metadata."),
+        _endpoint_row(f"/video?clip_id={config.clip_id}", "video/*", "local_video", "Configured local video; heavy file is not versioned."),
+    ]
+    return {
+        "rule_version": RULE_VERSION,
+        "mode": "playback_precomputado",
+        "backend": "stdlib_http_server",
+        "clip_id": config.clip_id,
+        "experiment_dir": config.output_dir,
+        "video": {
+            "path": config.video_path,
+            "exists": video_metadata.video_exists,
+            "size_bytes": video_metadata.video_size_bytes,
+            "is_versioned": False,
+            "missing_note": "" if video_metadata.video_exists else "Video local no disponible en esta maquina; copiarlo fuera de Git o ajustar --video.",
+        },
+        "artifacts": {
+            "tracks": "live_tracks.csv",
+            "events": "live_events.json",
+            "highlights": "live_highlights.csv",
+            "minimap_sample": "minimap_frame_sample.json",
+            "video_metadata": "video_metadata.json",
+            "config": "config.yaml",
+            "summary": "summary.md",
+        },
+        "endpoints": endpoints,
+        "path_policy": {
+            "video": "only the configured clip_id is served; arbitrary path query parameters are rejected",
+            "artifacts": "fixed endpoint names only; no arbitrary filesystem path endpoint",
+        },
+    }
+
+
+def calibration_payload(context: dict[str, Any]) -> dict[str, Any]:
+    tracks = context["tracks"]
+    confidences = [
+        float(row["calibration_confidence"])
+        for row in tracks
+        if row.get("calibration_confidence", "") != ""
+    ]
+    zones = sorted({str(row.get("zone", "")) for row in tracks if row.get("zone", "")})
+    return {
+        "clip_id": context["config"].clip_id,
+        "status": "rectified" if confidences else "unavailable",
+        "confidence": round(min(confidences), 6) if confidences else "",
+        "source": context["config"].tracks_csv,
+        "zones": zones,
+        "notes": "Calibration is inferred from normalized track columns x_norm, y_norm and calibration_confidence.",
+    }
+
+
+def minimap_payload_for_frame(context: dict[str, Any], frame: int | None = None) -> dict[str, Any]:
+    config: LivePlaybackConfig = context["config"]
+    if frame is None:
+        frame = context["available_frames"][0] if context["available_frames"] else config.start_frame
+    return build_minimap_payload(
+        context["tracks"],
+        config.clip_id,
+        frame,
+        timestamp_from_frame(frame, config.fps),
+        calibration_status=calibration_payload(context)["status"],
+    )
+
+
+def csv_response_text(rows: list[dict[str, Any]], fieldnames: tuple[str, ...]) -> str:
+    handle = io.StringIO()
+    writer = csv.DictWriter(handle, fieldnames=list(fieldnames), lineterminator="\n")
+    writer.writeheader()
+    for row in rows:
+        writer.writerow({field: row.get(field, "") for field in fieldnames})
+    return handle.getvalue()
+
+
+def resolve_requested_video(playback_config: LivePlaybackConfig, params: dict[str, list[str]]) -> Path:
+    if "path" in params:
+        raise PermissionError("path query is not allowed for video endpoint")
+    clip_id = _first(params, "clip_id", "")
+    if clip_id and clip_id != playback_config.clip_id:
+        raise FileNotFoundError("clip not configured")
+    video = resolve_configured_video(playback_config)
+    if not video or not video.exists() or not video.is_file():
+        raise FileNotFoundError("configured video not found")
+    return video
+
+
 def build_live_playback_package(root: Path, config_path: Path, playback_config: LivePlaybackConfig) -> dict[str, Any]:
     context = build_live_playback_context(root, playback_config)
     output_dir = root / playback_config.output_dir
@@ -269,6 +368,10 @@ def build_live_playback_package(root: Path, config_path: Path, playback_config: 
     )
     (output_dir / "video_metadata.json").write_text(
         json.dumps(asdict(context["video_metadata"]), indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "endpoint_manifest.json").write_text(
+        json.dumps(backend_endpoint_manifest(context), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
     (output_dir / "playback.html").write_text(render_playback_html(context), encoding="utf-8")
@@ -449,6 +552,16 @@ def client_payload(context: dict[str, Any]) -> dict[str, Any]:
         "sync": context["sync"],
         "available_frames": context["available_frames"],
         "video_metadata": asdict(context["video_metadata"]),
+        "endpoints": {
+            "manifest": "/manifest.json",
+            "tracks": "/tracks.csv",
+            "events": "/events.json",
+            "highlights": "/highlights.csv",
+            "minimap": "/minimap.json",
+            "calibration": "/calibration.json",
+            "video_metadata": "/video-metadata.json",
+            "video": f"/video?clip_id={config.clip_id}",
+        },
         "tracks": context["tracks"],
         "events": context["events"],
         "highlights": context["highlights"],
@@ -474,6 +587,7 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
             "live_highlights.csv",
             "minimap_frame_sample.json",
             "video_metadata.json",
+            "endpoint_manifest.json",
             "live_playback_manifest.csv",
             "summary.md",
         ],
@@ -485,13 +599,14 @@ def write_live_playback_manifest(root: Path, playback_config: LivePlaybackConfig
     rows = [
         _manifest_row("playback_html", "html", "playback.html", "render_playback_html", True, "ui", "Video element plus synchronized canvas overlay."),
         _manifest_row("config", "yaml", "config.yaml", "configs/default.yaml", True, "config", "Live playback configuration snapshot."),
-        _manifest_row("summary", "md", "summary.md", "live_playback", True, "summary", "Activity 23 summary."),
-        _manifest_row("manifest", "csv", "live_playback_manifest.csv", "live_playback", True, "manifest", "Activity 23 manifest."),
+        _manifest_row("summary", "md", "summary.md", "live_playback", True, "summary", "Live playback summary."),
+        _manifest_row("manifest", "csv", "live_playback_manifest.csv", "live_playback", True, "manifest", "Live playback artifact manifest."),
         _manifest_row("live_tracks", "csv", "live_tracks.csv", playback_config.tracks_csv, True, "data", f"{len(context['tracks'])} normalized track rows."),
         _manifest_row("live_events", "json", "live_events.json", playback_config.events_json, True, "data", f"{len(context['events'])} normalized events."),
         _manifest_row("live_highlights", "csv", "live_highlights.csv", playback_config.highlights_csv, True, "data", f"{len(context['highlights'])} normalized highlights."),
         _manifest_row("minimap_sample", "json", "minimap_frame_sample.json", "live_tracks.csv", True, "data", "Sample minimap payload for first frame with rectified points."),
         _manifest_row("video_metadata", "json", "video_metadata.json", "configs/default.yaml", True, "sync", "FPS, dimensions, configured duration and approximate frame count."),
+        _manifest_row("endpoint_manifest", "json", "endpoint_manifest.json", "live_playback_backend", True, "backend", "Local backend endpoints and path policy."),
         _manifest_row("source_video", "video", playback_config.video_path, "local video path", False, "local_input", "Heavy/local input; never versioned."),
     ]
     output = root / playback_config.output_dir / "live_playback_manifest.csv"
@@ -538,8 +653,16 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "- `live_highlights.csv`.",
         "- `minimap_frame_sample.json`.",
         "- `video_metadata.json`.",
+        "- `endpoint_manifest.json`.",
         "- `config.yaml`.",
         "- `live_playback_manifest.csv`.",
+        "",
+        "## Backend Local",
+        "",
+        "- Endpoints fijos: `/manifest.json`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
+        "- Politica de video: solo se sirve el `clip_id` configurado; no se aceptan rutas arbitrarias por query.",
+        "- Video pesado: permanece fuera de Git y queda marcado como `is_versioned=false`.",
+        "- Si el video no existe en otro equipo, el reproductor muestra aviso local y conserva datos/overlays versionados.",
         "",
         "## Sincronizacion",
         "",
@@ -564,14 +687,28 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
     output.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
-def run_smoke_test(root: Path, config_path: Path, output_dir: Path, clip_id: str | None = None) -> dict[str, Any]:
+def run_smoke_test(
+    root: Path,
+    config_path: Path,
+    output_dir: Path,
+    clip_id: str | None = None,
+    video_path: str | None = None,
+) -> dict[str, Any]:
     project_config = load_config(root / config_path)
-    playback_config = live_playback_config_from_project(root, project_config, output_dir, clip_id=clip_id)
+    playback_config = live_playback_config_from_project(root, project_config, output_dir, clip_id=clip_id, video_path=video_path)
     return build_live_playback_package(root, config_path, playback_config)
 
 
-def serve_live_playback_app(root: Path, config_path: Path, output_dir: Path, host: str, port: int, clip_id: str | None = None) -> None:
-    context = run_smoke_test(root, config_path, output_dir, clip_id=clip_id)
+def serve_live_playback_app(
+    root: Path,
+    config_path: Path,
+    output_dir: Path,
+    host: str,
+    port: int,
+    clip_id: str | None = None,
+    video_path: str | None = None,
+) -> None:
+    context = run_smoke_test(root, config_path, output_dir, clip_id=clip_id, video_path=video_path)
     handler = make_handler(root, context)
     server = ThreadingHTTPServer((host, port), handler)
     actual_host, actual_port = server.server_address
@@ -597,6 +734,29 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
             if parsed.path == "/data.json":
                 self._send_json(client_payload(context))
                 return
+            if parsed.path == "/manifest.json":
+                self._send_json(backend_endpoint_manifest(context))
+                return
+            if parsed.path == "/tracks.csv":
+                self._send_text(csv_response_text(context["tracks"], LIVE_TRACK_FIELDS), "text/csv; charset=utf-8")
+                return
+            if parsed.path == "/events.json":
+                self._send_json(context["events"])
+                return
+            if parsed.path == "/highlights.csv":
+                self._send_text(csv_response_text(context["highlights"], LIVE_HIGHLIGHT_FIELDS), "text/csv; charset=utf-8")
+                return
+            if parsed.path == "/minimap.json":
+                params = parse_qs(parsed.query)
+                frame = _coerce_int(_first(params, "frame", ""), 0) if "frame" in params else None
+                self._send_json(minimap_payload_for_frame(context, frame=frame))
+                return
+            if parsed.path == "/calibration.json":
+                self._send_json(calibration_payload(context))
+                return
+            if parsed.path == "/video-metadata.json":
+                self._send_json(asdict(context["video_metadata"]))
+                return
             if parsed.path == "/video":
                 self._send_video(parsed.query)
                 return
@@ -621,14 +781,14 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
 
         def _send_video(self, query: str) -> None:
             params = parse_qs(query)
-            clip_id = _first(params, "clip_id", "")
             config: LivePlaybackConfig = context["config"]
-            if clip_id and clip_id != config.clip_id:
-                self.send_error(404, "clip not configured")
+            try:
+                video = resolve_requested_video(config, params)
+            except PermissionError as exc:
+                self.send_error(403, str(exc))
                 return
-            video = resolve_configured_video(config)
-            if not video or not video.exists() or not video.is_file():
-                self.send_error(404, "configured video not found")
+            except FileNotFoundError as exc:
+                self.send_error(404, str(exc))
                 return
             self._send_file_with_range(video)
 
@@ -719,6 +879,16 @@ def _manifest_row(asset_id: str, asset_type: str, path: str, source: str, versio
         "path": path,
         "source_artifact": source,
         "is_versioned": str(versioned).lower(),
+        "role": role,
+        "notes": notes,
+    }
+
+
+def _endpoint_row(path: str, content_type: str, role: str, notes: str) -> dict[str, str]:
+    return {
+        "method": "GET",
+        "path": path,
+        "content_type": content_type,
         "role": role,
         "notes": notes,
     }

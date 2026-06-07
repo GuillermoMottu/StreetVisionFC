@@ -1,0 +1,106 @@
+{
+  "rule_version": "live_playback_app_v0.1",
+  "mode": "playback_precomputado",
+  "backend": "stdlib_http_server",
+  "clip_id": "video_595",
+  "experiment_dir": "experiments/test_039_live_playback",
+  "video": {
+    "path": "/home/guillermo/V\u00eddeos/CopaFutMX/17 Abril/video-595_singular_display.mov",
+    "exists": true,
+    "size_bytes": 22503482,
+    "is_versioned": false,
+    "missing_note": ""
+  },
+  "artifacts": {
+    "tracks": "live_tracks.csv",
+    "events": "live_events.json",
+    "highlights": "live_highlights.csv",
+    "minimap_sample": "minimap_frame_sample.json",
+    "video_metadata": "video_metadata.json",
+    "config": "config.yaml",
+    "summary": "summary.md"
+  },
+  "endpoints": [
+    {
+      "method": "GET",
+      "path": "/health",
+      "content_type": "text/plain",
+      "role": "status",
+      "notes": "Backend health check."
+    },
+    {
+      "method": "GET",
+      "path": "/playback.html",
+      "content_type": "text/html",
+      "role": "ui",
+      "notes": "Playback UI with video and canvas overlay."
+    },
+    {
+      "method": "GET",
+      "path": "/data.json",
+      "content_type": "application/json",
+      "role": "combined_data",
+      "notes": "Combined payload for simple clients."
+    },
+    {
+      "method": "GET",
+      "path": "/manifest.json",
+      "content_type": "application/json",
+      "role": "manifest",
+      "notes": "Endpoint and artifact manifest."
+    },
+    {
+      "method": "GET",
+      "path": "/tracks.csv",
+      "content_type": "text/csv",
+      "role": "tracks",
+      "notes": "Normalized live tracks."
+    },
+    {
+      "method": "GET",
+      "path": "/events.json",
+      "content_type": "application/json",
+      "role": "events",
+      "notes": "Normalized live events."
+    },
+    {
+      "method": "GET",
+      "path": "/highlights.csv",
+      "content_type": "text/csv",
+      "role": "highlights",
+      "notes": "Normalized live highlights."
+    },
+    {
+      "method": "GET",
+      "path": "/minimap.json?frame=120",
+      "content_type": "application/json",
+      "role": "minimap",
+      "notes": "Frame-specific minimap payload."
+    },
+    {
+      "method": "GET",
+      "path": "/calibration.json",
+      "content_type": "application/json",
+      "role": "calibration",
+      "notes": "Calibration status inferred from normalized tracks."
+    },
+    {
+      "method": "GET",
+      "path": "/video-metadata.json",
+      "content_type": "application/json",
+      "role": "video_metadata",
+      "notes": "Configured video metadata."
+    },
+    {
+      "method": "GET",
+      "path": "/video?clip_id=video_595",
+      "content_type": "video/*",
+      "role": "local_video",
+      "notes": "Configured local video; heavy file is not versioned."
+    }
+  ],
+  "path_policy": {
+    "video": "only the configured clip_id is served; arbitrary path query parameters are rejected",
+    "artifacts": "fixed endpoint names only; no arbitrary filesystem path endpoint"
+  }
+}

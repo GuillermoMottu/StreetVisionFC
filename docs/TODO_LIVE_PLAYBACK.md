@@ -175,28 +175,28 @@ Servir video, artefactos y estado local desde Python sin introducir dependencias
 
 ### Tarea 25.1 - Servir artefactos
 
-- [ ] Exponer endpoint local para manifest de experimentos.
-- [ ] Exponer endpoint local para tracks.
-- [ ] Exponer endpoint local para eventos.
-- [ ] Exponer endpoint local para highlights.
-- [ ] Exponer endpoint local para calibracion y mini-mapa.
+- [x] Exponer endpoint local para manifest de experimentos.
+- [x] Exponer endpoint local para tracks.
+- [x] Exponer endpoint local para eventos.
+- [x] Exponer endpoint local para highlights.
+- [x] Exponer endpoint local para calibracion y mini-mapa.
 
 ### Tarea 25.2 - Servir video local
 
-- [ ] Permitir seleccionar video local por configuracion.
-- [ ] Proteger rutas para evitar leer fuera de ubicaciones permitidas.
-- [ ] Soportar videos fuera de Git.
-- [ ] Documentar cuando el video no este disponible en otro equipo.
+- [x] Permitir seleccionar video local por configuracion.
+- [x] Proteger rutas para evitar leer fuera de ubicaciones permitidas.
+- [x] Soportar videos fuera de Git.
+- [x] Documentar cuando el video no este disponible en otro equipo.
 
 ### Tarea 25.3 - Integrar con app local existente
 
-- [ ] Reusar patrones de `src/futbotmx/local_app.py` cuando aplique.
-- [ ] Mantener backend con libreria estandar de Python si es suficiente.
-- [ ] Evitar login, servidor remoto o arquitectura SaaS.
+- [x] Reusar patrones de `src/futbotmx/local_app.py` cuando aplique.
+- [x] Mantener backend con libreria estandar de Python si es suficiente.
+- [x] Evitar login, servidor remoto o arquitectura SaaS.
 
 ### Criterio de aceptacion
 
-- [ ] La app local abre el reproductor y carga datos desde endpoints locales reproducibles.
+- [x] La app local abre el reproductor y carga datos desde endpoints locales reproducibles.
 
 ## Actividad 26 - Canal Backend/Frontend
 
