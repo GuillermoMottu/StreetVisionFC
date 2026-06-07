@@ -196,6 +196,41 @@ def _median(values: list[float]) -> float:
     return float(np.median(np.asarray(values, dtype=float)))
 
 
+def polygon_area(points: Iterable[tuple[float, float]]) -> float:
+    coords = list(points)
+    if len(coords) < 3:
+        return 0.0
+    area = 0.0
+    for index, (x1, y1) in enumerate(coords):
+        x2, y2 = coords[(index + 1) % len(coords)]
+        area += x1 * y2 - x2 * y1
+    return abs(area) / 2.0
+
+
+def estimate_manual_calibration_confidence(
+    image_points: Iterable[tuple[float, float]],
+    spec: ClipSpatialSpec,
+    min_field_coverage: float = 0.35,
+) -> float:
+    points = list(image_points)
+    if len(points) < 4:
+        return 0.0
+    width = max(1.0, float(spec.width))
+    height = max(1.0, float(spec.height))
+    coverage = polygon_area(points[:4]) / max(1.0, width * height)
+    inside = sum(1 for x, y in points[:4] if 0.0 <= x <= width and 0.0 <= y <= height) / 4.0
+    xs = [point[0] for point in points[:4]]
+    ys = [point[1] for point in points[:4]]
+    spread_x = (max(xs) - min(xs)) / width
+    spread_y = (max(ys) - min(ys)) / height
+    coverage_score = min(1.0, coverage / max(min_field_coverage, 1e-6))
+    spread_score = min(1.0, (spread_x + spread_y) / 1.25)
+    confidence = 0.15 + 0.45 * coverage_score + 0.25 * inside + 0.15 * spread_score
+    if inside < 1.0:
+        confidence *= 0.75
+    return round(max(0.0, min(0.95, confidence)), 6)
+
+
 def _field_rows(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return [row for row in rows if str(row.get("class_name", "")) == "green_soccer_field"]
 
@@ -422,6 +457,72 @@ def write_spatial_validation_csv(path: str | Path, rows: list[dict[str, Any]]) -
         writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def compare_calibrations(
+    automatic_calibrations: dict[str, ClipCalibration],
+    selected_calibrations: dict[str, ClipCalibration],
+    manual_clip_ids: Iterable[str] = (),
+) -> list[dict[str, Any]]:
+    manual_set = set(manual_clip_ids)
+    rows: list[dict[str, Any]] = []
+    for clip_id in sorted(selected_calibrations):
+        selected = selected_calibrations[clip_id]
+        automatic = automatic_calibrations.get(clip_id)
+        deltas = _corner_deltas(automatic, selected) if automatic else []
+        rows.append(
+            {
+                "clip_id": clip_id,
+                "method_used": "manual" if clip_id in manual_set else "automatic",
+                "selected_calibration_id": selected.calibration_id,
+                "selected_method": selected.method,
+                "selected_status": selected.status,
+                "selected_confidence": round(selected.confidence, 6),
+                "automatic_calibration_id": automatic.calibration_id if automatic else "",
+                "automatic_method": automatic.method if automatic else "",
+                "automatic_status": automatic.status if automatic else "",
+                "automatic_confidence": round(automatic.confidence, 6) if automatic else "",
+                "corner_mean_delta_px": round(sum(deltas) / len(deltas), 6) if deltas else "",
+                "corner_max_delta_px": round(max(deltas), 6) if deltas else "",
+                "manual_points": len(selected.image_points) if clip_id in manual_set else 0,
+                "notes": "manual calibration overrides automatic seed" if clip_id in manual_set else "automatic calibration used",
+            }
+        )
+    return rows
+
+
+def write_calibration_comparison_csv(path: str | Path, rows: list[dict[str, Any]]) -> None:
+    fieldnames = [
+        "clip_id",
+        "method_used",
+        "selected_calibration_id",
+        "selected_method",
+        "selected_status",
+        "selected_confidence",
+        "automatic_calibration_id",
+        "automatic_method",
+        "automatic_status",
+        "automatic_confidence",
+        "corner_mean_delta_px",
+        "corner_max_delta_px",
+        "manual_points",
+        "notes",
+    ]
+    output = Path(path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with output.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+def _corner_deltas(reference: ClipCalibration | None, candidate: ClipCalibration) -> list[float]:
+    if reference is None or len(reference.image_points) < 4 or len(candidate.image_points) < 4:
+        return []
+    return [
+        float(np.hypot(candidate_point[0] - reference_point[0], candidate_point[1] - reference_point[1]))
+        for reference_point, candidate_point in zip(reference.image_points[:4], candidate.image_points[:4])
+    ]
 
 
 def draw_minimap_base(path: str | Path, field_model: FieldModel | None = None, title: str = "Mini-mapa base Nivel 3") -> None:

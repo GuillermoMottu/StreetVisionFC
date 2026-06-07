@@ -8,6 +8,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from futbotmx.level3 import (
     ClipSpatialSpec,
+    compare_calibrations,
+    estimate_manual_calibration_confidence,
     FieldModel,
     apply_homography_point,
     build_calibration_from_tracks,
@@ -106,6 +108,56 @@ class Level3SpatialTests(unittest.TestCase):
         self.assertAlmostEqual(rectified[0]["y_norm"], 0.4)
         self.assertEqual(normalized_zone(0.2, 0.4), "middle_third")
         self.assertEqual(summary["fallback_rows"], 1)
+
+    def test_manual_calibration_confidence_and_comparison(self) -> None:
+        spec = ClipSpatialSpec("video_manual", width=200, height=300, fps=10)
+        auto = build_calibration_from_tracks(
+            "video_manual",
+            [
+                {
+                    "frame": 1,
+                    "track_id": "field",
+                    "class_name": "green_soccer_field",
+                    "x": 100.0,
+                    "y": 150.0,
+                    "bbox_x1": 20.0,
+                    "bbox_y1": 30.0,
+                    "bbox_x2": 180.0,
+                    "bbox_y2": 270.0,
+                    "confidence": 0.9,
+                }
+            ],
+            spec,
+            min_field_confidence=0.5,
+            min_field_coverage=0.2,
+        )
+        manual = build_calibration_from_tracks(
+            "video_manual",
+            [
+                {
+                    "frame": 1,
+                    "track_id": "field",
+                    "class_name": "green_soccer_field",
+                    "x": 100.0,
+                    "y": 150.0,
+                    "bbox_x1": 25.0,
+                    "bbox_y1": 35.0,
+                    "bbox_x2": 175.0,
+                    "bbox_y2": 265.0,
+                    "confidence": 0.9,
+                }
+            ],
+            spec,
+            min_field_confidence=0.5,
+            min_field_coverage=0.2,
+        )
+
+        confidence = estimate_manual_calibration_confidence(manual.image_points, spec, min_field_coverage=0.2)
+        comparison = compare_calibrations({"video_manual": auto}, {"video_manual": manual}, {"video_manual"})
+
+        self.assertGreater(confidence, 0.7)
+        self.assertEqual(comparison[0]["method_used"], "manual")
+        self.assertGreater(float(comparison[0]["corner_mean_delta_px"]), 0.0)
 
 
 if __name__ == "__main__":

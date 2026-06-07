@@ -18,11 +18,14 @@ from futbotmx.level3 import (
     ClipSpatialSpec,
     FieldModel,
     build_calibration_from_tracks,
+    compare_calibrations,
     draw_minimap_base,
     draw_minimap_tracks,
+    estimate_manual_calibration_confidence,
     rectify_track_rows,
     summarize_rectified_tracks,
     solve_homography,
+    write_calibration_comparison_csv,
     write_calibration_json,
     write_level3_tracks,
     write_spatial_validation_csv,
@@ -102,7 +105,9 @@ def write_spatial_config(
             "minimap_base.png",
             "minimap_tracks.png",
             "overlay_comparison.csv",
+            "calibration_comparison.csv",
             "spatial_validation.csv",
+            "spatial_manifest.csv",
             "summary.md",
         ],
     }
@@ -134,13 +139,16 @@ def load_manual_calibrations(path: Path | None, specs: dict[str, ClipSpatialSpec
         field_points = _manual_points(raw.get("field_points", []))
         if len(image_points) < 4 or len(field_points) < 4:
             continue
+        confidence = raw.get("confidence", "")
+        if confidence == "":
+            confidence = estimate_manual_calibration_confidence(image_points, spec)
         homography = solve_homography(image_points, field_points)
         calibrations[clip_id] = ClipCalibration(
             clip_id=clip_id,
             calibration_id=str(raw.get("calibration_id", f"{clip_id}_manual_homography_v0.1")),
             method=str(raw.get("method", "manual_four_corner_homography")),
             status="usable",
-            confidence=float(raw.get("confidence", 0.7)),
+            confidence=float(confidence),
             image_width=spec.width,
             image_height=spec.height,
             image_points=image_points,
@@ -183,6 +191,70 @@ def write_overlay_comparison_csv(path: Path, source_dir: Path, clips: tuple[str,
     return rows
 
 
+def write_spatial_manifest(
+    path: Path,
+    output_dir: Path,
+    source_dir: Path,
+    manual_calibration_path: Path | None,
+) -> list[dict[str, Any]]:
+    rows = [
+        _manifest_row("config", "yaml", "config.yaml", "configs/default.yaml", True, "configuration", "Configuration snapshot."),
+        _manifest_row("field_calibration", "json", "field_calibration.json", "level2 tracks and optional manual calibration", True, "calibration", "Selected calibration by clip."),
+        _manifest_row("level3_tracks", "csv", "level3_tracks.csv", "tracks_level2.csv", True, "tracks", "Rectified or fallback tracks."),
+        _manifest_row("minimap_base", "png", "minimap_base.png", "field model", True, "visual_validation", "Base normalized pitch."),
+        _manifest_row("minimap_tracks", "png", "minimap_tracks.png", "level3_tracks.csv", True, "visual_validation", "Tracks projected to minimap."),
+        _manifest_row("overlay_comparison", "csv", "overlay_comparison.csv", source_dir.as_posix(), True, "visual_validation", "Original overlays used for comparison."),
+        _manifest_row("calibration_comparison", "csv", "calibration_comparison.csv", "automatic vs manual calibration", True, "calibration_validation", "Automatic/manual comparison."),
+        _manifest_row("spatial_validation", "csv", "spatial_validation.csv", "level3_tracks.csv", True, "validation", "Row and confidence summary."),
+        _manifest_row("summary", "md", "summary.md", "spatial_validation.csv", True, "summary", "Spatial model summary."),
+    ]
+    if manual_calibration_path:
+        rows.append(
+            _manifest_row(
+                "manual_calibration_input",
+                manual_calibration_path.suffix.lstrip(".") or "json",
+                _rel_path(manual_calibration_path, output_dir),
+                manual_calibration_path.as_posix(),
+                True,
+                "manual_input",
+                "Manual four-corner calibration input.",
+            )
+        )
+    fieldnames = ["asset_id", "asset_type", "path", "source_artifact", "is_versioned", "role", "notes"]
+    with path.open("w", newline="", encoding="utf-8") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
+        writer.writeheader()
+        writer.writerows(rows)
+    return rows
+
+
+def _manifest_row(
+    asset_id: str,
+    asset_type: str,
+    path: str,
+    source_artifact: str,
+    is_versioned: bool,
+    role: str,
+    notes: str,
+) -> dict[str, Any]:
+    return {
+        "asset_id": asset_id,
+        "asset_type": asset_type,
+        "path": path,
+        "source_artifact": source_artifact,
+        "is_versioned": str(is_versioned).lower(),
+        "role": role,
+        "notes": notes,
+    }
+
+
+def _rel_path(path: Path, output_dir: Path) -> str:
+    try:
+        return Path(Path(path).resolve()).relative_to(Path.cwd().resolve()).as_posix()
+    except ValueError:
+        return path.as_posix()
+
+
 def write_summary(
     path: Path,
     source_dir: Path,
@@ -190,12 +262,17 @@ def write_summary(
     calibrations: dict[str, ClipCalibration],
     validation_rows: list[dict[str, Any]],
     overlay_rows: list[dict[str, Any]],
+    comparison_rows: list[dict[str, Any]],
+    manual_calibration_path: Path | None,
+    manifest_rows: list[dict[str, Any]],
 ) -> None:
     primary_clip = clips[0] if clips else ""
     primary_row = next((row for row in validation_rows if row["clip_id"] == primary_clip), None)
     primary_ok = bool(primary_row and primary_row["calibration_status"] == "usable" and int(primary_row["rectified_rows"]) > 0)
     total_rows = sum(int(row["rows"]) for row in validation_rows)
     total_rectified = sum(int(row["rectified_rows"]) for row in validation_rows)
+    manual_rows = [row for row in comparison_rows if row["method_used"] == "manual"]
+    automatic_rows = [row for row in comparison_rows if row["method_used"] == "automatic"]
 
     lines = [
         "# Rectificacion Espacial Y Mini-Mapa Nivel 3",
@@ -208,6 +285,9 @@ def write_summary(
         f"- Clips procesados: `{', '.join(clips)}`.",
         f"- Filas exportadas: `{total_rows}`.",
         f"- Filas rectificadas por homografia: `{total_rectified}`.",
+        f"- Calibraciones manuales usadas: `{len(manual_rows)}`.",
+        f"- Calibraciones automaticas usadas: `{len(automatic_rows)}`.",
+        f"- Entrada manual: `{manual_calibration_path.as_posix() if manual_calibration_path else 'no_aplica'}`.",
         "",
         "## Modelo De Cancha",
         "",
@@ -242,8 +322,22 @@ def write_summary(
             "- `minimap_base.png` muestra el modelo normalizado de cancha, tercios y porterias relativas.",
             "- `minimap_tracks.png` dibuja trayectorias rectificadas de robots y balon por clip.",
             "- `spatial_validation.csv` resume rangos, filas rectificadas, fallback y calidad por clip.",
+            "- `calibration_comparison.csv` compara la calibracion automatica contra la seleccion usada.",
             f"- `overlay_comparison.csv` referencia `{len(overlay_rows)}` overlays originales ligeros de Nivel 2 para comparar frames seleccionados.",
             "- No se abrieron videos completos ni se genero overlay pesado nuevo; `level3_tracks.csv` conserva `x`, `y`, bboxes, frames e IDs para trazabilidad contra los overlays Nivel 2.",
+            "",
+            "## Comparacion Automatica Vs Manual",
+            "",
+        ]
+    )
+    for row in comparison_rows:
+        lines.append(
+            f"- `{row['clip_id']}` usa `{row['method_used']}`; "
+            f"confianza seleccionada `{row['selected_confidence']}`; "
+            f"delta medio esquinas `{row['corner_mean_delta_px'] if row['corner_mean_delta_px'] != '' else 'no_aplica'}` px."
+        )
+    lines.extend(
+        [
             "",
             "## Limitaciones Y Supuestos",
             "",
@@ -259,8 +353,14 @@ def write_summary(
             "- `minimap_base.png`",
             "- `minimap_tracks.png`",
             "- `overlay_comparison.csv`",
+            "- `calibration_comparison.csv`",
             "- `spatial_validation.csv`",
+            "- `spatial_manifest.csv`",
             "- `summary.md`",
+            "",
+            "## Manifest",
+            "",
+            f"- Filas en `spatial_manifest.csv`: `{len(manifest_rows)}`.",
             "",
             "## Comando",
             "",
@@ -288,34 +388,53 @@ def run_spatial_model(
     manual_calibrations = load_manual_calibrations(manual_calibration_path, specs)
 
     all_level3_rows: list[dict[str, Any]] = []
+    source_rows_by_clip: dict[str, list[dict[str, Any]]] = {}
+    automatic_calibrations: dict[str, ClipCalibration] = {}
     calibrations: dict[str, ClipCalibration] = {}
     for clip_id in clips:
         tracks_path = source_dir / clip_id / "tracks_level2.csv"
         if not tracks_path.exists():
             raise FileNotFoundError(f"Missing Level 2 tracks for {clip_id}: {tracks_path}")
         rows = read_tracks_csv(tracks_path)
+        source_rows_by_clip[clip_id] = rows
         spec = specs[clip_id]
-        calibration = manual_calibrations.get(clip_id)
-        if calibration is None:
-            calibration = build_calibration_from_tracks(
-                clip_id,
-                rows,
-                spec,
-                min_field_confidence=min_field_confidence,
-                min_field_coverage=min_field_coverage,
-            )
+        automatic_calibrations[clip_id] = build_calibration_from_tracks(
+            clip_id,
+            rows,
+            spec,
+            min_field_confidence=min_field_confidence,
+            min_field_coverage=min_field_coverage,
+        )
+
+    for clip_id in clips:
+        rows = source_rows_by_clip[clip_id]
+        spec = specs[clip_id]
+        calibration = manual_calibrations.get(clip_id) or automatic_calibrations[clip_id]
         calibrations[clip_id] = calibration
         all_level3_rows.extend(rectify_track_rows(clip_id, rows, spec, calibration, field_model))
 
     validation_rows = summarize_rectified_tracks(all_level3_rows, calibrations)
+    comparison_rows = compare_calibrations(automatic_calibrations, calibrations, manual_calibrations)
     write_spatial_config(config, output_dir, source_dir, clips, min_field_confidence, min_field_coverage, manual_calibration_path)
     write_calibration_json(output_dir / "field_calibration.json", field_model, calibrations.values())
     write_level3_tracks(output_dir / "level3_tracks.csv", all_level3_rows)
     write_spatial_validation_csv(output_dir / "spatial_validation.csv", validation_rows)
+    write_calibration_comparison_csv(output_dir / "calibration_comparison.csv", comparison_rows)
     draw_minimap_base(output_dir / "minimap_base.png", field_model)
     draw_minimap_tracks(all_level3_rows, output_dir / "minimap_tracks.png", field_model)
     overlay_rows = write_overlay_comparison_csv(output_dir / "overlay_comparison.csv", source_dir, clips)
-    write_summary(output_dir / "summary.md", source_dir, clips, calibrations, validation_rows, overlay_rows)
+    manifest_rows = write_spatial_manifest(output_dir / "spatial_manifest.csv", output_dir, source_dir, manual_calibration_path)
+    write_summary(
+        output_dir / "summary.md",
+        source_dir,
+        clips,
+        calibrations,
+        validation_rows,
+        overlay_rows,
+        comparison_rows,
+        manual_calibration_path,
+        manifest_rows,
+    )
     return validation_rows
 
 
