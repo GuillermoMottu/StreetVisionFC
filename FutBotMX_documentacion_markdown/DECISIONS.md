@@ -213,3 +213,31 @@ Nivel 3 se declara tecnicamente completado como demo avanzada reproducible. La d
 
 **Consecuencia:**
 La entrega final puede presentarse desde GitHub con evidencia ligera. Cualquier mejora posterior debe tratarse como iteracion nueva y no como requisito para el cierre tecnico actual.
+
+---
+
+## DEC-014 - Alcance controlado de playback vivo Post-Nivel 3
+
+**Estado:** Aprobada
+
+**Contexto:**
+Despues del cierre tecnico de Nivel 3, se propone una extension para ver analisis sincronizado mientras un video local se reproduce. La idea requiere UI con overlays, sincronizacion frame/timestamp, posible canal backend/frontend y, mas adelante, procesamiento incremental. Esto no formaba parte del cierre de Nivel 3 y no debe reinterpretarse como requisito pendiente de la entrega final.
+
+**Decision:**
+El trabajo de playback vivo se inicia como extension Post-Nivel 3 y debe comenzar por `playback_precomputado`: reproducir video local en navegador y dibujar overlays usando artefactos existentes como tracks, eventos, highlights y calibracion. El modo `streaming_simulado` puede agregarse despues para probar comunicacion backend/frontend sin inferencia pesada. Los modos `online_parcial` y `online_sam3` quedan como etapas experimentales sujetas a medicion de latencia, backpressure y degradacion.
+
+**Modos aceptados:**
+- `playback_precomputado`: video local con overlays desde CSV/JSON existentes.
+- `streaming_simulado`: backend local emite resultados precomputados como flujo por frame o timestamp.
+- `online_parcial`: procesamiento vivo con detecciones precomputadas o detector ligero.
+- `online_sam3`: evaluacion GPU con stride/sampling, no inferencia SAM 3 cada frame por defecto.
+
+**Limites:**
+- SAM 3 sigue siendo el cuello de botella principal para analisis durante reproduccion.
+- La UI debe priorizar reproduccion fluida aunque el overlay llegue tarde.
+- El reloj principal es el video; el analisis puede degradar, saltar frames o usar el ultimo resultado disponible.
+- Los videos completos, checkpoints, frames masivos, mascaras masivas y renders pesados permanecen fuera de Git.
+- Los eventos mostrados durante playback deben mantenerse como candidatos o provisionales salvo revision posterior.
+
+**Consecuencia:**
+La siguiente ruta tecnica queda ordenada por riesgo: contrato de datos temporal, reproductor con overlays precomputados, sincronizador frame/timestamp, backend local, canal continuo, tracker incremental, eventos streaming y solo despues inferencia online parcial. La evidencia de esta extension debe registrarse en documentos y experimentos ligeros nuevos.
