@@ -77,6 +77,31 @@ class LivePlaybackConfig:
     trail_length: int = DEFAULT_TRAIL_LENGTH
 
 
+@dataclass(frozen=True)
+class FrameResolution:
+    target_frame: int
+    resolved_frame: int | None
+    status: str
+    frame_gap: int | None
+
+
+@dataclass(frozen=True)
+class VideoMetadata:
+    clip_id: str
+    fps_nominal: float
+    width: int
+    height: int
+    frame_start: int
+    frame_end: int
+    configured_frame_count: int
+    configured_duration_sec: float
+    video_path: str
+    video_exists: bool
+    video_size_bytes: int
+    metadata_source: str
+    notes: str
+
+
 def playback_clips_from_config(config: dict[str, Any]) -> list[PlaybackClip]:
     closure = config.get("level2_closure", {})
     raw_clips = closure.get("clips", []) if isinstance(closure, dict) else []
@@ -134,6 +159,103 @@ def live_playback_config_from_project(
     )
 
 
+def frame_from_timestamp(
+    timestamp_sec: float,
+    fps: float,
+    start_frame: int = 0,
+    end_frame: int | None = None,
+) -> int:
+    frame = int(round(max(0.0, timestamp_sec) * fps))
+    if frame < start_frame:
+        return start_frame
+    if end_frame is not None and frame > end_frame:
+        return end_frame
+    return frame
+
+
+def timestamp_from_frame(frame: int, fps: float) -> float:
+    if fps <= 0:
+        return 0.0
+    return frame / fps
+
+
+def available_frame_numbers(tracks: list[dict[str, Any]]) -> list[int]:
+    return sorted({_coerce_int(row.get("frame"), 0) for row in tracks})
+
+
+def resolve_overlay_frame(
+    target_frame: int,
+    available_frames: list[int],
+    max_gap_frames: int | None = None,
+) -> FrameResolution:
+    if not available_frames:
+        return FrameResolution(target_frame, None, "missing", None)
+    if target_frame in set(available_frames):
+        return FrameResolution(target_frame, target_frame, "exact", 0)
+
+    previous_frames = [frame for frame in available_frames if frame <= target_frame]
+    if previous_frames:
+        previous = previous_frames[-1]
+        gap = target_frame - previous
+        if max_gap_frames is None or gap <= max_gap_frames:
+            return FrameResolution(target_frame, previous, "previous", gap)
+
+    future_frames = [frame for frame in available_frames if frame > target_frame]
+    if future_frames:
+        future = future_frames[0]
+        gap = future - target_frame
+        if max_gap_frames is None or gap <= max_gap_frames:
+            return FrameResolution(target_frame, future, "future", gap)
+    return FrameResolution(target_frame, None, "missing", None)
+
+
+def video_metadata_from_config(playback_config: LivePlaybackConfig) -> VideoMetadata:
+    video = resolve_configured_video(playback_config)
+    exists = bool(video and video.exists() and video.is_file())
+    size = video.stat().st_size if exists and video else 0
+    frame_count = max(0, playback_config.end_frame - playback_config.start_frame + 1)
+    duration = frame_count / playback_config.fps if playback_config.fps else 0.0
+    return VideoMetadata(
+        clip_id=playback_config.clip_id,
+        fps_nominal=playback_config.fps,
+        width=playback_config.width,
+        height=playback_config.height,
+        frame_start=playback_config.start_frame,
+        frame_end=playback_config.end_frame,
+        configured_frame_count=frame_count,
+        configured_duration_sec=round(duration, 6),
+        video_path=playback_config.video_path,
+        video_exists=exists,
+        video_size_bytes=size,
+        metadata_source="configs/default.yaml:level2_closure",
+        notes="Browser duration is read at runtime; saved duration is derived from configured frame range and FPS.",
+    )
+
+
+def sync_summary_from_frames(playback_config: LivePlaybackConfig, frames: list[int]) -> dict[str, Any]:
+    if not frames:
+        return {
+            "available_frame_count": 0,
+            "first_available_frame": "",
+            "last_available_frame": "",
+            "max_frame_gap": 0,
+            "jump_reset_threshold_frames": max(8, playback_config.trail_length * 2),
+            "interpolation_enabled": False,
+            "interpolation_policy": "disabled; no frames available",
+        }
+    gaps = [frames[index] - frames[index - 1] for index in range(1, len(frames))]
+    max_gap = max(gaps, default=0)
+    return {
+        "available_frame_count": len(frames),
+        "first_available_frame": frames[0],
+        "last_available_frame": frames[-1],
+        "max_frame_gap": max_gap,
+        "jump_reset_threshold_frames": max(8, playback_config.trail_length * 2),
+        "interpolation_enabled": False,
+        "interpolation_policy": "disabled; use exact frame or previous available frame for stride",
+    }
+
+
 def build_live_playback_package(root: Path, config_path: Path, playback_config: LivePlaybackConfig) -> dict[str, Any]:
     context = build_live_playback_context(root, playback_config)
     output_dir = root / playback_config.output_dir
@@ -143,6 +265,10 @@ def build_live_playback_package(root: Path, config_path: Path, playback_config: 
     write_live_highlights_csv(output_dir / "live_highlights.csv", context["highlights"])
     (output_dir / "minimap_frame_sample.json").write_text(
         json.dumps(context["minimap_sample"], indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "video_metadata.json").write_text(
+        json.dumps(asdict(context["video_metadata"]), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
     (output_dir / "playback.html").write_text(render_playback_html(context), encoding="utf-8")
@@ -180,7 +306,9 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
         calibration_status="rectified" if any(row.get("x_norm") for row in normalized_tracks) else "unavailable",
     )
     validation = validate_playback_payload(normalized_tracks, normalized_events, normalized_highlights, minimap_sample)
-    video = resolve_configured_video(playback_config)
+    frames = available_frame_numbers(normalized_tracks)
+    video_metadata = video_metadata_from_config(playback_config)
+    sync = sync_summary_from_frames(playback_config, frames)
     return {
         "rule_version": RULE_VERSION,
         "config": playback_config,
@@ -188,6 +316,9 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
         "events": normalized_events,
         "highlights": normalized_highlights,
         "minimap_sample": minimap_sample,
+        "video_metadata": video_metadata,
+        "sync": sync,
+        "available_frames": frames,
         "validation": validation,
         "summary": {
             "clip_id": playback_config.clip_id,
@@ -198,7 +329,12 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
             "frame_end": playback_config.end_frame,
             "fps": playback_config.fps,
             "video_path": playback_config.video_path,
-            "video_exists": bool(video and video.exists()),
+            "video_exists": video_metadata.video_exists,
+            "video_size_bytes": video_metadata.video_size_bytes,
+            "configured_duration_sec": video_metadata.configured_duration_sec,
+            "configured_frame_count": video_metadata.configured_frame_count,
+            "available_frame_count": sync["available_frame_count"],
+            "max_frame_gap": sync["max_frame_gap"],
             "tracks_csv": playback_config.tracks_csv,
             "events_json": playback_config.events_json,
             "highlights_csv": playback_config.highlights_csv,
@@ -267,8 +403,11 @@ def render_playback_html(context: dict[str, Any]) -> str:
             '<label class="field">Clip<select id="clipSelect"><option value="' + _esc(config.clip_id) + '">' + _esc(config.clip_id) + "</option></select></label>",
             '<label class="field">Experimento<select id="experimentSelect"><option value="' + _esc(config.output_dir) + '">' + _esc(config.output_dir) + "</option></select></label>",
             '<div class="stats">',
-            '<span>Frame <strong id="frameReadout">0</strong></span>',
+            '<span>Frame objetivo <strong id="frameReadout">0</strong></span>',
+            '<span>Frame overlay <strong id="resolvedFrameReadout">sin datos</strong></span>',
             '<span>Tiempo <strong id="timeReadout">0.000s</strong></span>',
+            '<span>Duracion <strong id="durationReadout">config</strong></span>',
+            '<span>Velocidad <strong id="rateReadout">1.00x</strong></span>',
             '<span>Datos <strong id="dataReadout">sin datos</strong></span>',
             "</div>",
             '<div class="toggles">',
@@ -307,6 +446,9 @@ def client_payload(context: dict[str, Any]) -> dict[str, Any]:
             "trail_length": config.trail_length,
             "video_exists": context["summary"]["video_exists"],
         },
+        "sync": context["sync"],
+        "available_frames": context["available_frames"],
+        "video_metadata": asdict(context["video_metadata"]),
         "tracks": context["tracks"],
         "events": context["events"],
         "highlights": context["highlights"],
@@ -323,12 +465,15 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
         "contract": "live_playback_data_contract_v0.1",
         "config": asdict(playback_config),
         "summary": context["summary"],
+        "video_metadata": asdict(context["video_metadata"]),
+        "sync": context["sync"],
         "outputs": [
             "playback.html",
             "live_tracks.csv",
             "live_events.json",
             "live_highlights.csv",
             "minimap_frame_sample.json",
+            "video_metadata.json",
             "live_playback_manifest.csv",
             "summary.md",
         ],
@@ -346,6 +491,7 @@ def write_live_playback_manifest(root: Path, playback_config: LivePlaybackConfig
         _manifest_row("live_events", "json", "live_events.json", playback_config.events_json, True, "data", f"{len(context['events'])} normalized events."),
         _manifest_row("live_highlights", "csv", "live_highlights.csv", playback_config.highlights_csv, True, "data", f"{len(context['highlights'])} normalized highlights."),
         _manifest_row("minimap_sample", "json", "minimap_frame_sample.json", "live_tracks.csv", True, "data", "Sample minimap payload for first frame with rectified points."),
+        _manifest_row("video_metadata", "json", "video_metadata.json", "configs/default.yaml", True, "sync", "FPS, dimensions, configured duration and approximate frame count."),
         _manifest_row("source_video", "video", playback_config.video_path, "local video path", False, "local_input", "Heavy/local input; never versioned."),
     ]
     output = root / playback_config.output_dir / "live_playback_manifest.csv"
@@ -370,6 +516,10 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         f"- Clip: `{summary['clip_id']}`.",
         f"- Frames: `{summary['frame_start']}-{summary['frame_end']}`.",
         f"- FPS configurado: `{summary['fps']}`.",
+        f"- Duracion configurada: `{summary['configured_duration_sec']}` segundos.",
+        f"- Frames configurados aproximados: `{summary['configured_frame_count']}`.",
+        f"- Frames con datos disponibles: `{summary['available_frame_count']}`.",
+        f"- Mayor salto entre frames disponibles: `{summary['max_frame_gap']}`.",
         f"- Video local existe: `{str(summary['video_exists']).lower()}`.",
         f"- Tracks normalizados: `{summary['track_rows']}`.",
         f"- Eventos normalizados: `{summary['event_count']}`.",
@@ -387,8 +537,17 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "- `live_events.json`.",
         "- `live_highlights.csv`.",
         "- `minimap_frame_sample.json`.",
+        "- `video_metadata.json`.",
         "- `config.yaml`.",
         "- `live_playback_manifest.csv`.",
+        "",
+        "## Sincronizacion",
+        "",
+        "- Conversion: `frame = round(currentTime * fps)`.",
+        "- Resolucion: frame exacto si existe; si no existe, frame anterior disponible por stride.",
+        "- Interpolacion: deshabilitada por defecto hasta que un modo explicito la active.",
+        "- Seek: el frontend recalcula el overlay y limpia trails si detecta salto temporal grande.",
+        "- Duracion real del elemento `<video>` se lee en navegador; el JSON guarda duracion configurada del rango de frames.",
         "",
         "## Comando",
         "",
@@ -600,20 +759,27 @@ const canvas=document.getElementById('overlay');
 const ctx=canvas.getContext('2d');
 const missing=document.getElementById('videoMissing');
 const frameReadout=document.getElementById('frameReadout');
+const resolvedFrameReadout=document.getElementById('resolvedFrameReadout');
 const timeReadout=document.getElementById('timeReadout');
+const durationReadout=document.getElementById('durationReadout');
+const rateReadout=document.getElementById('rateReadout');
 const dataReadout=document.getElementById('dataReadout');
 const syncState=document.getElementById('syncState');
 const byFrame=new Map();
 for(const row of data.tracks){const f=Number(row.frame);if(!byFrame.has(f))byFrame.set(f,[]);byFrame.get(f).push(row);}
+const availableFrames=(data.available_frames||[]).map(Number).sort((a,b)=>a-b);
+let lastTargetFrame=null;
+let suppressTrails=0;
 function enabled(id){return document.getElementById(id)?.checked;}
-function frameNow(){const fps=Number(data.config.fps)||30;return Math.round((video.currentTime||0)*fps);}
+function frameFromVideoTime(timeSec){const fps=Number(data.config.fps)||30;const raw=Math.round(Math.max(0,timeSec||0)*fps);const end=Number(data.config.end_frame)||raw;return Math.min(raw,end);}
+function frameNow(){return frameFromVideoTime(video.currentTime||0);}
+function resolveOverlayFrame(targetFrame){if(byFrame.has(targetFrame))return{target_frame:targetFrame,resolved_frame:targetFrame,status:'exact',frame_gap:0};let previous=null;let future=null;for(const frame of availableFrames){if(frame<=targetFrame)previous=frame;if(frame>targetFrame){future=frame;break;}}const maxGap=Number(data.sync?.max_frame_gap||0)||Number.MAX_SAFE_INTEGER;if(previous!==null&&targetFrame-previous<=maxGap)return{target_frame:targetFrame,resolved_frame:previous,status:'previous',frame_gap:targetFrame-previous};if(future!==null&&future-targetFrame<=maxGap)return{target_frame:targetFrame,resolved_frame:future,status:'future',frame_gap:future-targetFrame};return{target_frame:targetFrame,resolved_frame:null,status:'missing',frame_gap:null};}
 function resizeCanvas(){const rect=video.getBoundingClientRect();const fallbackW=data.config.width||960;const fallbackH=data.config.height||540;canvas.width=Math.max(1,Math.round(rect.width||fallbackW));canvas.height=Math.max(1,Math.round(rect.height||fallbackH));}
 function scaleX(x){return Number(x)*(canvas.width/(data.config.width||canvas.width));}
 function scaleY(y){return Number(y)*(canvas.height/(data.config.height||canvas.height));}
 function activeEvents(frame){return data.events.filter(e=>Number(e.start_frame)<=frame&&Number(e.end_frame)>=frame);}
 function activeHighlights(frame){return data.highlights.filter(e=>Number(e.start_frame)<=frame&&Number(e.end_frame)>=frame);}
-function draw(){resizeCanvas();ctx.clearRect(0,0,canvas.width,canvas.height);const frame=frameNow();const rows=byFrame.get(frame)||nearestRows(frame);const events=activeEvents(frame);const highlights=activeHighlights(frame);frameReadout.textContent=String(frame);timeReadout.textContent=(video.currentTime||0).toFixed(3)+'s';dataReadout.textContent=rows.length+' tracks | '+events.length+' eventos';syncState.textContent=rows.length?'replaying_cache':'delayed';if(enabled('layerTrails'))drawTrails(frame);if(enabled('layerTracks'))drawTracks(rows);if(enabled('layerBall'))drawBall(rows);if(enabled('layerEvents'))drawEvents(events);if(enabled('layerPossession'))drawPossession(events);if(enabled('layerHighlights'))drawHighlights(highlights);if(enabled('layerMinimap'))drawMinimap(rows);if(enabled('layerDebug'))drawDebug(frame,rows);renderEventList(events,highlights);requestAnimationFrame(draw);}
-function nearestRows(frame){for(let gap=1;gap<=3;gap++){if(byFrame.has(frame-gap))return byFrame.get(frame-gap);if(byFrame.has(frame+gap))return byFrame.get(frame+gap);}return [];}
+function draw(){resizeCanvas();ctx.clearRect(0,0,canvas.width,canvas.height);const target=frameNow();const resolved=resolveOverlayFrame(target);const frame=resolved.resolved_frame;const rows=frame===null?[]:(byFrame.get(frame)||[]);const events=activeEvents(target);const highlights=activeHighlights(target);if(lastTargetFrame!==null&&Math.abs(target-lastTargetFrame)>Number(data.sync?.jump_reset_threshold_frames||32))suppressTrails=2;lastTargetFrame=target;frameReadout.textContent=String(target);resolvedFrameReadout.textContent=frame===null?'sin datos':String(frame)+' ('+resolved.status+')';timeReadout.textContent=(video.currentTime||0).toFixed(3)+'s';durationReadout.textContent=Number.isFinite(video.duration)?video.duration.toFixed(3)+'s':Number(data.video_metadata?.configured_duration_sec||0).toFixed(3)+'s config';rateReadout.textContent=(video.playbackRate||1).toFixed(2)+'x';dataReadout.textContent=rows.length+' tracks | '+events.length+' eventos';syncState.textContent=resolved.status==='missing'?'missing_data':(resolved.status==='exact'?'replaying_cache':'stride_fallback');if(resolved.status==='missing')badge('sin datos para frame '+target,14,14,'#ff6b6b');if(enabled('layerTrails')&&suppressTrails<=0)drawTrails(frame===null?target:frame);else if(suppressTrails>0)suppressTrails-=1;if(enabled('layerTracks'))drawTracks(rows);if(enabled('layerBall'))drawBall(rows);if(enabled('layerEvents'))drawEvents(events);if(enabled('layerPossession'))drawPossession(events);if(enabled('layerHighlights'))drawHighlights(highlights);if(enabled('layerMinimap'))drawMinimap(rows);if(enabled('layerDebug'))drawDebug(target,rows,resolved);renderEventList(events,highlights);requestAnimationFrame(draw);}
 function drawTracks(rows){for(const row of rows){if(row.class==='ball')continue;const x=scaleX(row.x),y=scaleY(row.y),w=scaleX(row.w),h=scaleY(row.h);ctx.strokeStyle=row.team==='blue'?'#48a6ff':(row.team==='red'?'#ff6b6b':'#64d47c');ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(scaleX(row.center_x),scaleY(row.center_y),3,0,Math.PI*2);ctx.fill();if(enabled('layerIds'))label(row.track_id,x,y-6,ctx.strokeStyle);}}
 function drawBall(rows){for(const row of rows.filter(r=>r.class==='ball')){const x=scaleX(row.center_x),y=scaleY(row.center_y);ctx.fillStyle='#f4c430';ctx.strokeStyle='#10130f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fill();ctx.stroke();if(enabled('layerIds'))label(row.track_id,x+10,y,'#f4c430');}}
 function drawTrails(frame){const start=frame-(data.config.trail_length||16);const trails=new Map();for(const row of data.tracks){const f=Number(row.frame);if(f<start||f>frame)continue;if(!trails.has(row.track_id))trails.set(row.track_id,[]);trails.get(row.track_id).push(row);}for(const points of trails.values()){if(points.length<2)continue;ctx.beginPath();points.forEach((p,i)=>{const x=scaleX(p.center_x),y=scaleY(p.center_y);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.strokeStyle='rgba(244,196,48,.42)';ctx.lineWidth=2;ctx.stroke();}}
@@ -621,15 +787,22 @@ function drawEvents(events){let top=14;for(const event of events){const text=eve
 function drawPossession(events){const possession=events.find(e=>(e.label||'').includes('possession')||(e.reason||'').includes('posesion'));if(!possession)return;badge('posesion candidata: '+(possession.team||'unknown'),14,canvas.height-42,'#64d47c');}
 function drawHighlights(highlights){for(const hl of highlights){badge('highlight #'+hl.rank+' '+Number(hl.score).toFixed(1),canvas.width-190,14,'#ff6b6b');}}
 function drawMinimap(rows){const w=150,h=96,x=canvas.width-w-14,y=canvas.height-h-14;ctx.fillStyle='rgba(13,16,13,.86)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#aab6a4';ctx.strokeRect(x,y,w,h);ctx.strokeStyle='rgba(170,182,164,.3)';ctx.beginPath();ctx.moveTo(x+w/2,y);ctx.lineTo(x+w/2,y+h);ctx.stroke();for(const row of rows){if(row.x_norm===''||row.y_norm==='')continue;ctx.fillStyle=row.class==='ball'?'#f4c430':(row.team==='blue'?'#48a6ff':'#64d47c');ctx.beginPath();ctx.arc(x+Number(row.x_norm)*w,y+Number(row.y_norm)*h,row.class==='ball'?4:3,0,Math.PI*2);ctx.fill();}}
-function drawDebug(frame,rows){label('fps='+data.config.fps+' rows='+rows.length+' frame='+frame,12,canvas.height-12,'#edf2e9');}
+function drawDebug(frame,rows,resolved){label('fps='+data.config.fps+' rows='+rows.length+' target='+frame+' resolved='+(resolved.resolved_frame??'none')+' status='+resolved.status,12,canvas.height-12,'#edf2e9');}
 function label(text,x,y,color){ctx.font='12px system-ui';ctx.fillStyle='rgba(5,6,5,.78)';const width=ctx.measureText(text).width+8;ctx.fillRect(x,y-13,width,17);ctx.fillStyle=color;ctx.fillText(text,x+4,y);}
 function badge(text,x,y,color){ctx.font='13px system-ui';const width=Math.min(canvas.width-24,ctx.measureText(text).width+18);ctx.fillStyle='rgba(5,6,5,.82)';ctx.fillRect(x,y,width,24);ctx.strokeStyle=color;ctx.strokeRect(x,y,width,24);ctx.fillStyle='#edf2e9';ctx.fillText(text,x+8,y+16);}
 function renderEventList(events,highlights){const list=document.getElementById('eventList');list.innerHTML='';for(const item of [...events,...highlights].slice(0,6)){const div=document.createElement('div');div.className='event';div.innerHTML='<strong>'+escapeHtml(item.label||item.highlight_id)+'</strong><br>frames '+(item.start_frame||item.start_frame)+'-'+(item.end_frame||item.end_frame)+' | '+(item.status||'provisional');list.appendChild(div);}}
 function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));}
+function markTemporalJump(){suppressTrails=2;resizeCanvas();}
 if(!data.config.video_exists){missing.hidden=false;}
-video.addEventListener('loadedmetadata',resizeCanvas);
+video.addEventListener('loadedmetadata',()=>{resizeCanvas();durationReadout.textContent=Number.isFinite(video.duration)?video.duration.toFixed(3)+'s':durationReadout.textContent;});
+video.addEventListener('seeking',markTemporalJump);
+video.addEventListener('seeked',markTemporalJump);
+video.addEventListener('ratechange',()=>{rateReadout.textContent=(video.playbackRate||1).toFixed(2)+'x';});
+video.addEventListener('play',()=>{syncState.textContent='playing';});
+video.addEventListener('pause',()=>{syncState.textContent='paused';});
+video.addEventListener('ended',()=>{syncState.textContent='ended';suppressTrails=2;});
 window.addEventListener('resize',resizeCanvas);
-for(const input of document.querySelectorAll('input[type=checkbox]'))input.addEventListener('change',draw);
+for(const input of document.querySelectorAll('input[type=checkbox]'))input.addEventListener('change',()=>{suppressTrails=1;});
 requestAnimationFrame(draw);
 """
 

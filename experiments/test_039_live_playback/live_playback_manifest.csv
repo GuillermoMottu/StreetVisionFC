@@ -7,4 +7,5 @@ live_tracks,csv,live_tracks.csv,experiments/test_034_full_analysis/level3_spatia
 live_events,json,live_events.json,experiments/test_034_full_analysis/level3_events/level3_events.json,true,data,83 normalized events.
 live_highlights,csv,live_highlights.csv,experiments/test_034_full_analysis/level3_events/level3_highlights.csv,true,data,82 normalized highlights.
 minimap_sample,json,minimap_frame_sample.json,live_tracks.csv,true,data,Sample minimap payload for first frame with rectified points.
+video_metadata,json,video_metadata.json,configs/default.yaml,true,sync,"FPS, dimensions, configured duration and approximate frame count."
 source_video,video,/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov,local video path,false,local_input,Heavy/local input; never versioned.

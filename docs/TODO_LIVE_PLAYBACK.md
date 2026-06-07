@@ -144,28 +144,28 @@ Evitar desfases entre video y overlays, especialmente al pausar, hacer seek o ca
 
 ### Tarea 24.1 - Metadatos de video
 
-- [ ] Leer FPS, ancho, alto, duracion y total aproximado de frames.
-- [ ] Guardar metadatos en manifest ligero.
-- [ ] Definir conversion `currentTime -> frame`.
-- [ ] Documentar diferencias entre FPS nominal y frames reales si aparecen.
+- [x] Leer FPS, ancho, alto, duracion y total aproximado de frames.
+- [x] Guardar metadatos en manifest ligero.
+- [x] Definir conversion `currentTime -> frame`.
+- [x] Documentar diferencias entre FPS nominal y frames reales si aparecen.
 
 ### Tarea 24.2 - Resolver frame visible
 
-- [ ] Buscar el frame exacto si existe en datos.
-- [ ] Usar frame anterior mas cercano si los datos vienen con stride.
-- [ ] Interpolar centroides solo cuando el modo lo permita.
-- [ ] Marcar visualmente frames sin datos.
+- [x] Buscar el frame exacto si existe en datos.
+- [x] Usar frame anterior mas cercano si los datos vienen con stride.
+- [x] Interpolar centroides solo cuando el modo lo permita.
+- [x] Marcar visualmente frames sin datos.
 
 ### Tarea 24.3 - Manejar controles de reproduccion
 
-- [ ] Soportar play, pause, seek y replay.
-- [ ] Recalcular overlay inmediatamente despues de un seek.
-- [ ] Limpiar trails cuando el salto temporal sea grande.
-- [ ] Mantener sincronizacion al cambiar velocidad.
+- [x] Soportar play, pause, seek y replay.
+- [x] Recalcular overlay inmediatamente despues de un seek.
+- [x] Limpiar trails cuando el salto temporal sea grande.
+- [x] Mantener sincronizacion al cambiar velocidad.
 
 ### Criterio de aceptacion
 
-- [ ] El overlay no queda desfasado despues de pausar, avanzar o regresar en el video.
+- [x] El overlay no queda desfasado despues de pausar, avanzar o regresar en el video.
 
 ## Actividad 25 - Backend Local De Playback
 

@@ -11,13 +11,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from futbotmx.live_playback import (
     LivePlaybackConfig,
+    available_frame_numbers,
     build_live_playback_context,
     build_live_playback_package,
     client_payload,
+    frame_from_timestamp,
     live_playback_config_from_project,
     playback_clips_from_config,
     render_playback_html,
+    resolve_overlay_frame,
     selected_playback_clip,
+    sync_summary_from_frames,
+    timestamp_from_frame,
+    video_metadata_from_config,
 )
 
 
@@ -71,6 +77,8 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertEqual(context["events"][0]["status"], "provisional")
             self.assertEqual(context["highlights"][0]["status"], "provisional")
             self.assertEqual(len(context["minimap_sample"]["points"]), 2)
+            self.assertEqual(context["video_metadata"].configured_frame_count, 4)
+            self.assertEqual(context["sync"]["available_frame_count"], 1)
 
     def test_render_playback_html_contains_video_canvas_layers_and_readouts(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -85,8 +93,12 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("layerTracks", html)
             self.assertIn("layerHighlights", html)
             self.assertIn("frameReadout", html)
+            self.assertIn("resolvedFrameReadout", html)
             self.assertIn("FUTBOT_PLAYBACK_DATA", html)
             self.assertIn("drawMinimap", html)
+            self.assertIn("resolveOverlayFrame", html)
+            self.assertIn("seeked", html)
+            self.assertIn("ratechange", html)
 
     def test_build_live_playback_package_writes_activity_23_artifacts(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -106,9 +118,11 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue((output_dir / "live_tracks.csv").exists())
             self.assertTrue((output_dir / "live_events.json").exists())
             self.assertTrue((output_dir / "live_highlights.csv").exists())
+            self.assertTrue((output_dir / "video_metadata.json").exists())
             summary = (output_dir / "summary.md").read_text(encoding="utf-8")
             self.assertIn("Playback Vivo Con Overlays Precomputados", summary)
             self.assertIn("Tracks normalizados: `2`", summary)
+            self.assertIn("Conversion: `frame = round(currentTime * fps)`", summary)
 
     def test_client_payload_is_small_frontend_contract(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -122,6 +136,46 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertEqual(payload["config"]["trail_length"], 16)
             self.assertEqual(payload["summary"]["highlight_count"], 1)
             self.assertEqual(payload["tracks"][0]["track_id"], "ball_bt_01")
+            self.assertEqual(payload["available_frames"], [120])
+            self.assertEqual(payload["sync"]["max_frame_gap"], 0)
+            self.assertEqual(payload["video_metadata"]["configured_frame_count"], 4)
+
+    def test_frame_timestamp_conversion_and_resolution_prefers_previous_frame(self) -> None:
+        self.assertEqual(frame_from_timestamp(2.01, 60.0), 121)
+        self.assertEqual(frame_from_timestamp(0.1, 60.0, start_frame=120), 120)
+        self.assertEqual(frame_from_timestamp(9.0, 60.0, end_frame=180), 180)
+        self.assertAlmostEqual(timestamp_from_frame(120, 60.0), 2.0)
+
+        frames = [120, 123, 126]
+
+        self.assertEqual(resolve_overlay_frame(123, frames).status, "exact")
+        fallback = resolve_overlay_frame(125, frames)
+        self.assertEqual(fallback.resolved_frame, 123)
+        self.assertEqual(fallback.status, "previous")
+        missing = resolve_overlay_frame(130, frames, max_gap_frames=2)
+        self.assertIsNone(missing.resolved_frame)
+        self.assertEqual(missing.status, "missing")
+
+    def test_video_metadata_and_sync_summary_are_lightweight(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            playback_config = fixture_playback_config(root)
+
+            metadata = video_metadata_from_config(playback_config)
+            sync = sync_summary_from_frames(playback_config, [120, 123, 126])
+
+            self.assertTrue(metadata.video_exists)
+            self.assertEqual(metadata.width, 1280)
+            self.assertEqual(metadata.configured_frame_count, 4)
+            self.assertEqual(metadata.configured_duration_sec, round(4 / 60.0, 6))
+            self.assertEqual(sync["available_frame_count"], 3)
+            self.assertEqual(sync["max_frame_gap"], 3)
+            self.assertFalse(sync["interpolation_enabled"])
+
+    def test_available_frame_numbers_deduplicates_and_sorts(self) -> None:
+        frames = available_frame_numbers([{"frame": "123"}, {"frame": "120"}, {"frame": "123"}])
+
+        self.assertEqual(frames, [120, 123])
 
 
 def fixture_playback_config(root: Path) -> LivePlaybackConfig:
