@@ -16,7 +16,8 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 - [x] Actividad 11 desarrollada como interfaz local con backend estandar de Python.
 - [x] Actividad 12 desarrollada con editor local de puntos y validacion manual reproducible.
 - [x] Actividad 13 desarrollada con asignacion aproximada de equipos, tracks enriquecidos, metricas y eventos regenerados.
-- [ ] Actividades 14 a 20 pendientes.
+- [x] Actividad 14 desarrollada con orquestador completo local, frontera GPU documentada y evidencia ligera reproducible.
+- [ ] Actividades 15 a 20 pendientes.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -158,28 +159,41 @@ Ejecutar todo el analisis con un solo comando.
 
 ### Tarea 14.1 - Crear script unificado
 
-- [ ] Crear `scripts/run_full_analysis.py`.
-- [ ] Recibir `--video`, `--clip-id`, `--start-frame`, `--end-frame`.
-- [ ] Crear carpeta de experimento automaticamente.
+- [x] Crear `scripts/run_full_analysis.py`.
+- [x] Recibir `--video`, `--clip-id`, `--start-frame`, `--end-frame`.
+- [x] Crear carpeta de experimento automaticamente.
 
 ### Tarea 14.2 - Encadenar etapas
 
-- [ ] Ingesta de video.
-- [ ] SAM 3/detecciones.
-- [ ] Tracking.
-- [ ] Eventos Nivel 1/2.
-- [ ] Nivel 3 completo.
+- [x] Ingesta de video.
+- [x] SAM 3/detecciones.
+- [x] Tracking.
+- [x] Eventos Nivel 1/2.
+- [x] Nivel 3 completo.
 
 ### Tarea 14.3 - Exportar resultado final
 
-- [ ] Generar dashboard.
-- [ ] Generar reel local.
-- [ ] Generar resumen reproducible.
+- [x] Generar dashboard.
+- [x] Generar reel local.
+- [x] Generar resumen reproducible.
+
+### Artefactos
+
+- [x] `scripts/run_full_analysis.py`.
+- [x] `src/futbotmx/full_analysis.py`.
+- [x] `tests/test_full_analysis.py`.
+- [x] `experiments/test_034_full_analysis/config.yaml`.
+- [x] `experiments/test_034_full_analysis/summary.md`.
+- [x] `experiments/test_034_full_analysis/stage_plan.csv`.
+- [x] `experiments/test_034_full_analysis/runtime_metrics.csv`.
+- [x] `experiments/test_034_full_analysis/full_analysis_manifest.csv`.
+- [x] `experiments/test_034_full_analysis/dashboard/dashboard.html`.
+- [x] `experiments/test_034_full_analysis/reel/reel_demo.html`.
 
 ### Criterio de aceptacion
 
-- [ ] El comando documenta que etapas son ligeras y cuales requieren laptop/GPU.
-- [ ] Cada salida queda con configuracion, summary y manifest.
+- [x] El comando documenta que etapas son ligeras y cuales requieren laptop/GPU.
+- [x] Cada salida queda con configuracion, summary y manifest.
 
 ## Actividad 15 - Revision Humana De Highlights
 
