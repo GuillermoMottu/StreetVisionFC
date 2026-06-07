@@ -19,7 +19,8 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 - [x] Actividad 14 desarrollada con orquestador completo local, frontera GPU documentada y evidencia ligera reproducible.
 - [x] Actividad 15 desarrollada con panel local de revision, `human_review.csv` validable e integracion en dashboard/reel.
 - [x] Actividad 16 desarrollada con reporte ejecutivo local, links relativos y capturas Nivel 3.
-- [ ] Actividades 17 a 20 pendientes.
+- [x] Actividad 17 desarrollada con cache local por etapa, `--force`, `cache_manifest.csv` y runtime con estado de cache.
+- [ ] Actividades 18 a 20 pendientes.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -287,26 +288,40 @@ Reducir tiempos al analizar mas clips o repetir pruebas.
 
 ### Tarea 17.1 - Definir cache
 
-- [ ] Cachear detecciones SAM 3.
-- [ ] Cachear tracks.
-- [ ] Cachear artefactos Nivel 3 por hash de entrada.
+- [x] Cachear detecciones SAM 3.
+- [x] Cachear tracks.
+- [x] Cachear artefactos Nivel 3 por hash de entrada.
 
 ### Tarea 17.2 - Evitar recomputacion
 
-- [ ] Detectar si el video/rango ya fue procesado.
-- [ ] Reusar CSV/JSON existentes.
-- [ ] Forzar recomputacion con `--force`.
+- [x] Detectar si el video/rango ya fue procesado.
+- [x] Reusar CSV/JSON existentes.
+- [x] Forzar recomputacion con `--force`.
 
 ### Tarea 17.3 - Medir rendimiento
 
-- [ ] Registrar duracion por etapa.
-- [ ] Exportar `runtime_metrics.csv`.
-- [ ] Documentar cuellos de botella.
+- [x] Registrar duracion por etapa.
+- [x] Exportar `runtime_metrics.csv`.
+- [x] Documentar cuellos de botella.
+
+### Decision tecnica
+
+- [x] Usar cache local ignorado por Git en `.cache/futbotmx/full_analysis`.
+- [x] Crear llaves SHA-256 por etapa con regla, video/rango, configuracion y hashes de entradas ligeras.
+- [x] Reportar `cache_status`, `cache_key` y `cache_path` en `stage_plan.csv`, `runtime_metrics.csv` y `cache_manifest.csv`.
+- [x] Mantener SAM 3 como etapa GPU externa; se cachea el JSON de detecciones precomputado cuando se entrega al pipeline.
+
+### Artefactos
+
+- [x] `src/futbotmx/full_analysis.py`.
+- [x] `scripts/run_full_analysis.py`.
+- [x] `tests/test_full_analysis.py`.
+- [x] `docs/ACTIVITY_17_CACHE.md`.
 
 ### Criterio de aceptacion
 
-- [ ] El pipeline explica cuando reutiliza cache.
-- [ ] `--force` invalida cache de forma controlada.
+- [x] El pipeline explica cuando reutiliza cache.
+- [x] `--force` invalida cache de forma controlada.
 
 ## Actividad 18 - Validacion Con Mas Clips
 

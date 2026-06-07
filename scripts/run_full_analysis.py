@@ -6,7 +6,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
-from futbotmx.full_analysis import FullAnalysisRequest, next_experiment_dir, run_full_analysis
+from futbotmx.full_analysis import DEFAULT_CACHE_DIR, FullAnalysisRequest, next_experiment_dir, run_full_analysis
 
 
 def main() -> int:
@@ -23,6 +23,8 @@ def main() -> int:
     parser.add_argument("--calibration-json", default="")
     parser.add_argument("--top-highlights", type=int, default=4)
     parser.add_argument("--segment-count", type=int, default=4)
+    parser.add_argument("--cache-dir", default=DEFAULT_CACHE_DIR.as_posix(), help="Local cache directory for reusable lightweight artifacts.")
+    parser.add_argument("--force", action="store_true", help="Recompute stages and refresh matching cache entries instead of restoring them.")
     args = parser.parse_args()
 
     root = Path.cwd()
@@ -40,6 +42,8 @@ def main() -> int:
         calibration_json=args.calibration_json,
         top_highlights=args.top_highlights,
         segment_count=args.segment_count,
+        cache_dir=args.cache_dir,
+        force=args.force,
     )
     result = run_full_analysis(root, request)
     print(
