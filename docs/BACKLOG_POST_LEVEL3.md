@@ -17,7 +17,8 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 - [x] Actividad 12 desarrollada con editor local de puntos y validacion manual reproducible.
 - [x] Actividad 13 desarrollada con asignacion aproximada de equipos, tracks enriquecidos, metricas y eventos regenerados.
 - [x] Actividad 14 desarrollada con orquestador completo local, frontera GPU documentada y evidencia ligera reproducible.
-- [ ] Actividades 15 a 20 pendientes.
+- [x] Actividad 15 desarrollada con panel local de revision, `human_review.csv` validable e integracion en dashboard/reel.
+- [ ] Actividades 16 a 20 pendientes.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -203,26 +204,38 @@ Fortalecer la evidencia visual y reducir falsos positivos.
 
 ### Tarea 15.1 - Crear panel de revision
 
-- [ ] Mostrar overlay del highlight.
-- [ ] Mostrar mini-mapa y datos del evento.
-- [ ] Permitir marcar `confiable`, `provisional` o `descartado`.
+- [x] Mostrar overlay del highlight.
+- [x] Mostrar mini-mapa y datos del evento.
+- [x] Permitir marcar `confiable`, `provisional` o `descartado`.
 
 ### Tarea 15.2 - Guardar revision
 
-- [ ] Exportar `human_review.csv`.
-- [ ] Incluir notas libres.
-- [ ] Incluir usuario/fecha si aplica.
+- [x] Exportar `human_review.csv`.
+- [x] Incluir notas libres.
+- [x] Incluir usuario/fecha si aplica.
 
 ### Tarea 15.3 - Integrar revision
 
-- [ ] Usar revision en dashboard.
-- [ ] Usar revision en reel.
-- [ ] Incluir resumen en cierre.
+- [x] Usar revision en dashboard.
+- [x] Usar revision en reel.
+- [x] Incluir resumen en cierre.
+
+### Artefactos
+
+- [x] `scripts/run_highlight_review_panel.py`.
+- [x] `src/futbotmx/level3/highlight_review.py`.
+- [x] `tests/test_highlight_review.py`.
+- [x] `experiments/test_035_human_review/human_review_panel.html`.
+- [x] `experiments/test_035_human_review/human_review.csv`.
+- [x] `experiments/test_035_human_review/human_review_validation.csv`.
+- [x] `experiments/test_035_human_review/human_review_manifest.csv`.
+- [x] `experiments/test_035_human_review/dashboard/dashboard.html`.
+- [x] `experiments/test_035_human_review/reel/reel_demo.html`.
 
 ### Criterio de aceptacion
 
-- [ ] Los highlights revisados afectan dashboard/reel sin borrar evidencia original.
-- [ ] El archivo de revision es editable y validable.
+- [x] Los highlights revisados afectan dashboard/reel sin borrar evidencia original.
+- [x] El archivo de revision es editable y validable.
 
 ## Actividad 16 - Resumen Ejecutivo Para Evaluadores
 
