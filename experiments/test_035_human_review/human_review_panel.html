@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FutBotMX Revision de Highlights</title>
+<style>
+:root {
+  --ink: #17201b;
+  --muted: #5b675f;
+  --line: #c9d6ce;
+  --paper: #fbfcfa;
+  --panel: #ffffff;
+  --field: #e9f4ea;
+  --blue: #315f9b;
+  --green: #2f6f4f;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+main {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 20px 0 36px;
+}
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 20px;
+  border-bottom: 2px solid var(--line);
+  padding-bottom: 16px;
+}
+header p {
+  margin: 0 0 5px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 0;
+  font-size: 38px;
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+button,
+select {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--ink);
+  padding: 8px 10px;
+  font: inherit;
+}
+button {
+  background: var(--green);
+  color: white;
+  border-color: var(--green);
+}
+.summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 16px 0;
+}
+.summary span {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 7px 10px;
+  color: var(--muted);
+}
+.review-grid {
+  display: grid;
+  gap: 14px;
+}
+.review-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
+  gap: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.media {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+figure {
+  margin: 0;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  display: grid;
+  grid-template-rows: minmax(220px, 320px) auto;
+}
+img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  background: var(--field);
+}
+figcaption {
+  border-top: 1px solid var(--line);
+  padding: 8px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.missing {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+  color: var(--muted);
+  background: var(--field);
+}
+.review-body {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  padding: 12px;
+}
+.title-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+}
+h2 {
+  margin: 0;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+dl {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 4px 8px;
+  font-size: 13px;
+}
+dt {
+  color: var(--muted);
+}
+dd {
+  margin: 0;
+}
+p,
+label {
+  color: var(--muted);
+  font-size: 13px;
+}
+textarea {
+  display: block;
+  width: 100%;
+  min-height: 78px;
+  resize: vertical;
+  border: 1px solid var(--line);
+  margin-top: 5px;
+  padding: 8px;
+  font: inherit;
+}
+a { color: var(--blue); }
+@media (max-width: 920px) {
+  header,
+  .review-card,
+  .media {
+    display: block;
+  }
+  figure {
+    margin-bottom: 10px;
+  }
+}
+</style>
+</head>
+<body>
+<main>
+<header>
+<div>
+<p>FutBotMX Nivel 3</p>
+<h1>Revision humana de highlights</h1>
+</div>
+<button type="button" id="exportCsv">Exportar CSV</button>
+</header>
+<section class="summary" aria-label="Resumen">
+<span>confiable: <strong>2</strong></span><span>provisional: <strong>4</strong></span>
+</section>
+<section class="review-grid" aria-label="Highlights">
+
+<article class="review-card" data-highlight-id="lvl3_evt_000004">
+  <div class="media"><figure><a href="../test_034_full_analysis/level3_events/overlay_highlight_01_video_595_frame_122.png"><img src="../test_034_full_analysis/level3_events/overlay_highlight_01_video_595_frame_122.png" alt="Overlay highlight"></a><figcaption>Overlay highlight</figcaption></figure><figure><a href="../test_034_full_analysis/level3_visualizations/minimap_highlight_rank_01_video_595.png"><img src="../test_034_full_analysis/level3_visualizations/minimap_highlight_rank_01_video_595.png" alt="Mini-mapa"></a><figcaption>Mini-mapa</figcaption></figure></div>
+  <div class="review-body">
+    <div class="title-row">
+      <h2>Rank 1 | lvl3_evt_000004</h2>
+      <select name="review_status"><option value="confiable" selected>confiable</option><option value="provisional">provisional</option><option value="descartado">descartado</option></select>
+    </div>
+    <dl>
+      <dt>Clip</dt><dd>video_595</dd>
+      <dt>Frames</dt><dd>122-123</dd>
+      <dt>Score</dt><dd>82.868076</dd>
+      <dt>Confianza</dt><dd>0.893107</dd>
+      <dt>Reliability</dt><dd>provisional</dd>
+    </dl>
+    <p>Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 122-123 con score 82.9; motivos: velocidad_norm=0.272, posesion_candidata, zona=defensive_third, respaldo_level2.</p>
+    <label>Notas<textarea name="notes">Overlay/minimapa disponible, confianza alta y respaldo Nivel 2; mantener lenguaje de analisis aproximado.</textarea></label>
+  </div>
+</article>
+
+<article class="review-card" data-highlight-id="lvl3_evt_000010">
+  <div class="media"><figure><a href="../test_034_full_analysis/level3_events/overlay_highlight_02_video_595_frame_128.png"><img src="../test_034_full_analysis/level3_events/overlay_highlight_02_video_595_frame_128.png" alt="Overlay highlight"></a><figcaption>Overlay highlight</figcaption></figure><figure><a href="../test_034_full_analysis/level3_visualizations/minimap_highlight_rank_02_video_595.png"><img src="../test_034_full_analysis/level3_visualizations/minimap_highlight_rank_02_video_595.png" alt="Mini-mapa"></a><figcaption>Mini-mapa</figcaption></figure></div>
+  <div class="review-body">
+    <div class="title-row">
+      <h2>Rank 2 | lvl3_evt_000010</h2>
+      <select name="review_status"><option value="confiable">confiable</option><option value="provisional" selected>provisional</option><option value="descartado">descartado</option></select>
+    </div>
+    <dl>
+      <dt>Clip</dt><dd>video_595</dd>
+      <dt>Frames</dt><dd>128-129</dd>
+      <dt>Score</dt><dd>81.414667</dd>
+      <dt>Confianza</dt><dd>0.828654</dd>
+      <dt>Reliability</dt><dd>provisional</dd>
+    </dl>
+    <p>Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 128-129 con score 81.4; motivos: velocidad_norm=0.271, posesion_candidata, zona=defensive_third, respaldo_level2.</p>
+    <label>Notas<textarea name="notes">Revision pendiente de confirmacion humana fina; assets disponibles: overlay, minimapa.</textarea></label>
+  </div>
+</article>
+
+<article class="review-card" data-highlight-id="lvl3_evt_000015">
+  <div class="media"><figure><a href="../test_034_full_analysis/level3_events/overlay_highlight_03_video_595_frame_133.png"><img src="../test_034_full_analysis/level3_events/overlay_highlight_03_video_595_frame_133.png" alt="Overlay highlight"></a><figcaption>Overlay highlight</figcaption></figure><figure><a href="../test_034_full_analysis/level3_visualizations/minimap_highlight_rank_03_video_595.png"><img src="../test_034_full_analysis/level3_visualizations/minimap_highlight_rank_03_video_595.png" alt="Mini-mapa"></a><figcaption>Mini-mapa</figcaption></figure></div>
+  <div class="review-body">
+    <div class="title-row">
+      <h2>Rank 3 | lvl3_evt_000015</h2>
+      <select name="review_status"><option value="confiable">confiable</option><option value="provisional" selected>provisional</option><option value="descartado">descartado</option></select>
+    </div>
+    <dl>
+      <dt>Clip</dt><dd>video_595</dd>
+      <dt>Frames</dt><dd>133-135</dd>
+      <dt>Score</dt><dd>81.0541</dd>
+      <dt>Confianza</dt><dd>0.812052</dd>
+      <dt>Reliability</dt><dd>provisional</dd>
+    </dl>
+    <p>Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 133-135 con score 81.1; motivos: velocidad_norm=0.271, posesion_candidata, zona=defensive_third, respaldo_level2.</p>
+    <label>Notas<textarea name="notes">Revision pendiente de confirmacion humana fina; assets disponibles: overlay, minimapa.</textarea></label>
+  </div>
+</article>
+
+<article class="review-card" data-highlight-id="lvl3_evt_000006">
+  <div class="media"><figure><a href="../test_034_full_analysis/level3_events/overlay_highlight_04_video_595_frame_124.png"><img src="../test_034_full_analysis/level3_events/overlay_highlight_04_video_595_frame_124.png" alt="Overlay highlight"></a><figcaption>Overlay highlight</figcaption></figure><figure><a href="../test_034_full_analysis/level3_visualizations/minimap_highlight_rank_04_video_595.png"><img src="../test_034_full_analysis/level3_visualizations/minimap_highlight_rank_04_video_595.png" alt="Mini-mapa"></a><figcaption>Mini-mapa</figcaption></figure></div>
+  <div class="review-body">
+    <div class="title-row">
+      <h2>Rank 4 | lvl3_evt_000006</h2>
+      <select name="review_status"><option value="confiable">confiable</option><option value="provisional" selected>provisional</option><option value="descartado">descartado</option></select>
+    </div>
+    <dl>
+      <dt>Clip</dt><dd>video_595</dd>
+      <dt>Frames</dt><dd>124-125</dd>
+      <dt>Score</dt><dd>80.892784</dd>
+      <dt>Confianza</dt><dd>0.844279</dd>
+      <dt>Reliability</dt><dd>provisional</dd>
+    </dl>
+    <p>Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 124-125 con score 80.9; motivos: velocidad_norm=0.265, posesion_candidata, zona=defensive_third, respaldo_level2.</p>
+    <label>Notas<textarea name="notes">Revision pendiente de confirmacion humana fina; assets disponibles: overlay, minimapa.</textarea></label>
+  </div>
+</article>
+
+<article class="review-card" data-highlight-id="lvl3_evt_000003">
+  <div class="media"><figure><a href="../test_034_full_analysis/level3_events/overlay_highlight_05_video_595_frame_121.png"><img src="../test_034_full_analysis/level3_events/overlay_highlight_05_video_595_frame_121.png" alt="Overlay highlight"></a><figcaption>Overlay highlight</figcaption></figure><figure><div class="missing">sin imagen</div><figcaption>Mini-mapa</figcaption></figure></div>
+  <div class="review-body">
+    <div class="title-row">
+      <h2>Rank 5 | lvl3_evt_000003</h2>
+      <select name="review_status"><option value="confiable" selected>confiable</option><option value="provisional">provisional</option><option value="descartado">descartado</option></select>
+    </div>
+    <dl>
+      <dt>Clip</dt><dd>video_595</dd>
+      <dt>Frames</dt><dd>121-122</dd>
+      <dt>Score</dt><dd>80.471567</dd>
+      <dt>Confianza</dt><dd>0.891154</dd>
+      <dt>Reliability</dt><dd>provisional</dd>
+    </dl>
+    <p>Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 121-122 con score 80.5; motivos: velocidad_norm=0.254, posesion_candidata, zona=defensive_third, respaldo_level2.</p>
+    <label>Notas<textarea name="notes">Overlay/minimapa disponible, confianza alta y respaldo Nivel 2; mantener lenguaje de analisis aproximado.</textarea></label>
+  </div>
+</article>
+
+<article class="review-card" data-highlight-id="lvl3_evt_000011">
+  <div class="media"><figure><a href="../test_034_full_analysis/level3_events/overlay_highlight_06_video_595_frame_129.png"><img src="../test_034_full_analysis/level3_events/overlay_highlight_06_video_595_frame_129.png" alt="Overlay highlight"></a><figcaption>Overlay highlight</figcaption></figure><figure><div class="missing">sin imagen</div><figcaption>Mini-mapa</figcaption></figure></div>
+  <div class="review-body">
+    <div class="title-row">
+      <h2>Rank 6 | lvl3_evt_000011</h2>
+      <select name="review_status"><option value="confiable">confiable</option><option value="provisional" selected>provisional</option><option value="descartado">descartado</option></select>
+    </div>
+    <dl>
+      <dt>Clip</dt><dd>video_595</dd>
+      <dt>Frames</dt><dd>129-130</dd>
+      <dt>Score</dt><dd>79.717895</dd>
+      <dt>Confianza</dt><dd>0.839396</dd>
+      <dt>Reliability</dt><dd>provisional</dd>
+    </dl>
+    <p>Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 129-130 con score 79.7; motivos: velocidad_norm=0.256, posesion_candidata, zona=defensive_third, respaldo_level2.</p>
+    <label>Notas<textarea name="notes">Revision pendiente de confirmacion humana fina; assets disponibles: overlay.</textarea></label>
+  </div>
+</article>
+</section>
+</main>
+<script>window.REVIEW_ROWS = [{"clip_id": "video_595", "highlight_id": "lvl3_evt_000004", "rank": "1", "frame_start": "122", "frame_end": "123", "event_type": "advanced_highlight", "score": "82.868076", "confidence": "0.893107", "reliability": "provisional", "review_status": "confiable", "reviewer": "codex_activity_15", "reviewed_at": "2026-06-07", "notes": "Overlay/minimapa disponible, confianza alta y respaldo Nivel 2; mantener lenguaje de analisis aproximado.", "overlay_path": "experiments/test_034_full_analysis/level3_events/overlay_highlight_01_video_595_frame_122.png", "minimap_path": "experiments/test_034_full_analysis/level3_visualizations/minimap_highlight_rank_01_video_595.png", "event_summary": "Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 122-123 con score 82.9; motivos: velocidad_norm=0.272, posesion_candidata, zona=defensive_third, respaldo_level2.", "source_highlights_csv": "experiments/test_034_full_analysis/level3_events/level3_highlights.csv", "source_overlay_validation_csv": "experiments/test_034_full_analysis/level3_events/overlay_validation.csv", "source_visualization_manifest_csv": "experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv"}, {"clip_id": "video_595", "highlight_id": "lvl3_evt_000010", "rank": "2", "frame_start": "128", "frame_end": "129", "event_type": "advanced_highlight", "score": "81.414667", "confidence": "0.828654", "reliability": "provisional", "review_status": "provisional", "reviewer": "codex_activity_15", "reviewed_at": "2026-06-07", "notes": "Revision pendiente de confirmacion humana fina; assets disponibles: overlay, minimapa.", "overlay_path": "experiments/test_034_full_analysis/level3_events/overlay_highlight_02_video_595_frame_128.png", "minimap_path": "experiments/test_034_full_analysis/level3_visualizations/minimap_highlight_rank_02_video_595.png", "event_summary": "Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 128-129 con score 81.4; motivos: velocidad_norm=0.271, posesion_candidata, zona=defensive_third, respaldo_level2.", "source_highlights_csv": "experiments/test_034_full_analysis/level3_events/level3_highlights.csv", "source_overlay_validation_csv": "experiments/test_034_full_analysis/level3_events/overlay_validation.csv", "source_visualization_manifest_csv": "experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv"}, {"clip_id": "video_595", "highlight_id": "lvl3_evt_000015", "rank": "3", "frame_start": "133", "frame_end": "135", "event_type": "advanced_highlight", "score": "81.0541", "confidence": "0.812052", "reliability": "provisional", "review_status": "provisional", "reviewer": "codex_activity_15", "reviewed_at": "2026-06-07", "notes": "Revision pendiente de confirmacion humana fina; assets disponibles: overlay, minimapa.", "overlay_path": "experiments/test_034_full_analysis/level3_events/overlay_highlight_03_video_595_frame_133.png", "minimap_path": "experiments/test_034_full_analysis/level3_visualizations/minimap_highlight_rank_03_video_595.png", "event_summary": "Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 133-135 con score 81.1; motivos: velocidad_norm=0.271, posesion_candidata, zona=defensive_third, respaldo_level2.", "source_highlights_csv": "experiments/test_034_full_analysis/level3_events/level3_highlights.csv", "source_overlay_validation_csv": "experiments/test_034_full_analysis/level3_events/overlay_validation.csv", "source_visualization_manifest_csv": "experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv"}, {"clip_id": "video_595", "highlight_id": "lvl3_evt_000006", "rank": "4", "frame_start": "124", "frame_end": "125", "event_type": "advanced_highlight", "score": "80.892784", "confidence": "0.844279", "reliability": "provisional", "review_status": "provisional", "reviewer": "codex_activity_15", "reviewed_at": "2026-06-07", "notes": "Revision pendiente de confirmacion humana fina; assets disponibles: overlay, minimapa.", "overlay_path": "experiments/test_034_full_analysis/level3_events/overlay_highlight_04_video_595_frame_124.png", "minimap_path": "experiments/test_034_full_analysis/level3_visualizations/minimap_highlight_rank_04_video_595.png", "event_summary": "Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 124-125 con score 80.9; motivos: velocidad_norm=0.265, posesion_candidata, zona=defensive_third, respaldo_level2.", "source_highlights_csv": "experiments/test_034_full_analysis/level3_events/level3_highlights.csv", "source_overlay_validation_csv": "experiments/test_034_full_analysis/level3_events/overlay_validation.csv", "source_visualization_manifest_csv": "experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv"}, {"clip_id": "video_595", "highlight_id": "lvl3_evt_000003", "rank": "5", "frame_start": "121", "frame_end": "122", "event_type": "advanced_highlight", "score": "80.471567", "confidence": "0.891154", "reliability": "provisional", "review_status": "confiable", "reviewer": "codex_activity_15", "reviewed_at": "2026-06-07", "notes": "Overlay/minimapa disponible, confianza alta y respaldo Nivel 2; mantener lenguaje de analisis aproximado.", "overlay_path": "experiments/test_034_full_analysis/level3_events/overlay_highlight_05_video_595_frame_121.png", "minimap_path": "", "event_summary": "Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 121-122 con score 80.5; motivos: velocidad_norm=0.254, posesion_candidata, zona=defensive_third, respaldo_level2.", "source_highlights_csv": "experiments/test_034_full_analysis/level3_events/level3_highlights.csv", "source_overlay_validation_csv": "experiments/test_034_full_analysis/level3_events/overlay_validation.csv", "source_visualization_manifest_csv": "experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv"}, {"clip_id": "video_595", "highlight_id": "lvl3_evt_000011", "rank": "6", "frame_start": "129", "frame_end": "130", "event_type": "advanced_highlight", "score": "79.717895", "confidence": "0.839396", "reliability": "provisional", "review_status": "provisional", "reviewer": "codex_activity_15", "reviewed_at": "2026-06-07", "notes": "Revision pendiente de confirmacion humana fina; assets disponibles: overlay.", "overlay_path": "experiments/test_034_full_analysis/level3_events/overlay_highlight_06_video_595_frame_129.png", "minimap_path": "", "event_summary": "Highlight provisional para equipo aproximado team_right: movimiento rapido del balon en frames 129-130 con score 79.7; motivos: velocidad_norm=0.256, posesion_candidata, zona=defensive_third, respaldo_level2.", "source_highlights_csv": "experiments/test_034_full_analysis/level3_events/level3_highlights.csv", "source_overlay_validation_csv": "experiments/test_034_full_analysis/level3_events/overlay_validation.csv", "source_visualization_manifest_csv": "experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv"}];
+function csvEscape(value) {
+  const text = String(value ?? "");
+  return /[",\n]/.test(text) ? '"' + text.replaceAll('"', '""') + '"' : text;
+}
+function collectRows() {
+  const byId = new Map(window.REVIEW_ROWS.map(row => [row.highlight_id, {...row}]));
+  document.querySelectorAll(".review-card").forEach(card => {
+    const row = byId.get(card.dataset.highlightId);
+    row.review_status = card.querySelector('[name="review_status"]').value;
+    row.notes = card.querySelector('[name="notes"]').value;
+  });
+  return Array.from(byId.values());
+}
+document.getElementById("exportCsv").addEventListener("click", () => {
+  const fields = Object.keys(window.REVIEW_ROWS[0] || {});
+  const lines = [fields.join(",")].concat(collectRows().map(row => fields.map(field => csvEscape(row[field])).join(",")));
+  const blob = new Blob([lines.join("\n") + "\n"], {type: "text/csv;charset=utf-8"});
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = "human_review.csv";
+  link.click();
+  URL.revokeObjectURL(link.href);
+});
+</script>
+</body>
+</html>

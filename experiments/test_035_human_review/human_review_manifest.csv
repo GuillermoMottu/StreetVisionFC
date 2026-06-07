@@ -1,0 +1,10 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+config,yaml,config.yaml,configs/default.yaml,true,configuration,Configuration snapshot.
+summary,md,summary.md,human_review.csv,true,summary,Human review package summary.
+human_review_panel,html,human_review_panel.html,experiments/test_034_full_analysis/level3_events/level3_highlights.csv,true,review_panel,Local editable panel.
+human_review,csv,human_review.csv,experiments/test_034_full_analysis/level3_events/level3_highlights.csv,true,human_review,Editable review status by highlight.
+human_review_validation,csv,human_review_validation.csv,human_review.csv,true,validation,Validation rows for editable review CSV.
+human_review_manifest,csv,human_review_manifest.csv,human_review_panel.html,true,manifest,Review package manifest.
+highlights_csv,csv,../test_034_full_analysis/level3_events/level3_highlights.csv,experiments/test_034_full_analysis/level3_events/level3_highlights.csv,true,source,Original highlights are preserved.
+overlay_validation_csv,csv,../test_034_full_analysis/level3_events/overlay_validation.csv,experiments/test_034_full_analysis/level3_events/overlay_validation.csv,true,source,Overlay validation source.
+visualization_manifest_csv,csv,../test_034_full_analysis/level3_visualizations/visualization_manifest.csv,experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv,true,source,Minimap source manifest.
