@@ -1,0 +1,15 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+summary,md,summary.md,video_overlay_segments.csv,true,summary,Activity 19 package summary.
+video_overlay_segments,csv,video_overlay_segments.csv,experiments/test_034_full_analysis/level3_events/level3_highlights.csv,true,timeline,Selected overlay clip segments.
+video_overlay_manifest,csv,video_overlay_manifest.csv,video_overlay_segments.csv,true,manifest,Overlay clip artifact manifest.
+video_overlay_contact_sheet,png,video_overlay_contact_sheet.png,video_overlay_segments.csv,true,contact_sheet,Lightweight visual evidence for selected segments.
+video_overlay_ffmpeg_inputs,txt,video_overlay_ffmpeg_inputs.txt,video_overlay_segments.csv,true,render_input,Concat input list for local MP4 render.
+render_overlay_clip,sh,render_overlay_clip.sh,video_overlay_ffmpeg_inputs.txt,true,render_script,Local FFmpeg helper; MP4 remains outside Git.
+render_overlay_clip_plan,md,render_overlay_clip_plan.md,render_overlay_clip.sh,true,render_plan,Dependencies and reproduction notes.
+local_overlay_mp4,mp4,../../local_outputs/activity19/video_595_overlay_clip.mp4,render_overlay_clip.sh,false,local_output,Not generated or versioned in Git.
+overlay_segment_01,png,overlay_thumb_rank_01_video_595_frame_122.png,experiments/test_034_full_analysis/level3_events/overlay_highlight_01_video_595_frame_122.png,true,thumbnail,Rank 1 overlay thumbnail with IDs/trails/event evidence.
+overlay_segment_02,png,overlay_thumb_rank_02_video_595_frame_128.png,experiments/test_034_full_analysis/level3_events/overlay_highlight_02_video_595_frame_128.png,true,thumbnail,Rank 2 overlay thumbnail with IDs/trails/event evidence.
+overlay_segment_03,png,overlay_thumb_rank_03_video_595_frame_133.png,experiments/test_034_full_analysis/level3_events/overlay_highlight_03_video_595_frame_133.png,true,thumbnail,Rank 3 overlay thumbnail with IDs/trails/event evidence.
+highlights_csv,csv,../test_034_full_analysis/level3_events/level3_highlights.csv,experiments/test_034_full_analysis/level3_events/level3_highlights.csv,true,source,Linked source artifact.
+overlay_validation_csv,csv,../test_034_full_analysis/level3_events/overlay_validation.csv,experiments/test_034_full_analysis/level3_events/overlay_validation.csv,true,source,Linked source artifact.
+storyboard_manifest_csv,csv,../test_034_full_analysis/level3_visualizations/highlight_storyboard_manifest.csv,experiments/test_034_full_analysis/level3_visualizations/highlight_storyboard_manifest.csv,true,source,Linked source artifact.

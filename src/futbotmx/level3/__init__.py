@@ -174,6 +174,15 @@ from futbotmx.level3.visualizations import (
     write_storyboard_manifest,
     write_visualization_manifest,
 )
+from futbotmx.level3.video_overlay import (
+    RULE_VERSION as VIDEO_OVERLAY_RULE_VERSION,
+    VideoOverlayConfig,
+    build_video_overlay_context,
+    build_video_overlay_package,
+    config_to_dict as video_overlay_config_to_dict,
+    select_overlay_segments,
+    video_overlay_manifest_rows,
+)
 
 __all__ = [
     "AdvancedEventsConfig",
@@ -204,6 +213,7 @@ __all__ = [
     "LEVEL3_VISUALIZATIONS_RULE_VERSION",
     "TEAM_ASSIGNMENT_FIELDS",
     "TEAM_ASSIGNMENT_RULE_VERSION",
+    "VIDEO_OVERLAY_RULE_VERSION",
     "ExecutiveReportConfig",
     "Level3DashboardConfig",
     "Level3ReelConfig",
@@ -211,6 +221,7 @@ __all__ = [
     "HighlightReviewConfig",
     "TacticalConfig",
     "TeamAssignmentConfig",
+    "VideoOverlayConfig",
     "advanced_events_config_to_dict",
     "aggregate_control_by_clip",
     "aggregate_control_by_team",
@@ -241,6 +252,8 @@ __all__ = [
     "build_team_assignments",
     "build_visualizations",
     "build_validation_context",
+    "build_video_overlay_context",
+    "build_video_overlay_package",
     "classify_review_status",
     "classify_activity18_outcome",
     "classify_activity18_visibility",
@@ -290,6 +303,7 @@ __all__ = [
     "schema_for_artifact",
     "score_highlight",
     "select_reel_segments",
+    "select_overlay_segments",
     "solve_homography",
     "spatial_control_for_frame",
     "summarize_rectified_tracks",
@@ -302,6 +316,8 @@ __all__ = [
     "validate_required_fields",
     "validate_review_rows",
     "VALID_REVIEW_STATUSES",
+    "video_overlay_config_to_dict",
+    "video_overlay_manifest_rows",
     "visualization_config_to_dict",
     "write_calibration_json",
     "write_calibration_comparison_csv",

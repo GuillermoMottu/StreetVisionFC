@@ -135,6 +135,14 @@ Reel/demo local:
 experiments/test_025_level3_reel/reel_demo.html
 ```
 
+Overlay corto local:
+
+```text
+experiments/test_037_activity19_video_overlay/summary.md
+```
+
+El MP4 se renderiza localmente con `experiments/test_037_activity19_video_overlay/render_overlay_clip.sh` y queda fuera de Git.
+
 ### Metricas principales
 
 | Clip | Rol | Highlights | Score top | Interacciones | Aristas | Homografia | Revision |

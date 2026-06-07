@@ -21,7 +21,8 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 - [x] Actividad 16 desarrollada con reporte ejecutivo local, links relativos y capturas Nivel 3.
 - [x] Actividad 17 desarrollada con cache local por etapa, `--force`, `cache_manifest.csv` y runtime con estado de cache.
 - [x] Actividad 18 desarrollada con validacion ligera de 4 clips, clasificacion exito/degradacion/fallo y fallos documentados.
-- [ ] Actividades 19 a 20 pendientes.
+- [x] Actividad 19 desarrollada con paquete de overlay corto, thumbnails, contact sheet y render local fuera de Git.
+- [ ] Actividad 20 pendiente.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -380,26 +381,46 @@ Crear evidencia visual mas directa sin subir archivos pesados.
 
 ### Tarea 19.1 - Generar clip corto local
 
-- [ ] Seleccionar 1-3 highlights.
-- [ ] Renderizar overlay con IDs, trails y evento.
-- [ ] Guardar MP4 local fuera de Git.
+- [x] Seleccionar 1-3 highlights.
+- [x] Renderizar overlay con IDs, trails y evento.
+- [x] Guardar MP4 local fuera de Git.
 
 ### Tarea 19.2 - Crear evidencia ligera
 
-- [ ] Exportar thumbnails.
-- [ ] Exportar contact sheet.
-- [ ] Crear `video_overlay_manifest.csv`.
+- [x] Exportar thumbnails.
+- [x] Exportar contact sheet.
+- [x] Crear `video_overlay_manifest.csv`.
 
 ### Tarea 19.3 - Documentar reproduccion
 
-- [ ] Crear script `render_overlay_clip.sh`.
-- [ ] Documentar dependencias.
-- [ ] Enlazar desde README/reporte.
+- [x] Crear script `render_overlay_clip.sh`.
+- [x] Documentar dependencias.
+- [x] Enlazar desde README/reporte.
+
+### Decision tecnica
+
+- [x] Reusar overlays PNG Nivel 3 ya versionados con IDs, trails cortos y etiqueta de evento.
+- [x] Generar MP4 local con FFmpeg desde thumbnails versionados; no se crea ni sube durante la actividad.
+- [x] Declarar salida local en manifest con `is_versioned=false`.
+
+### Artefactos
+
+- [x] `src/futbotmx/level3/video_overlay.py`.
+- [x] `scripts/run_activity19_video_overlay.py`.
+- [x] `tests/test_activity19_video_overlay.py`.
+- [x] `experiments/test_037_activity19_video_overlay/config.yaml`.
+- [x] `experiments/test_037_activity19_video_overlay/summary.md`.
+- [x] `experiments/test_037_activity19_video_overlay/video_overlay_segments.csv`.
+- [x] `experiments/test_037_activity19_video_overlay/video_overlay_manifest.csv`.
+- [x] `experiments/test_037_activity19_video_overlay/video_overlay_contact_sheet.png`.
+- [x] `experiments/test_037_activity19_video_overlay/render_overlay_clip.sh`.
+- [x] `experiments/test_037_activity19_video_overlay/render_overlay_clip_plan.md`.
+- [x] `README.md`.
 
 ### Criterio de aceptacion
 
-- [ ] El MP4 queda fuera de Git.
-- [ ] La evidencia versionada permite entender que se renderizo.
+- [x] El MP4 queda fuera de Git.
+- [x] La evidencia versionada permite entender que se renderizo.
 
 ## Actividad 20 - Exportacion A Reporte PDF/HTML
 
