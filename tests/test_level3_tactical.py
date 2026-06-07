@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 from futbotmx.level3 import (
     TacticalConfig,
     aggregate_control_by_clip,
+    aggregate_control_by_team,
     aggregate_interaction_edges,
     build_interaction_graph,
     build_level3_metric_rows,
@@ -28,7 +29,7 @@ def track(
     confidence: float = 0.9,
     clip_id: str = "video_test",
 ) -> dict[str, object]:
-    return {
+    row = {
         "clip_id": clip_id,
         "frame": frame,
         "time_sec": frame / 10,
@@ -44,6 +45,7 @@ def track(
         "calibration_confidence": 0.8,
         "track_quality": "usable",
     }
+    return row
 
 
 class Level3TacticalTests(unittest.TestCase):
@@ -138,6 +140,65 @@ class Level3TacticalTests(unittest.TestCase):
         self.assertIn("mean_robot_ball_distance_norm", metric_names)
         self.assertIn("spatial_control", categories)
         self.assertIn("interaction", categories)
+
+    def test_team_control_aggregates_known_team_rows(self) -> None:
+        control_rows = [
+            {
+                "clip_id": "video_test",
+                "frame": 10,
+                "time_sec": 1.0,
+                "track_id": "robot_a",
+                "class_name": "small_robot",
+                "team": "blue",
+                "cell_count": 4,
+                "control_percent": 40.0,
+                "centroid_x_norm": 0.3,
+                "centroid_y_norm": 0.5,
+                "zone": "middle_third",
+                "control_mode": "team",
+                "confidence": 0.8,
+                "notes": "",
+            },
+            {
+                "clip_id": "video_test",
+                "frame": 10,
+                "time_sec": 1.0,
+                "track_id": "robot_b",
+                "class_name": "small_robot",
+                "team": "blue",
+                "cell_count": 2,
+                "control_percent": 20.0,
+                "centroid_x_norm": 0.5,
+                "centroid_y_norm": 0.5,
+                "zone": "middle_third",
+                "control_mode": "team",
+                "confidence": 0.7,
+                "notes": "",
+            },
+            {
+                "clip_id": "video_test",
+                "frame": 10,
+                "time_sec": 1.0,
+                "track_id": "robot_c",
+                "class_name": "small_robot",
+                "team": "neutral",
+                "cell_count": 4,
+                "control_percent": 40.0,
+                "centroid_x_norm": 0.7,
+                "centroid_y_norm": 0.5,
+                "zone": "middle_third",
+                "control_mode": "team",
+                "confidence": 0.7,
+                "notes": "",
+            },
+        ]
+
+        team_rows = aggregate_control_by_team(control_rows)
+
+        self.assertEqual(len(team_rows), 1)
+        self.assertEqual(team_rows[0]["team"], "blue")
+        self.assertAlmostEqual(team_rows[0]["mean_control_percent"], 60.0)
+        self.assertEqual(team_rows[0]["contributors"], "robot_a|robot_b")
 
 
 if __name__ == "__main__":

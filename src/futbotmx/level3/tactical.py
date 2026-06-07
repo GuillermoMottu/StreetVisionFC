@@ -507,6 +507,63 @@ def aggregate_control_by_clip(control_rows: list[dict[str, Any]]) -> list[dict[s
     return results
 
 
+def aggregate_control_by_team(control_rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    frame_team_rows: dict[tuple[str, int, str], dict[str, Any]] = {}
+    for row in control_rows:
+        team = str(row.get("team", "unknown") or "unknown")
+        if team.lower() in UNKNOWN_TEAMS:
+            continue
+        key = (str(row["clip_id"]), int(row["frame"]), team)
+        state = frame_team_rows.setdefault(
+            key,
+            {
+                "clip_id": str(row["clip_id"]),
+                "frame": int(row["frame"]),
+                "time_sec": float(row.get("time_sec", 0.0) or 0.0),
+                "team": team,
+                "cell_count": 0,
+                "control_percent": 0.0,
+                "confidence_sum": 0.0,
+                "contributors": set(),
+                "zones": Counter(),
+            },
+        )
+        state["cell_count"] += int(row.get("cell_count", 0) or 0)
+        state["control_percent"] += float(row.get("control_percent", 0.0) or 0.0)
+        state["confidence_sum"] += float(row.get("confidence", 0.0) or 0.0)
+        state["contributors"].add(str(row.get("track_id", "")))
+        state["zones"][str(row.get("zone", "unknown"))] += 1
+
+    grouped: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
+    for row in frame_team_rows.values():
+        grouped[(str(row["clip_id"]), str(row["team"]))].append(row)
+
+    results: list[dict[str, Any]] = []
+    for (clip_id, team), rows in sorted(grouped.items()):
+        values = [float(row["control_percent"]) for row in rows]
+        frames = [int(row["frame"]) for row in rows]
+        all_contributors = sorted({track_id for row in rows for track_id in row["contributors"] if track_id})
+        zone_counts: Counter[str] = Counter()
+        for row in rows:
+            zone_counts.update(row["zones"])
+        results.append(
+            {
+                "clip_id": clip_id,
+                "team": team,
+                "entity_id": team,
+                "frames": len(rows),
+                "frame_start": min(frames),
+                "frame_end": max(frames),
+                "mean_control_percent": round(sum(values) / len(values), 6),
+                "max_control_percent": round(max(values), 6),
+                "dominant_zone": zone_counts.most_common(1)[0][0] if zone_counts else "unknown",
+                "contributors": "|".join(all_contributors),
+                "confidence": round(sum(float(row["confidence_sum"]) / max(1, len(row["contributors"])) for row in rows) / len(rows), 6),
+            }
+        )
+    return results
+
+
 def select_voronoi_frames(
     frame_summaries: list[dict[str, Any]],
     interaction_samples: list[dict[str, Any]],
@@ -590,6 +647,7 @@ def build_level3_metric_rows(
     interaction_samples: list[dict[str, Any]],
     edge_rows: list[dict[str, Any]],
     config: TacticalConfig,
+    team_control_aggregate: list[dict[str, Any]] | None = None,
 ) -> list[dict[str, Any]]:
     metric_rows: list[dict[str, Any]] = []
     by_clip_frames: dict[str, set[int]] = defaultdict(set)
@@ -652,6 +710,44 @@ def build_level3_metric_rows(
             )
         )
 
+    for item in team_control_aggregate or []:
+        metric_rows.append(
+            metric_row(
+                item["clip_id"],
+                "spatial_control",
+                "team",
+                item["entity_id"],
+                "team",
+                item["team"],
+                "mean_team_control_percent",
+                float(item["mean_control_percent"]),
+                "percent",
+                int(item["frame_start"]),
+                int(item["frame_end"]),
+                float(item["confidence"]),
+                config.source_tracks,
+                f"dominant_zone={item['dominant_zone']}; contributors={item['contributors']}",
+            )
+        )
+        metric_rows.append(
+            metric_row(
+                item["clip_id"],
+                "voronoi",
+                "team",
+                item["entity_id"],
+                "team",
+                item["team"],
+                "mean_team_voronoi_area_percent",
+                float(item["mean_control_percent"]),
+                "percent",
+                int(item["frame_start"]),
+                int(item["frame_end"]),
+                float(item["confidence"]),
+                config.source_tracks,
+                "team aggregate from grid-based robot ownership",
+            )
+        )
+
     robot_ball_distances: dict[tuple[str, str], list[dict[str, Any]]] = defaultdict(list)
     for sample in interaction_samples:
         if sample["metric_type"] in {"robot_ball_distance", "possession_candidate"}:
@@ -703,6 +799,7 @@ def write_level3_metrics_json(
     voronoi_frames: list[dict[str, Any]],
     interaction_samples: list[dict[str, Any]],
     edge_rows: list[dict[str, Any]],
+    team_control_aggregate: list[dict[str, Any]] | None = None,
 ) -> None:
     clips = sorted({str(row["clip_id"]) for row in rows})
     interaction_counts = Counter(str(row["metric_type"]) for row in interaction_samples)
@@ -718,11 +815,13 @@ def write_level3_metrics_json(
             "frames_analyzed": len(frame_summaries),
             "metrics_exported": len(rows),
             "control_tracks": len(control_aggregate),
+            "control_teams": len(team_control_aggregate or []),
             "interaction_samples": len(interaction_samples),
             "interaction_edges": len(edge_rows),
         },
         "spatial_control": {
             "aggregate_by_track": control_aggregate,
+            "aggregate_by_team": team_control_aggregate or [],
             "frame_summary_sample": frame_summaries[:12],
             "voronoi_representative_frames": voronoi_frames,
         },
@@ -741,7 +840,7 @@ def write_level3_metrics_json(
         "assumptions": [
             "Spatial control uses nearest-robot assignment over a normalized grid.",
             "Voronoi is approximated by the same clipped grid cells, avoiding heavy geometry dependencies.",
-            "Teams are neutral/unknown in current tracks, so control falls back to individual robot ownership.",
+            "When approximate team labels are present, control is also aggregated by team; otherwise it falls back to individual robot ownership.",
         ],
         "limitations": [
             "Homography remains approximate and inherited from Activity 2.",
@@ -833,6 +932,7 @@ def compute_tactical_outputs(
     fps_by_clip = _fps_by_clip(rows)
     control_rows, _, frame_summaries = compute_spatial_control(rows, tactical_config)
     control_aggregate = aggregate_control_by_clip(control_rows)
+    team_control_aggregate = aggregate_control_by_team(control_rows)
     interaction_samples, edge_events = compute_interactions(rows, tactical_config)
     edge_rows = aggregate_interaction_edges(edge_events, fps_by_clip)
     graph = build_interaction_graph(rows, edge_rows, interaction_samples)
@@ -845,12 +945,14 @@ def compute_tactical_outputs(
         interaction_samples,
         edge_rows,
         tactical_config,
+        team_control_aggregate,
     )
     return {
         "config": tactical_config,
         "tracks": rows,
         "control_rows": control_rows,
         "control_aggregate": control_aggregate,
+        "team_control_aggregate": team_control_aggregate,
         "frame_summaries": frame_summaries,
         "voronoi_frames": voronoi_frames,
         "interaction_samples": interaction_samples,

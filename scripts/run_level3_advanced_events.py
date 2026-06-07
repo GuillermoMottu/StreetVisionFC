@@ -53,6 +53,7 @@ def write_summary(path: Path, outputs: dict[str, Any], overlay_rows: list[dict[s
     level2_events = outputs["level2_events"]
     event_counts = Counter(str(event["event_type"]) for event in events)
     reliability_counts = Counter(str(event.get("reliability", "unknown")) for event in events)
+    team_counts = Counter(str(event.get("team", "unknown")) for event in events)
     primary_highlights = [row for row in highlight_rows if row["clip_id"] == config.primary_clip]
     top_primary = sorted(primary_highlights, key=lambda row: int(row["rank"]))[:3]
     top_all = sorted(highlight_rows, key=lambda row: int(row["rank"]))[:6]
@@ -81,6 +82,9 @@ def write_summary(path: Path, outputs: dict[str, Any], overlay_rows: list[dict[s
     lines.extend(["", "## Confiabilidad", ""])
     for reliability, count in sorted(reliability_counts.items()):
         lines.append(f"- `{reliability}`: `{count}`.")
+    lines.extend(["", "## Equipos Aproximados", ""])
+    for team, count in sorted(team_counts.items()):
+        lines.append(f"- `{team}`: `{count}` eventos.")
     lines.extend(["", f"## Highlights Clip Principal `{config.primary_clip}`", ""])
     if len(primary_highlights) >= 3:
         lines.append("- Criterio cumplido: al menos tres highlights rankeados para el clip principal.")
@@ -102,7 +106,7 @@ def write_summary(path: Path, outputs: dict[str, Any], overlay_rows: list[dict[s
         lines.append("- Se reutilizaron segmentos de `level2_metrics.json` para cadenas de posesion.")
     else:
         lines.append("- `level2_metrics.json` no trae `possession_timeline` reutilizable en estos clips; se usa fallback desde `interaction_metrics.csv`.")
-    lines.append("- Como las etiquetas de equipo siguen `neutral/unknown`, las cadenas se marcan como `dudoso_sin_equipo` cuando no hay cambio confiable del mismo equipo.")
+    lines.append("- Cuando existen etiquetas de equipo aproximadas, las cadenas usan esa informacion; si no, se mantienen como `dudoso_sin_equipo`.")
     lines.extend(["", "## Fuentes Nivel 2", ""])
     for clip_id, clip_events in sorted(level2_events.items()):
         lines.append(f"- `{clip_id}` eventos Nivel 2 usados como respaldo: `{len(clip_events)}`.")

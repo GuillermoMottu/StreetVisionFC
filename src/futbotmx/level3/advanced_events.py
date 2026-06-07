@@ -260,14 +260,18 @@ def build_pass_chain_events(possessions: list[dict[str, Any]], rows: list[dict[s
 
         if chains:
             for chain in chains:
-                events.append(_pass_chain_event(event_index, clip_id, chain, "same_team_chain", "provisional"))
+                chain_team = teams_by_track.get((clip_id, str(chain[0]["primary_track_id"])), "unknown")
+                events.append(_pass_chain_event(event_index, clip_id, chain, "same_team_chain", "provisional", chain_team))
                 event_index += 1
             continue
 
         if ordered:
-            # Current clips have neutral teams; keep the evidence but label it clearly as doubtful.
             representative = _longest_segment(ordered)
-            events.append(_pass_chain_event(event_index, clip_id, [representative], "dudoso_sin_equipo", "dudoso"))
+            team = teams_by_track.get((clip_id, str(representative["primary_track_id"])), "unknown")
+            if _known_team(team):
+                events.append(_pass_chain_event(event_index, clip_id, [representative], "posesion_con_equipo_sin_cadena", "provisional", team))
+            else:
+                events.append(_pass_chain_event(event_index, clip_id, [representative], "dudoso_sin_equipo", "dudoso", "unknown"))
             event_index += 1
     return events
 
@@ -276,16 +280,17 @@ def _longest_segment(segments: list[dict[str, Any]]) -> dict[str, Any]:
     return max(segments, key=lambda item: (int(item.get("frames", 0)), float(item.get("confidence", 0.0))))
 
 
-def _pass_chain_event(index: int, clip_id: str, chain: list[dict[str, Any]], subtype: str, reliability: str) -> dict[str, Any]:
+def _pass_chain_event(index: int, clip_id: str, chain: list[dict[str, Any]], subtype: str, reliability: str, team: str) -> dict[str, Any]:
     start = chain[0]
     end = chain[-1]
     confidence = sum(float(item.get("confidence", 0.0)) for item in chain) / len(chain)
     robot_ids = [str(item["primary_track_id"]) for item in chain]
-    narrative = (
-        "Secuencia de posesion candidata; falta equipo confiable para declararla pase."
-        if subtype == "dudoso_sin_equipo"
-        else "Secuencia de cambios de posesion compatible con cadena de pase candidata."
-    )
+    if subtype == "same_team_chain":
+        narrative = f"Secuencia compatible con cadena de pase candidata para equipo aproximado `{team}`."
+    elif subtype == "posesion_con_equipo_sin_cadena":
+        narrative = f"Posesion candidata asociada a equipo aproximado `{team}`; no hay cambio de dueno suficiente para declararla pase."
+    else:
+        narrative = "Secuencia de posesion candidata; falta equipo confiable para declararla pase."
     return {
         "event_id": f"lvl3_evt_{index:06d}",
         "event_type": "pass_chain",
@@ -295,7 +300,7 @@ def _pass_chain_event(index: int, clip_id: str, chain: list[dict[str, Any]], sub
         "frame_end": int(end["frame_end"]),
         "time_start_sec": round(float(start["time_start_sec"]), 3),
         "time_end_sec": round(float(end["time_end_sec"]), 3),
-        "team": "unknown",
+        "team": team if _known_team(team) else "unknown",
         "primary_object_id": robot_ids[0],
         "secondary_object_ids": robot_ids[1:],
         "ball_id": str(start.get("ball_id", "ball_bt_01")),
@@ -310,15 +315,23 @@ def _pass_chain_event(index: int, clip_id: str, chain: list[dict[str, Any]], sub
         "spatial_context": {
             "segments": len(chain),
             "robots": robot_ids,
-            "reason": "no_same_team_change_detected" if subtype == "dudoso_sin_equipo" else "same_team_owner_changes",
+            "reason": _pass_chain_reason(subtype),
         },
         "narrative": narrative,
         "rule_version": RULE_VERSION,
         "evidence": {
             "source": "interaction_metrics.csv",
-            "notes": "Pass chain logic is conservative because team assignment is neutral/unknown in Level 3 tracks.",
+            "notes": "Pass chain logic is conservative; team labels are approximate when available.",
         },
     }
+
+
+def _pass_chain_reason(subtype: str) -> str:
+    if subtype == "same_team_chain":
+        return "same_team_owner_changes"
+    if subtype == "posesion_con_equipo_sin_cadena":
+        return "known_team_without_owner_change_chain"
+    return "no_same_team_change_detected"
 
 
 def build_highlight_events(
@@ -332,14 +345,16 @@ def build_highlight_events(
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     interaction_index = _interaction_index(interaction_rows)
     edge_index = _edge_index(edge_rows)
+    teams_by_track = _teams_by_track(tracks)
     events: list[dict[str, Any]] = []
     highlight_rows: list[dict[str, Any]] = []
 
     for segment in speed_segments:
         score, reason_parts, confidence, reliability = score_highlight(segment, interaction_index, edge_index, level2_events_by_clip, config)
         primary_track_id, secondary_ids = _highlight_primary_ids(segment, interaction_index)
+        team = teams_by_track.get((str(segment["clip_id"]), primary_track_id), "unknown")
         event_id = f"lvl3_evt_{start_index + len(events):06d}"
-        narrative = _highlight_narrative(segment, score, reason_parts, reliability)
+        narrative = _highlight_narrative(segment, score, reason_parts, reliability, team)
         source_event_ids = _matching_level2_event_ids(segment, level2_events_by_clip)
         event = {
             "event_id": event_id,
@@ -350,7 +365,7 @@ def build_highlight_events(
             "frame_end": int(segment["frame_end"]),
             "time_start_sec": segment["time_start_sec"],
             "time_end_sec": segment["time_end_sec"],
-            "team": "unknown",
+            "team": team if _known_team(team) else "unknown",
             "primary_object_id": primary_track_id,
             "secondary_object_ids": secondary_ids,
             "ball_id": segment["ball_id"],
@@ -485,12 +500,21 @@ def _highlight_primary_ids(segment: dict[str, Any], interaction_index: dict[tupl
     return str(segment["ball_id"]), []
 
 
-def _highlight_narrative(segment: dict[str, Any], score: float, reason_parts: list[str], reliability: str) -> str:
+def _highlight_narrative(segment: dict[str, Any], score: float, reason_parts: list[str], reliability: str, team: str = "unknown") -> str:
+    team_text = f" para equipo aproximado {team}" if _known_team(team) else ""
     return (
-        f"Highlight {reliability}: movimiento rapido del balon en frames "
+        f"Highlight {reliability}{team_text}: movimiento rapido del balon en frames "
         f"{segment['frame_start']}-{segment['frame_end']} con score {score:.1f}; "
         f"motivos: {', '.join(reason_parts)}."
     )
+
+
+def _teams_by_track(tracks: list[dict[str, Any]]) -> dict[tuple[str, str], str]:
+    result: dict[tuple[str, str], str] = {}
+    for row in tracks:
+        if _is_robot(row):
+            result[(str(row["clip_id"]), str(row["track_id"]))] = str(row.get("team", "unknown") or "unknown")
+    return result
 
 
 def write_level3_events(path: str | Path, events: list[dict[str, Any]]) -> None:
@@ -536,7 +560,7 @@ def write_narrative(path: str | Path, events: list[dict[str, Any]], highlight_ro
             "",
             "- La narrativa usa lenguaje conservador: no afirma goles, faltas, reglas oficiales ni pases confirmados sin equipo confiable.",
             "- Los highlights combinan velocidad normalizada, proximidad, zona y confianza; siguen siendo candidatos para revision humana.",
-            "- Las cadenas de pase quedan marcadas como dudosas cuando las etiquetas de equipo son `neutral` o `unknown`.",
+            "- Las cadenas de pase usan etiquetas de equipo aproximadas cuando existen; si el equipo es `neutral` o `unknown`, quedan marcadas como dudosas.",
         ]
     )
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")

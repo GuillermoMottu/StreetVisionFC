@@ -69,6 +69,7 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
     tracks = outputs["tracks"]
     control_rows = outputs["control_rows"]
     control_aggregate = outputs["control_aggregate"]
+    team_control_aggregate = outputs["team_control_aggregate"]
     frame_summaries = outputs["frame_summaries"]
     voronoi_frames = outputs["voronoi_frames"]
     interaction_samples = outputs["interaction_samples"]
@@ -94,6 +95,7 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
         f"- Metricas exportadas: `{len(metric_rows)}`.",
         f"- Muestras de interaccion: `{len(interaction_samples)}`.",
         f"- Aristas de grafo: `{len(edge_rows)}`.",
+        f"- Equipos con control agregado: `{len(team_control_aggregate)}`.",
         "",
         "## Control Espacial",
         "",
@@ -101,6 +103,15 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
     ]
     for mode, count in sorted(control_modes.items()):
         lines.append(f"- Modo `{mode}`: `{count}` filas de control.")
+    lines.extend(["", "## Control Por Equipo", ""])
+    if team_control_aggregate:
+        for item in team_control_aggregate:
+            lines.append(
+                f"- `{item['clip_id']}` `{item['team']}`: control medio `{item['mean_control_percent']}`%, "
+                f"zona dominante `{item['dominant_zone']}`, contributors `{item['contributors']}`."
+            )
+    else:
+        lines.append("- Sin etiquetas de equipo conocidas; se conserva fallback por robot individual.")
     lines.extend(["", "## Voronoi Aproximado", ""])
     lines.extend(
         [
@@ -130,7 +141,7 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
             "## Comparabilidad",
             "",
             "- `video_595` y `video_667` usan el mismo contrato `level3_tracks.csv`, la misma grilla y los mismos umbrales normalizados.",
-            "- Como los equipos siguen `neutral`, el control por equipo queda en fallback por robot individual.",
+            "- Si `team_assignment.csv` ya fue aplicado, se exportan metricas por equipo ademas del fallback por robot.",
             "- Cada fila de `level3_metrics.csv`, `interaction_metrics.csv` e `interaction_edges.csv` incluye confianza o confiabilidad provisional.",
             "",
             "## Limitaciones",
@@ -186,6 +197,7 @@ def build_tactical_metrics(
         outputs["voronoi_frames"],
         outputs["interaction_samples"],
         outputs["edge_rows"],
+        outputs["team_control_aggregate"],
     )
     write_spatial_control_csv(output_dir / "spatial_control.csv", outputs["control_rows"])
     write_voronoi_frames_csv(output_dir / "voronoi_frames.csv", outputs["voronoi_frames"])
