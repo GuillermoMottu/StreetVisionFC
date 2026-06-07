@@ -1,0 +1,9 @@
+file 'reel_thumb_rank_01_video_595_frame_122.png'
+duration 3.000
+file 'reel_thumb_rank_02_video_595_frame_128.png'
+duration 3.000
+file 'reel_thumb_rank_03_video_595_frame_133.png'
+duration 3.000
+file 'reel_thumb_rank_04_video_595_frame_124.png'
+duration 3.000
+file 'reel_thumb_rank_04_video_595_frame_124.png'

@@ -135,42 +135,31 @@ visualization:
   export_video: false
   export_heatmap: true
   export_timeline: true
-local_app:
-  rule_version: local_app_v0.1
-  architecture: html_plus_local_stdlib_backend
-  server: http.server.ThreadingHTTPServer
-  request:
-    clip_id: video_480
-    video_path: "/home/guillermo/V\xEDdeos/CopaFutMX/17 Abril/video-480_singular_display.mov"
-    start_frame: 120
-    end_frame: 180
-    stride: 1
-    roi:
-    - 0
-    - 620
-    - 1360
-    - 1808
-    run_dashboard: true
-    run_reel: true
-  commands:
-  - name: dashboard
-    status: pass
-    command: /home/guillermo/Documentos/StreetVisionFC/.venv/bin/python scripts/run_level3_dashboard.py
-      --config configs/default.yaml --experiment experiments/test_028_local_app/dashboard
-    notes: Wrote Level 3 dashboard to experiments/test_028_local_app/dashboard (15
-      manifest rows, 6 highlights shown)
-    duration_sec: 1.3762353980000626
-  - name: reel
-    status: pass
-    command: /home/guillermo/Documentos/StreetVisionFC/.venv/bin/python scripts/run_level3_reel.py
-      --config configs/default.yaml --experiment experiments/test_028_local_app/reel
-      --dashboard-html experiments/test_028_local_app/dashboard/dashboard.html
-    notes: Wrote Level 3 reel package to experiments/test_028_local_app/reel (4 segments,
-      21 manifest rows)
-    duration_sec: 2.389024879000317
+level3_reel:
+  rule_version: level3_reel_v0.1
+  format: static_demo_plus_local_render_plan
+  mp4_policy: local_only_not_versioned
+  highlights_csv: experiments/test_022_level3_advanced_events/level3_highlights.csv
+  events_json: experiments/test_022_level3_advanced_events/level3_events.json
+  overlay_validation_csv: experiments/test_022_level3_advanced_events/overlay_validation.csv
+  advanced_events_dir: experiments/test_022_level3_advanced_events
+  visualization_manifest_csv: experiments/test_023_level3_visualizations/visualization_manifest.csv
+  storyboard_manifest_csv: experiments/test_023_level3_visualizations/highlight_storyboard_manifest.csv
+  visualizations_dir: experiments/test_023_level3_visualizations
+  dashboard_html: experiments/test_028_local_app/dashboard/dashboard.html
+  output_dir: experiments/test_028_local_app/reel
+  local_reel_path: local_outputs/level3_reel/futbotmx_level3_reel.mp4
+  segment_count: 4
+  segment_duration_sec: 3.0
+  min_confidence: 0.8
   outputs:
+  - reel_segments.csv
+  - reel_manifest.csv
+  - reel_narrative.md
+  - reel_render_plan.md
+  - render_reel_local.sh
+  - reel_ffmpeg_inputs.txt
+  - reel_demo.html
+  - reel_contact_sheet.png
+  - reel_thumb_rank_*.png
   - summary.md
-  - local_app_manifest.csv
-  - config.yaml
-  - dashboard/dashboard.html
-  - reel/reel_demo.html
