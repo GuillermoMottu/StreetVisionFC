@@ -11,8 +11,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from futbotmx.live_playback import (
     LivePlaybackConfig,
+    STREAM_MESSAGE_TYPES,
     available_frame_numbers,
     backend_endpoint_manifest,
+    build_stream_messages,
     build_live_playback_context,
     build_live_playback_package,
     calibration_payload,
@@ -27,6 +29,10 @@ from futbotmx.live_playback import (
     resolve_overlay_frame,
     run_smoke_test,
     selected_playback_clip,
+    sse_format_message,
+    sse_stream_text,
+    stream_latency_metrics_csv,
+    stream_messages_jsonl,
     sync_summary_from_frames,
     timestamp_from_frame,
     video_metadata_from_config,
@@ -105,6 +111,9 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("resolveOverlayFrame", html)
             self.assertIn("seeked", html)
             self.assertIn("ratechange", html)
+            self.assertIn("streamReadout", html)
+            self.assertIn("EventSource", html)
+            self.assertIn("connectEventStream", html)
 
     def test_build_live_playback_package_writes_activity_23_artifacts(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -126,12 +135,20 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue((output_dir / "live_highlights.csv").exists())
             self.assertTrue((output_dir / "video_metadata.json").exists())
             self.assertTrue((output_dir / "endpoint_manifest.json").exists())
+            self.assertTrue((output_dir / "stream_messages.jsonl").exists())
+            self.assertTrue((output_dir / "stream_latency_metrics.csv").exists())
+            self.assertTrue((output_dir / "stream_summary.json").exists())
             summary = (output_dir / "summary.md").read_text(encoding="utf-8")
             self.assertIn("Playback Vivo Con Overlays Precomputados", summary)
             self.assertIn("Tracks normalizados: `2`", summary)
             self.assertIn("Conversion: `frame = round(currentTime * fps)`", summary)
+            self.assertIn("Canal SSE", summary)
             endpoint_manifest = json.loads((output_dir / "endpoint_manifest.json").read_text(encoding="utf-8"))
             self.assertTrue(any(endpoint["path"] == "/tracks.csv" for endpoint in endpoint_manifest["endpoints"]))
+            stream_summary = json.loads((output_dir / "stream_summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(stream_summary["transport"], "sse")
+            self.assertEqual(stream_summary["frame_result_count"], 1)
+            self.assertIn("frame_result", (output_dir / "stream_messages.jsonl").read_text(encoding="utf-8"))
 
     def test_client_payload_is_small_frontend_contract(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -149,6 +166,8 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertEqual(payload["sync"]["max_frame_gap"], 0)
             self.assertEqual(payload["video_metadata"]["configured_frame_count"], 4)
             self.assertEqual(payload["endpoints"]["manifest"], "/manifest.json")
+            self.assertEqual(payload["endpoints"]["stream"], "/stream")
+            self.assertEqual(payload["stream_summary"]["transport"], "sse")
 
     def test_frame_timestamp_conversion_and_resolution_prefers_previous_frame(self) -> None:
         self.assertEqual(frame_from_timestamp(2.01, 60.0), 121)
@@ -197,6 +216,10 @@ class LivePlaybackTests(unittest.TestCase):
             endpoint_paths = {endpoint["path"] for endpoint in manifest["endpoints"]}
 
             self.assertIn("/manifest.json", endpoint_paths)
+            self.assertIn("/stream", endpoint_paths)
+            self.assertIn("/stream-summary.json", endpoint_paths)
+            self.assertIn("/stream-messages.jsonl", endpoint_paths)
+            self.assertIn("/stream-latency.csv", endpoint_paths)
             self.assertIn("/tracks.csv", endpoint_paths)
             self.assertIn("/events.json", endpoint_paths)
             self.assertIn("/highlights.csv", endpoint_paths)
@@ -204,8 +227,51 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("/calibration.json", endpoint_paths)
             self.assertIn("/video-metadata.json", endpoint_paths)
             self.assertIn("/video?clip_id=video_fixture", endpoint_paths)
+            self.assertEqual(manifest["channel"]["selected"], "sse")
+            self.assertEqual(manifest["channel"]["websocket_status"], "deferred_until_bidirectional_commands")
             self.assertEqual(manifest["path_policy"]["artifacts"], "fixed endpoint names only; no arbitrary filesystem path endpoint")
             self.assertFalse(manifest["video"]["is_versioned"])
+
+    def test_stream_messages_define_sse_contract_and_frame_results(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            create_source_artifacts(root)
+            context = build_live_playback_context(root, fixture_playback_config(root))
+
+            messages = build_stream_messages(context)
+            message_types = {message["type"] for message in messages}
+            frame_results = [message for message in messages if message["type"] == "frame_result"]
+            latency_csv = stream_latency_metrics_csv(messages)
+            jsonl = stream_messages_jsonl(messages)
+            sse_message = sse_format_message(frame_results[0])
+            sse_stream = sse_stream_text(messages)
+            missing_config = LivePlaybackConfig(
+                clip_id="video_fixture",
+                video_path=(root / "missing.mov").as_posix(),
+                fps=60.0,
+                width=1280,
+                height=720,
+                start_frame=120,
+                end_frame=123,
+                tracks_csv="experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv",
+                events_json="experiments/test_034_full_analysis/level3_events/level3_events.json",
+                highlights_csv="experiments/test_034_full_analysis/level3_events/level3_highlights.csv",
+                output_dir="experiments/test_039_live_playback",
+            )
+            missing_messages = build_stream_messages(build_live_playback_context(root, missing_config))
+            missing_message_types = {message["type"] for message in missing_messages}
+
+            self.assertTrue({"session_status", "frame_result", "event_update", "latency_metrics"}.issubset(message_types))
+            self.assertEqual(set(STREAM_MESSAGE_TYPES), {"session_status", "frame_result", "event_update", "latency_metrics", "warning"})
+            self.assertIn("warning", missing_message_types)
+            self.assertEqual(frame_results[0]["frame"], 120)
+            self.assertEqual(frame_results[0]["track_count"], 2)
+            self.assertEqual(frame_results[0]["event_count"], 1)
+            self.assertIn("event: frame_result\n", sse_message)
+            self.assertIn("data: {", sse_message)
+            self.assertTrue(sse_stream.startswith("retry: 3000\n\n"))
+            self.assertIn('"type":"latency_metrics"', jsonl)
+            self.assertTrue(latency_csv.startswith("sequence,message_id,clip_id,frame"))
 
     def test_csv_response_and_minimap_endpoint_payloads_are_reproducible(self) -> None:
         with TemporaryDirectory() as tmpdir:

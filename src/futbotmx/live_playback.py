@@ -48,6 +48,24 @@ DEFAULT_HIGHLIGHTS_CANDIDATES = (
 )
 MANIFEST_FIELDS = ["asset_id", "asset_type", "path", "source_artifact", "is_versioned", "role", "notes"]
 DEFAULT_TRAIL_LENGTH = 16
+STREAM_MESSAGE_TYPES = ("session_status", "frame_result", "event_update", "latency_metrics", "warning")
+STREAM_LATENCY_FIELDS = [
+    "sequence",
+    "message_id",
+    "clip_id",
+    "frame",
+    "timestamp_sec",
+    "resolved_frame",
+    "resolution_status",
+    "track_count",
+    "event_count",
+    "highlight_count",
+    "lookup_latency_ms",
+    "emit_latency_ms",
+    "queue_depth",
+    "backpressure",
+    "source",
+]
 
 
 @dataclass(frozen=True)
@@ -257,6 +275,176 @@ def sync_summary_from_frames(playback_config: LivePlaybackConfig, frames: list[i
     }
 
 
+def build_stream_messages(context: dict[str, Any]) -> list[dict[str, Any]]:
+    config: LivePlaybackConfig = context["config"]
+    tracks_by_frame = _tracks_by_frame(context["tracks"])
+    frames = context["available_frames"]
+    messages: list[dict[str, Any]] = []
+    sequence = 0
+
+    def add(message_type: str, payload: dict[str, Any]) -> dict[str, Any]:
+        nonlocal sequence
+        sequence += 1
+        message = {
+            "id": f"{config.clip_id}:{sequence:05d}",
+            "type": message_type,
+            "sequence": sequence,
+            "clip_id": config.clip_id,
+            "transport": "sse",
+            "rule_version": RULE_VERSION,
+        }
+        message.update(payload)
+        messages.append(message)
+        return message
+
+    add(
+        "session_status",
+        {
+            "status": "open",
+            "mode": "playback_precomputado",
+            "fps": config.fps,
+            "frame_start": config.start_frame,
+            "frame_end": config.end_frame,
+            "available_frame_count": len(frames),
+            "endpoint": "/stream",
+        },
+    )
+    video_metadata: VideoMetadata = context["video_metadata"]
+    if not video_metadata.video_exists:
+        add(
+            "warning",
+            {
+                "severity": "warn",
+                "warning_code": "video_missing",
+                "message": "Video local no disponible; el canal SSE emite datos precomputados sin servir video.",
+            },
+        )
+    if not frames:
+        add(
+            "warning",
+            {
+                "severity": "warn",
+                "warning_code": "no_frame_data",
+                "message": "No hay frames con tracks normalizados para emitir resultados frame a frame.",
+            },
+        )
+
+    for event in context["events"]:
+        add("event_update", _event_update_payload(event, "event"))
+    for highlight in context["highlights"]:
+        add("event_update", _event_update_payload(highlight, "highlight"))
+
+    for frame in frames:
+        rows = tracks_by_frame.get(frame, [])
+        events = _active_events_for_frame(context["events"], frame)
+        highlights = _active_events_for_frame(context["highlights"], frame)
+        resolution = resolve_overlay_frame(frame, frames)
+        timestamp = round(timestamp_from_frame(frame, config.fps), 6)
+        add(
+            "frame_result",
+            {
+                "frame": frame,
+                "timestamp_sec": timestamp,
+                "target_frame": resolution.target_frame,
+                "resolved_frame": resolution.resolved_frame,
+                "resolution_status": resolution.status,
+                "frame_gap": resolution.frame_gap,
+                "track_count": len(rows),
+                "track_ids": [str(row.get("track_id", "")) for row in rows[:24]],
+                "ball_count": sum(1 for row in rows if row.get("class") == "ball"),
+                "event_count": len(events),
+                "highlight_count": len(highlights),
+            },
+        )
+        add(
+            "latency_metrics",
+            {
+                "frame": frame,
+                "timestamp_sec": timestamp,
+                "resolved_frame": resolution.resolved_frame,
+                "resolution_status": resolution.status,
+                "track_count": len(rows),
+                "event_count": len(events),
+                "highlight_count": len(highlights),
+                "lookup_latency_ms": 0.0,
+                "emit_latency_ms": 0.0,
+                "queue_depth": 0,
+                "backpressure": False,
+                "source": "precomputed_artifacts",
+            },
+        )
+
+    completion = add(
+        "session_status",
+        {
+            "status": "complete",
+            "mode": "playback_precomputado",
+            "emitted_frame_count": len(frames),
+            "message_count": 0,
+            "endpoint": "/stream",
+        },
+    )
+    completion["message_count"] = len(messages)
+    return messages
+
+
+def stream_summary_from_messages(context: dict[str, Any], messages: list[dict[str, Any]]) -> dict[str, Any]:
+    message_counts = {message_type: 0 for message_type in STREAM_MESSAGE_TYPES}
+    for message in messages:
+        message_type = str(message.get("type", ""))
+        if message_type in message_counts:
+            message_counts[message_type] += 1
+    warnings = [message for message in messages if message.get("type") == "warning"]
+    latency_messages = [message for message in messages if message.get("type") == "latency_metrics"]
+    return {
+        "transport": "sse",
+        "selected_transport_reason": "SSE cubre el flujo backend->frontend local sin comandos bidireccionales ni dependencias extra.",
+        "websocket_status": "deferred_until_bidirectional_commands",
+        "message_types": list(STREAM_MESSAGE_TYPES),
+        "message_count": len(messages),
+        "message_counts": message_counts,
+        "frame_result_count": message_counts["frame_result"],
+        "latency_metric_count": len(latency_messages),
+        "warning_count": len(warnings),
+        "warning_codes": [str(message.get("warning_code", "")) for message in warnings],
+        "average_lookup_latency_ms": _average_metric(latency_messages, "lookup_latency_ms"),
+        "max_emit_latency_ms": _max_metric(latency_messages, "emit_latency_ms"),
+        "frontend_reconnect_policy": "EventSource automatic reconnect; the client closes the stream after session_status=complete.",
+        "log_artifact": "stream_messages.jsonl",
+        "latency_artifact": "stream_latency_metrics.csv",
+        "summary_artifact": "stream_summary.json",
+        "clip_id": context["config"].clip_id,
+    }
+
+
+def stream_messages_jsonl(messages: list[dict[str, Any]]) -> str:
+    return "\n".join(json.dumps(message, ensure_ascii=True, separators=(",", ":")) for message in messages) + "\n"
+
+
+def stream_latency_metrics_csv(messages: list[dict[str, Any]]) -> str:
+    handle = io.StringIO()
+    writer = csv.DictWriter(handle, fieldnames=STREAM_LATENCY_FIELDS, lineterminator="\n")
+    writer.writeheader()
+    for message in messages:
+        if message.get("type") != "latency_metrics":
+            continue
+        row = {field: message.get(field, "") for field in STREAM_LATENCY_FIELDS}
+        row["message_id"] = message.get("id", "")
+        writer.writerow(row)
+    return handle.getvalue()
+
+
+def sse_format_message(message: dict[str, Any]) -> str:
+    message_type = str(message.get("type", "message"))
+    message_id = str(message.get("id", ""))
+    data = json.dumps(message, ensure_ascii=True, separators=(",", ":"))
+    return f"id: {message_id}\nevent: {message_type}\ndata: {data}\n\n"
+
+
+def sse_stream_text(messages: list[dict[str, Any]]) -> str:
+    return "retry: 3000\n\n" + "".join(sse_format_message(message) for message in messages)
+
+
 def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
     config: LivePlaybackConfig = context["config"]
     video_metadata: VideoMetadata = context["video_metadata"]
@@ -265,6 +453,10 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
         _endpoint_row("/playback.html", "text/html", "ui", "Playback UI with video and canvas overlay."),
         _endpoint_row("/data.json", "application/json", "combined_data", "Combined payload for simple clients."),
         _endpoint_row("/manifest.json", "application/json", "manifest", "Endpoint and artifact manifest."),
+        _endpoint_row("/stream", "text/event-stream", "stream", "SSE channel for session_status, frame_result, event_update, latency_metrics and warning messages."),
+        _endpoint_row("/stream-summary.json", "application/json", "stream_summary", "SSE message counts, latency summary and transport decision."),
+        _endpoint_row("/stream-messages.jsonl", "application/x-ndjson", "stream_log", "Lightweight log of emitted SSE messages."),
+        _endpoint_row("/stream-latency.csv", "text/csv", "stream_metrics", "Latency metrics emitted by the SSE channel."),
         _endpoint_row("/tracks.csv", "text/csv", "tracks", "Normalized live tracks."),
         _endpoint_row("/events.json", "application/json", "events", "Normalized live events."),
         _endpoint_row("/highlights.csv", "text/csv", "highlights", "Normalized live highlights."),
@@ -279,6 +471,12 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
         "backend": "stdlib_http_server",
         "clip_id": config.clip_id,
         "experiment_dir": config.output_dir,
+        "channel": {
+            "selected": "sse",
+            "websocket_status": "deferred_until_bidirectional_commands",
+            "reason": "Playback local solo requiere flujo backend->frontend; WebSocket queda reservado para comandos online bidireccionales.",
+            "message_types": list(STREAM_MESSAGE_TYPES),
+        },
         "video": {
             "path": config.video_path,
             "exists": video_metadata.video_exists,
@@ -292,6 +490,9 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
             "highlights": "live_highlights.csv",
             "minimap_sample": "minimap_frame_sample.json",
             "video_metadata": "video_metadata.json",
+            "stream_messages": "stream_messages.jsonl",
+            "stream_latency_metrics": "stream_latency_metrics.csv",
+            "stream_summary": "stream_summary.json",
             "config": "config.yaml",
             "summary": "summary.md",
         },
@@ -374,6 +575,18 @@ def build_live_playback_package(root: Path, config_path: Path, playback_config: 
         json.dumps(backend_endpoint_manifest(context), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
+    (output_dir / "stream_messages.jsonl").write_text(
+        stream_messages_jsonl(context["stream_messages"]),
+        encoding="utf-8",
+    )
+    (output_dir / "stream_latency_metrics.csv").write_text(
+        stream_latency_metrics_csv(context["stream_messages"]),
+        encoding="utf-8",
+    )
+    (output_dir / "stream_summary.json").write_text(
+        json.dumps(context["stream_summary"], indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
     (output_dir / "playback.html").write_text(render_playback_html(context), encoding="utf-8")
     write_live_playback_config(root, config_path, playback_config, context)
     write_live_playback_manifest(root, playback_config, context)
@@ -412,7 +625,7 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
     frames = available_frame_numbers(normalized_tracks)
     video_metadata = video_metadata_from_config(playback_config)
     sync = sync_summary_from_frames(playback_config, frames)
-    return {
+    context = {
         "rule_version": RULE_VERSION,
         "config": playback_config,
         "tracks": normalized_tracks,
@@ -444,6 +657,13 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
             "validation_errors": sum(len(row["errors"]) for row in validation),
         },
     }
+    stream_messages = build_stream_messages(context)
+    context["stream_messages"] = stream_messages
+    context["stream_summary"] = stream_summary_from_messages(context, stream_messages)
+    context["summary"]["stream_message_count"] = context["stream_summary"]["message_count"]
+    context["summary"]["stream_warning_count"] = context["stream_summary"]["warning_count"]
+    context["summary"]["stream_frame_result_count"] = context["stream_summary"]["frame_result_count"]
+    return context
 
 
 def validate_playback_payload(
@@ -512,6 +732,9 @@ def render_playback_html(context: dict[str, Any]) -> str:
             '<span>Duracion <strong id="durationReadout">config</strong></span>',
             '<span>Velocidad <strong id="rateReadout">1.00x</strong></span>',
             '<span>Datos <strong id="dataReadout">sin datos</strong></span>',
+            '<span>Canal <strong id="streamReadout">sse pendiente</strong></span>',
+            '<span>Mensajes <strong id="streamMessageReadout">0</strong></span>',
+            '<span>Latencia <strong id="latencyReadout">n/a</strong></span>',
             "</div>",
             '<div class="toggles">',
             _toggle("layerTracks", "Tracks", True),
@@ -525,6 +748,7 @@ def render_playback_html(context: dict[str, Any]) -> str:
             _toggle("layerDebug", "Debug", False),
             "</div>",
             '<div class="timeline" id="eventList"></div>',
+            '<div class="timeline stream" id="streamList"></div>',
             "</aside>",
             "</section>",
             "</main>",
@@ -552,8 +776,13 @@ def client_payload(context: dict[str, Any]) -> dict[str, Any]:
         "sync": context["sync"],
         "available_frames": context["available_frames"],
         "video_metadata": asdict(context["video_metadata"]),
+        "stream_summary": context["stream_summary"],
         "endpoints": {
             "manifest": "/manifest.json",
+            "stream": "/stream",
+            "stream_summary": "/stream-summary.json",
+            "stream_messages": "/stream-messages.jsonl",
+            "stream_latency": "/stream-latency.csv",
             "tracks": "/tracks.csv",
             "events": "/events.json",
             "highlights": "/highlights.csv",
@@ -580,6 +809,7 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
         "summary": context["summary"],
         "video_metadata": asdict(context["video_metadata"]),
         "sync": context["sync"],
+        "stream": context["stream_summary"],
         "outputs": [
             "playback.html",
             "live_tracks.csv",
@@ -588,6 +818,9 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
             "minimap_frame_sample.json",
             "video_metadata.json",
             "endpoint_manifest.json",
+            "stream_messages.jsonl",
+            "stream_latency_metrics.csv",
+            "stream_summary.json",
             "live_playback_manifest.csv",
             "summary.md",
         ],
@@ -607,6 +840,9 @@ def write_live_playback_manifest(root: Path, playback_config: LivePlaybackConfig
         _manifest_row("minimap_sample", "json", "minimap_frame_sample.json", "live_tracks.csv", True, "data", "Sample minimap payload for first frame with rectified points."),
         _manifest_row("video_metadata", "json", "video_metadata.json", "configs/default.yaml", True, "sync", "FPS, dimensions, configured duration and approximate frame count."),
         _manifest_row("endpoint_manifest", "json", "endpoint_manifest.json", "live_playback_backend", True, "backend", "Local backend endpoints and path policy."),
+        _manifest_row("stream_messages", "jsonl", "stream_messages.jsonl", "live_playback_stream", True, "stream", f"{context['stream_summary']['message_count']} emitted SSE messages."),
+        _manifest_row("stream_latency_metrics", "csv", "stream_latency_metrics.csv", "live_playback_stream", True, "stream", f"{context['stream_summary']['latency_metric_count']} latency metric rows."),
+        _manifest_row("stream_summary", "json", "stream_summary.json", "live_playback_stream", True, "stream", "SSE transport decision, message counts and warning summary."),
         _manifest_row("source_video", "video", playback_config.video_path, "local video path", False, "local_input", "Heavy/local input; never versioned."),
     ]
     output = root / playback_config.output_dir / "live_playback_manifest.csv"
@@ -639,6 +875,9 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         f"- Tracks normalizados: `{summary['track_rows']}`.",
         f"- Eventos normalizados: `{summary['event_count']}`.",
         f"- Highlights normalizados: `{summary['highlight_count']}`.",
+        f"- Mensajes SSE emitibles: `{summary['stream_message_count']}`.",
+        f"- Resultados frame a frame SSE: `{summary['stream_frame_result_count']}`.",
+        f"- Warnings SSE: `{summary['stream_warning_count']}`.",
         f"- Errores de validacion: `{summary['validation_errors']}`.",
         "",
         "## Capas",
@@ -654,15 +893,27 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "- `minimap_frame_sample.json`.",
         "- `video_metadata.json`.",
         "- `endpoint_manifest.json`.",
+        "- `stream_messages.jsonl`.",
+        "- `stream_latency_metrics.csv`.",
+        "- `stream_summary.json`.",
         "- `config.yaml`.",
         "- `live_playback_manifest.csv`.",
         "",
         "## Backend Local",
         "",
-        "- Endpoints fijos: `/manifest.json`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
+        "- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
         "- Politica de video: solo se sirve el `clip_id` configurado; no se aceptan rutas arbitrarias por query.",
         "- Video pesado: permanece fuera de Git y queda marcado como `is_versioned=false`.",
         "- Si el video no existe en otro equipo, el reproductor muestra aviso local y conserva datos/overlays versionados.",
+        "",
+        "## Canal SSE",
+        "",
+        "- Transporte seleccionado: `SSE` por flujo local unidireccional backend->frontend.",
+        "- WebSocket: diferido hasta requerir comandos bidireccionales del motor online.",
+        "- Mensajes: `session_status`, `frame_result`, `event_update`, `latency_metrics` y `warning`.",
+        "- Reconexion frontend: `EventSource` usa reconexion automatica y cierra el canal al recibir `session_status=complete`.",
+        "- Log ligero: `stream_messages.jsonl`.",
+        "- Metricas: `stream_latency_metrics.csv`.",
         "",
         "## Sincronizacion",
         "",
@@ -737,6 +988,18 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
             if parsed.path == "/manifest.json":
                 self._send_json(backend_endpoint_manifest(context))
                 return
+            if parsed.path == "/stream":
+                self._send_sse_stream()
+                return
+            if parsed.path == "/stream-summary.json":
+                self._send_json(context["stream_summary"])
+                return
+            if parsed.path == "/stream-messages.jsonl":
+                self._send_text(stream_messages_jsonl(context["stream_messages"]), "application/x-ndjson; charset=utf-8")
+                return
+            if parsed.path == "/stream-latency.csv":
+                self._send_text(stream_latency_metrics_csv(context["stream_messages"]), "text/csv; charset=utf-8")
+                return
             if parsed.path == "/tracks.csv":
                 self._send_text(csv_response_text(context["tracks"], LIVE_TRACK_FIELDS), "text/csv; charset=utf-8")
                 return
@@ -776,8 +1039,18 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
             self.end_headers()
             self.wfile.write(body)
 
-        def _send_json(self, payload: dict[str, Any]) -> None:
+        def _send_json(self, payload: Any) -> None:
             self._send_text(json.dumps(payload, ensure_ascii=True), "application/json; charset=utf-8")
+
+        def _send_sse_stream(self) -> None:
+            body = sse_stream_text(context["stream_messages"]).encode("utf-8")
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream; charset=utf-8")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+            self.wfile.write(body)
+            self.wfile.flush()
 
         def _send_video(self, query: str) -> None:
             params = parse_qs(query)
@@ -916,7 +1189,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .field{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px}select{width:100%;background:#0d100d;color:var(--text);border:1px solid var(--line);padding:8px}
 .stats{display:grid;grid-template-columns:1fr;gap:7px;font-size:13px}.stats span{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px}
 .toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}.toggles label{font-size:13px;color:var(--text)}
-.timeline{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}.event{border-left:3px solid var(--accent);background:#111611;padding:8px;font-size:12px;color:var(--muted)}.event strong{color:var(--text)}
+.timeline{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}.stream{max-height:180px}.event{border-left:3px solid var(--accent);background:#111611;padding:8px;font-size:12px;color:var(--muted)}.event strong{color:var(--text)}.stream-event{border-left-color:var(--blue)}
 @media(max-width:900px){.shell{padding:10px}.workbench{grid-template-columns:1fr}.panel{order:-1}.stage{min-height:280px}h1{font-size:20px}}
 """
 
@@ -934,12 +1207,20 @@ const timeReadout=document.getElementById('timeReadout');
 const durationReadout=document.getElementById('durationReadout');
 const rateReadout=document.getElementById('rateReadout');
 const dataReadout=document.getElementById('dataReadout');
+const streamReadout=document.getElementById('streamReadout');
+const streamMessageReadout=document.getElementById('streamMessageReadout');
+const latencyReadout=document.getElementById('latencyReadout');
+const streamList=document.getElementById('streamList');
 const syncState=document.getElementById('syncState');
 const byFrame=new Map();
 for(const row of data.tracks){const f=Number(row.frame);if(!byFrame.has(f))byFrame.set(f,[]);byFrame.get(f).push(row);}
 const availableFrames=(data.available_frames||[]).map(Number).sort((a,b)=>a-b);
 let lastTargetFrame=null;
 let suppressTrails=0;
+let eventSource=null;
+let streamComplete=false;
+let streamMessageCount=0;
+let streamOpenCount=0;
 function enabled(id){return document.getElementById(id)?.checked;}
 function frameFromVideoTime(timeSec){const fps=Number(data.config.fps)||30;const raw=Math.round(Math.max(0,timeSec||0)*fps);const end=Number(data.config.end_frame)||raw;return Math.min(raw,end);}
 function frameNow(){return frameFromVideoTime(video.currentTime||0);}
@@ -961,6 +1242,9 @@ function drawDebug(frame,rows,resolved){label('fps='+data.config.fps+' rows='+ro
 function label(text,x,y,color){ctx.font='12px system-ui';ctx.fillStyle='rgba(5,6,5,.78)';const width=ctx.measureText(text).width+8;ctx.fillRect(x,y-13,width,17);ctx.fillStyle=color;ctx.fillText(text,x+4,y);}
 function badge(text,x,y,color){ctx.font='13px system-ui';const width=Math.min(canvas.width-24,ctx.measureText(text).width+18);ctx.fillStyle='rgba(5,6,5,.82)';ctx.fillRect(x,y,width,24);ctx.strokeStyle=color;ctx.strokeRect(x,y,width,24);ctx.fillStyle='#edf2e9';ctx.fillText(text,x+8,y+16);}
 function renderEventList(events,highlights){const list=document.getElementById('eventList');list.innerHTML='';for(const item of [...events,...highlights].slice(0,6)){const div=document.createElement('div');div.className='event';div.innerHTML='<strong>'+escapeHtml(item.label||item.highlight_id)+'</strong><br>frames '+(item.start_frame||item.start_frame)+'-'+(item.end_frame||item.end_frame)+' | '+(item.status||'provisional');list.appendChild(div);}}
+function connectEventStream(){if(!data.endpoints?.stream||!window.EventSource){streamReadout.textContent='sse no disponible';appendStreamMessage({type:'warning',warning_code:'eventsource_unavailable',message:'EventSource no disponible en este navegador'});return;}streamOpenCount+=1;streamReadout.textContent=streamOpenCount===1?'sse conectando':'sse reconectando '+streamOpenCount;eventSource=new EventSource(data.endpoints.stream);eventSource.onopen=()=>{streamReadout.textContent='sse activo';};for(const type of ['session_status','frame_result','event_update','latency_metrics','warning']){eventSource.addEventListener(type,event=>handleStreamMessage(type,event.data));}eventSource.onerror=()=>{if(streamComplete){eventSource.close();return;}streamReadout.textContent='sse reconexion pendiente';};}
+function handleStreamMessage(type,raw){let message;try{message=JSON.parse(raw);}catch(error){message={type:'warning',warning_code:'bad_stream_payload',message:String(error)};}streamMessageCount+=1;streamMessageReadout.textContent=String(streamMessageCount);if(type==='latency_metrics'){latencyReadout.textContent=Number(message.emit_latency_ms||0).toFixed(1)+'ms';}if(type==='frame_result'){streamReadout.textContent='frame '+message.frame;}if(type==='warning'){streamReadout.textContent='warning '+(message.warning_code||'stream');}if(type==='session_status'&&message.status==='complete'){streamComplete=true;streamReadout.textContent='sse completo';if(eventSource)eventSource.close();}appendStreamMessage(message);}
+function appendStreamMessage(message){if(!streamList)return;const div=document.createElement('div');div.className='event stream-event';const type=message.type||'message';const frame=message.frame!==undefined?'frame '+message.frame:'seq '+(message.sequence||'-');const detail=message.status||message.warning_code||message.label||message.resolution_status||message.source||'';div.innerHTML='<strong>'+escapeHtml(type)+'</strong><br>'+escapeHtml(frame)+' | '+escapeHtml(detail);streamList.prepend(div);while(streamList.children.length>8)streamList.removeChild(streamList.lastElementChild);}
 function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));}
 function markTemporalJump(){suppressTrails=2;resizeCanvas();}
 if(!data.config.video_exists){missing.hidden=false;}
@@ -973,8 +1257,56 @@ video.addEventListener('pause',()=>{syncState.textContent='paused';});
 video.addEventListener('ended',()=>{syncState.textContent='ended';suppressTrails=2;});
 window.addEventListener('resize',resizeCanvas);
 for(const input of document.querySelectorAll('input[type=checkbox]'))input.addEventListener('change',()=>{suppressTrails=1;});
+connectEventStream();
 requestAnimationFrame(draw);
 """
+
+
+def _tracks_by_frame(tracks: list[dict[str, Any]]) -> dict[int, list[dict[str, Any]]]:
+    by_frame: dict[int, list[dict[str, Any]]] = {}
+    for row in tracks:
+        frame = _coerce_int(row.get("frame"), 0)
+        by_frame.setdefault(frame, []).append(row)
+    return by_frame
+
+
+def _active_events_for_frame(events: list[dict[str, Any]], frame: int) -> list[dict[str, Any]]:
+    active = []
+    for event in events:
+        start = _coerce_int(event.get("start_frame", event.get("frame_start", 0)), 0)
+        end = _coerce_int(event.get("end_frame", event.get("frame_end", start)), start)
+        if start <= frame <= end:
+            active.append(event)
+    return active
+
+
+def _event_update_payload(event: dict[str, Any], source_type: str) -> dict[str, Any]:
+    start = _coerce_int(event.get("start_frame", event.get("frame_start", 0)), 0)
+    end = _coerce_int(event.get("end_frame", event.get("frame_end", start)), start)
+    return {
+        "source_type": source_type,
+        "event_id": str(event.get("event_id", event.get("highlight_id", ""))),
+        "label": str(event.get("label", event.get("event_type", event.get("highlight_id", source_type)))),
+        "status": str(event.get("status", event.get("reliability", "provisional"))),
+        "team": str(event.get("team", "")),
+        "start_frame": start,
+        "end_frame": end,
+        "timestamp_sec": round(float(event.get("time_start_sec", timestamp_from_frame(start, 30.0)) or 0.0), 6),
+        "confidence": event.get("confidence", ""),
+        "update_kind": "provisional_window",
+    }
+
+
+def _average_metric(messages: list[dict[str, Any]], key: str) -> float:
+    values = [float(message[key]) for message in messages if message.get(key) not in {"", None}]
+    if not values:
+        return 0.0
+    return round(sum(values) / len(values), 6)
+
+
+def _max_metric(messages: list[dict[str, Any]], key: str) -> float:
+    values = [float(message[key]) for message in messages if message.get(key) not in {"", None}]
+    return round(max(values), 6) if values else 0.0
 
 
 def _coerce_int(value: Any, default: int) -> int:

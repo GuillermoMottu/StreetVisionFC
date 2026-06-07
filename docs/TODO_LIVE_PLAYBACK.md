@@ -206,28 +206,28 @@ Preparar un canal continuo para emitir resultados durante reproduccion.
 
 ### Tarea 26.1 - Definir mensajes
 
-- [ ] Definir mensaje `session_status`.
-- [ ] Definir mensaje `frame_result`.
-- [ ] Definir mensaje `event_update`.
-- [ ] Definir mensaje `latency_metrics`.
-- [ ] Definir mensaje `warning`.
+- [x] Definir mensaje `session_status`.
+- [x] Definir mensaje `frame_result`.
+- [x] Definir mensaje `event_update`.
+- [x] Definir mensaje `latency_metrics`.
+- [x] Definir mensaje `warning`.
 
 ### Tarea 26.2 - Implementar transporte
 
-- [ ] Evaluar SSE para flujo unidireccional simple.
-- [ ] Evaluar WebSocket si se requieren comandos bidireccionales.
-- [ ] Implementar primero la opcion mas simple que cubra playback local.
-- [ ] Agregar reconexion basica del frontend.
+- [x] Evaluar SSE para flujo unidireccional simple.
+- [x] Evaluar WebSocket si se requieren comandos bidireccionales.
+- [x] Implementar primero la opcion mas simple que cubra playback local.
+- [x] Agregar reconexion basica del frontend.
 
 ### Tarea 26.3 - Registrar sesion
 
-- [ ] Guardar log ligero de mensajes emitidos.
-- [ ] Guardar metricas de latencia.
-- [ ] Guardar resumen de errores o warnings.
+- [x] Guardar log ligero de mensajes emitidos.
+- [x] Guardar metricas de latencia.
+- [x] Guardar resumen de errores o warnings.
 
 ### Criterio de aceptacion
 
-- [ ] El frontend puede recibir resultados frame a frame sin recargar la pagina.
+- [x] El frontend puede recibir resultados frame a frame sin recargar la pagina.
 
 ## Actividad 27 - Motor Online De Frames
 

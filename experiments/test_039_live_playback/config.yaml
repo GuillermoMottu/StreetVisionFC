@@ -172,6 +172,9 @@ live_playback:
     events_json: experiments/test_034_full_analysis/level3_events/level3_events.json
     highlights_csv: experiments/test_034_full_analysis/level3_events/level3_highlights.csv
     validation_errors: 0
+    stream_message_count: 289
+    stream_warning_count: 0
+    stream_frame_result_count: 61
   video_metadata:
     clip_id: video_595
     fps_nominal: 59.71505265331406
@@ -196,6 +199,36 @@ live_playback:
     interpolation_enabled: false
     interpolation_policy: disabled; use exact frame or previous available frame for
       stride
+  stream:
+    transport: sse
+    selected_transport_reason: SSE cubre el flujo backend->frontend local sin comandos
+      bidireccionales ni dependencias extra.
+    websocket_status: deferred_until_bidirectional_commands
+    message_types:
+    - session_status
+    - frame_result
+    - event_update
+    - latency_metrics
+    - warning
+    message_count: 289
+    message_counts:
+      session_status: 2
+      frame_result: 61
+      event_update: 165
+      latency_metrics: 61
+      warning: 0
+    frame_result_count: 61
+    latency_metric_count: 61
+    warning_count: 0
+    warning_codes: []
+    average_lookup_latency_ms: 0.0
+    max_emit_latency_ms: 0.0
+    frontend_reconnect_policy: EventSource automatic reconnect; the client closes
+      the stream after session_status=complete.
+    log_artifact: stream_messages.jsonl
+    latency_artifact: stream_latency_metrics.csv
+    summary_artifact: stream_summary.json
+    clip_id: video_595
   outputs:
   - playback.html
   - live_tracks.csv
@@ -204,5 +237,8 @@ live_playback:
   - minimap_frame_sample.json
   - video_metadata.json
   - endpoint_manifest.json
+  - stream_messages.jsonl
+  - stream_latency_metrics.csv
+  - stream_summary.json
   - live_playback_manifest.csv
   - summary.md

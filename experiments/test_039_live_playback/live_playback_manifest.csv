@@ -9,4 +9,7 @@ live_highlights,csv,live_highlights.csv,experiments/test_034_full_analysis/level
 minimap_sample,json,minimap_frame_sample.json,live_tracks.csv,true,data,Sample minimap payload for first frame with rectified points.
 video_metadata,json,video_metadata.json,configs/default.yaml,true,sync,"FPS, dimensions, configured duration and approximate frame count."
 endpoint_manifest,json,endpoint_manifest.json,live_playback_backend,true,backend,Local backend endpoints and path policy.
+stream_messages,jsonl,stream_messages.jsonl,live_playback_stream,true,stream,289 emitted SSE messages.
+stream_latency_metrics,csv,stream_latency_metrics.csv,live_playback_stream,true,stream,61 latency metric rows.
+stream_summary,json,stream_summary.json,live_playback_stream,true,stream,"SSE transport decision, message counts and warning summary."
 source_video,video,/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov,local video path,false,local_input,Heavy/local input; never versioned.
