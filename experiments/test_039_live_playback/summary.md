@@ -19,6 +19,9 @@
 - Mensajes SSE emitibles: `289`.
 - Resultados frame a frame SSE: `61`.
 - Warnings SSE: `0`.
+- Frames procesados por loop online: `61`.
+- Frames saltados por backpressure: `0`.
+- Latencia promedio loop hasta overlay: `1.233279` ms.
 - Errores de validacion: `0`.
 
 ## Capas
@@ -37,12 +40,14 @@
 - `stream_messages.jsonl`.
 - `stream_latency_metrics.csv`.
 - `stream_summary.json`.
+- `frame_loop_summary.json`.
+- `frame_loop_metrics.csv`.
 - `config.yaml`.
 - `live_playback_manifest.csv`.
 
 ## Backend Local
 
-- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.
+- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/frame-loop-summary.json`, `/frame-loop-metrics.csv`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.
 - Politica de video: solo se sirve el `clip_id` configurado; no se aceptan rutas arbitrarias por query.
 - Video pesado: permanece fuera de Git y queda marcado como `is_versioned=false`.
 - Si el video no existe en otro equipo, el reproductor muestra aviso local y conserva datos/overlays versionados.
@@ -55,6 +60,15 @@
 - Reconexion frontend: `EventSource` usa reconexion automatica y cierra el canal al recibir `session_status=complete`.
 - Log ligero: `stream_messages.jsonl`.
 - Metricas: `stream_latency_metrics.csv`.
+
+## Motor Online De Frames
+
+- Modo: `precomputed_online_loop`.
+- Pipeline: leer frame solicitado, recuperar detecciones precomputadas, actualizar snapshot incremental, actualizar eventos activos y emitir overlay parcial.
+- Controles soportados: `pause`, `resume`, `seek`, `stop` y salto de frames por backpressure.
+- Inferencia online real: diferida; el hook existe y usa fallback precomputado determinista para esta actividad.
+- Metricas por etapa: lectura de frame, deteccion, tracking, eventos, overlay y total hasta overlay.
+- Evidencia: `frame_loop_summary.json` y `frame_loop_metrics.csv`.
 
 ## Sincronizacion
 

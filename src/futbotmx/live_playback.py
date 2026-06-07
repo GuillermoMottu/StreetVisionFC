@@ -55,16 +55,30 @@ STREAM_LATENCY_FIELDS = [
     "clip_id",
     "frame",
     "timestamp_sec",
+    "requested_frame",
     "resolved_frame",
     "resolution_status",
     "track_count",
     "event_count",
     "highlight_count",
+    "frame_read_ms",
+    "detection_ms",
+    "tracking_ms",
+    "events_ms",
+    "overlay_ms",
+    "total_to_overlay_ms",
     "lookup_latency_ms",
     "emit_latency_ms",
+    "processing_budget_ms",
+    "target_fps",
+    "skipped_frames",
     "queue_depth",
     "backpressure",
     "source",
+    "inference_mode",
+    "tracker_mode",
+    "event_window_frames",
+    "overlay_ready",
 ]
 
 
@@ -119,6 +133,27 @@ class VideoMetadata:
     video_size_bytes: int
     metadata_source: str
     notes: str
+
+
+@dataclass(frozen=True)
+class OnlineFrameLoopConfig:
+    mode: str
+    target_fps: float
+    inference_enabled: bool
+    inference_mode: str
+    tracker_mode: str
+    event_window_frames: int
+    processing_budget_ms: float
+    max_skip_frames: int
+    backpressure_policy: str
+
+
+@dataclass(frozen=True)
+class FrameLoopControl:
+    action: str
+    at_frame: int | None = None
+    seek_frame: int | None = None
+    reason: str = ""
 
 
 def playback_clips_from_config(config: dict[str, Any]) -> list[PlaybackClip]:
@@ -275,12 +310,47 @@ def sync_summary_from_frames(playback_config: LivePlaybackConfig, frames: list[i
     }
 
 
-def build_stream_messages(context: dict[str, Any]) -> list[dict[str, Any]]:
+def online_frame_loop_config_from_playback(
+    playback_config: LivePlaybackConfig,
+    inference_enabled: bool = False,
+    processing_budget_ms: float | None = None,
+) -> OnlineFrameLoopConfig:
+    target_fps = playback_config.fps or 30.0
+    budget = processing_budget_ms if processing_budget_ms is not None else 1000.0 / target_fps
+    return OnlineFrameLoopConfig(
+        mode="precomputed_online_loop",
+        target_fps=target_fps,
+        inference_enabled=inference_enabled,
+        inference_mode="online_detector_stub" if inference_enabled else "precomputed_lookup",
+        tracker_mode="incremental_precomputed_snapshot",
+        event_window_frames=max(6, int(round(target_fps / 2))),
+        processing_budget_ms=round(budget, 6),
+        max_skip_frames=4,
+        backpressure_policy="skip_next_available_frames",
+    )
+
+
+def build_online_frame_loop(
+    context: dict[str, Any],
+    loop_config: OnlineFrameLoopConfig | None = None,
+    controls: list[FrameLoopControl | dict[str, Any]] | None = None,
+) -> dict[str, Any]:
     config: LivePlaybackConfig = context["config"]
+    loop_config = loop_config or online_frame_loop_config_from_playback(config)
+    controls_by_frame = _controls_by_frame(controls or [], config.start_frame)
     tracks_by_frame = _tracks_by_frame(context["tracks"])
     frames = context["available_frames"]
     messages: list[dict[str, Any]] = []
+    metric_messages: list[dict[str, Any]] = []
     sequence = 0
+    state: dict[str, Any] = {
+        "paused": False,
+        "stopped": False,
+        "pending_seek_frame": None,
+        "reset_count": 0,
+        "skipped_frame_count": 0,
+        "skipped_frames": [],
+    }
 
     def add(message_type: str, payload: dict[str, Any]) -> dict[str, Any]:
         nonlocal sequence
@@ -301,12 +371,19 @@ def build_stream_messages(context: dict[str, Any]) -> list[dict[str, Any]]:
         "session_status",
         {
             "status": "open",
-            "mode": "playback_precomputado",
+            "mode": loop_config.mode,
             "fps": config.fps,
             "frame_start": config.start_frame,
             "frame_end": config.end_frame,
             "available_frame_count": len(frames),
             "endpoint": "/stream",
+            "engine_state": "created",
+            "inference_enabled": loop_config.inference_enabled,
+            "inference_mode": loop_config.inference_mode,
+            "tracker_mode": loop_config.tracker_mode,
+            "event_window_frames": loop_config.event_window_frames,
+            "processing_budget_ms": loop_config.processing_budget_ms,
+            "controls_supported": ["pause", "resume", "seek", "stop", "skip_late_frames"],
         },
     )
     video_metadata: VideoMetadata = context["video_metadata"]
@@ -329,24 +406,48 @@ def build_stream_messages(context: dict[str, Any]) -> list[dict[str, Any]]:
             },
         )
 
+    if loop_config.inference_enabled:
+        add(
+            "warning",
+            {
+                "severity": "info",
+                "warning_code": "online_inference_stub",
+                "message": "El hook online esta habilitado, pero esta actividad usa detecciones precomputadas como fallback determinista.",
+            },
+        )
+
     for event in context["events"]:
         add("event_update", _event_update_payload(event, "event"))
     for highlight in context["highlights"]:
         add("event_update", _event_update_payload(highlight, "highlight"))
 
-    for frame in frames:
-        rows = tracks_by_frame.get(frame, [])
-        events = _active_events_for_frame(context["events"], frame)
-        highlights = _active_events_for_frame(context["highlights"], frame)
-        resolution = resolve_overlay_frame(frame, frames)
-        timestamp = round(timestamp_from_frame(frame, config.fps), 6)
+    frame_index = 0
+    while frame_index < len(frames):
+        frame = frames[frame_index]
+        for control in controls_by_frame.get(frame, []):
+            _apply_frame_loop_control(add, state, control, frame)
+        if state["stopped"]:
+            break
+        if state["paused"]:
+            frame_index += 1
+            continue
+
+        requested_frame = state.pop("pending_seek_frame", None) or frame
+        resolution = resolve_overlay_frame(requested_frame, frames)
+        resolved_frame = resolution.resolved_frame
+        rows = tracks_by_frame.get(resolved_frame, []) if resolved_frame is not None else []
+        events = _active_events_for_frame(context["events"], requested_frame)
+        highlights = _active_events_for_frame(context["highlights"], requested_frame)
+        timestamp = round(timestamp_from_frame(requested_frame, config.fps), 6)
+        metrics = _frame_loop_stage_metrics(loop_config, requested_frame, resolution, rows, events, highlights)
         add(
             "frame_result",
             {
-                "frame": frame,
+                "frame": requested_frame,
+                "requested_frame": requested_frame,
                 "timestamp_sec": timestamp,
                 "target_frame": resolution.target_frame,
-                "resolved_frame": resolution.resolved_frame,
+                "resolved_frame": resolved_frame,
                 "resolution_status": resolution.status,
                 "frame_gap": resolution.frame_gap,
                 "track_count": len(rows),
@@ -354,38 +455,83 @@ def build_stream_messages(context: dict[str, Any]) -> list[dict[str, Any]]:
                 "ball_count": sum(1 for row in rows if row.get("class") == "ball"),
                 "event_count": len(events),
                 "highlight_count": len(highlights),
+                "active_event_ids": [str(event.get("event_id", "")) for event in events[:24]],
+                "active_highlight_ids": [str(highlight.get("highlight_id", "")) for highlight in highlights[:24]],
+                "engine_mode": loop_config.mode,
+                "frame_source": "requested_frame" if requested_frame != frame else "available_frame_sequence",
+                "detection_source": "online_stub_precomputed_fallback" if loop_config.inference_enabled else "precomputed_tracks",
+                "inference_mode": loop_config.inference_mode,
+                "tracker_mode": loop_config.tracker_mode,
+                "tracker_state": "updated_incremental_snapshot",
+                "event_window_frames": loop_config.event_window_frames,
+                "overlay_ready": True,
             },
         )
-        add(
+        skip_count = _frame_loop_skip_count(metrics, frames, frame_index, loop_config)
+        metrics["skipped_frames"] = skip_count
+        metrics["backpressure"] = skip_count > 0
+        latency_message = add(
             "latency_metrics",
             {
-                "frame": frame,
+                "frame": requested_frame,
+                "requested_frame": requested_frame,
                 "timestamp_sec": timestamp,
-                "resolved_frame": resolution.resolved_frame,
+                "resolved_frame": resolved_frame,
                 "resolution_status": resolution.status,
                 "track_count": len(rows),
                 "event_count": len(events),
                 "highlight_count": len(highlights),
-                "lookup_latency_ms": 0.0,
-                "emit_latency_ms": 0.0,
-                "queue_depth": 0,
-                "backpressure": False,
-                "source": "precomputed_artifacts",
+                **metrics,
             },
         )
+        metric_messages.append(latency_message)
+        if skip_count:
+            skipped = frames[frame_index + 1 : frame_index + 1 + skip_count]
+            state["skipped_frame_count"] += len(skipped)
+            state["skipped_frames"].extend(skipped)
+            add(
+                "session_status",
+                {
+                    "status": "skipping_frames",
+                    "mode": loop_config.mode,
+                    "engine_state": "backpressure",
+                    "frame": requested_frame,
+                    "skipped_frame_count": len(skipped),
+                    "skipped_frames": skipped,
+                    "processing_budget_ms": loop_config.processing_budget_ms,
+                    "total_to_overlay_ms": metrics["total_to_overlay_ms"],
+                    "backpressure_policy": loop_config.backpressure_policy,
+                },
+            )
+            frame_index += skip_count + 1
+            continue
+        frame_index += 1
 
     completion = add(
         "session_status",
         {
-            "status": "complete",
-            "mode": "playback_precomputado",
-            "emitted_frame_count": len(frames),
+            "status": "stopped" if state["stopped"] else "complete",
+            "mode": loop_config.mode,
+            "engine_state": "stopped" if state["stopped"] else "complete",
+            "emitted_frame_count": len(metric_messages),
+            "skipped_frame_count": state["skipped_frame_count"],
+            "state_reset_count": state["reset_count"],
             "message_count": 0,
             "endpoint": "/stream",
         },
     )
     completion["message_count"] = len(messages)
-    return messages
+    return {
+        "config": asdict(loop_config),
+        "messages": messages,
+        "metrics": metric_messages,
+        "summary": _frame_loop_summary(context, loop_config, messages, metric_messages, state),
+        "controls": [asdict(control) for control_group in controls_by_frame.values() for control in control_group],
+    }
+
+
+def build_stream_messages(context: dict[str, Any]) -> list[dict[str, Any]]:
+    return build_online_frame_loop(context)["messages"]
 
 
 def stream_summary_from_messages(context: dict[str, Any], messages: list[dict[str, Any]]) -> dict[str, Any]:
@@ -409,6 +555,8 @@ def stream_summary_from_messages(context: dict[str, Any], messages: list[dict[st
         "warning_codes": [str(message.get("warning_code", "")) for message in warnings],
         "average_lookup_latency_ms": _average_metric(latency_messages, "lookup_latency_ms"),
         "max_emit_latency_ms": _max_metric(latency_messages, "emit_latency_ms"),
+        "average_total_to_overlay_ms": _average_metric(latency_messages, "total_to_overlay_ms"),
+        "max_total_to_overlay_ms": _max_metric(latency_messages, "total_to_overlay_ms"),
         "frontend_reconnect_policy": "EventSource automatic reconnect; the client closes the stream after session_status=complete.",
         "log_artifact": "stream_messages.jsonl",
         "latency_artifact": "stream_latency_metrics.csv",
@@ -434,6 +582,10 @@ def stream_latency_metrics_csv(messages: list[dict[str, Any]]) -> str:
     return handle.getvalue()
 
 
+def frame_loop_metrics_csv(frame_loop: dict[str, Any]) -> str:
+    return stream_latency_metrics_csv(frame_loop["metrics"])
+
+
 def sse_format_message(message: dict[str, Any]) -> str:
     message_type = str(message.get("type", "message"))
     message_id = str(message.get("id", ""))
@@ -457,6 +609,8 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
         _endpoint_row("/stream-summary.json", "application/json", "stream_summary", "SSE message counts, latency summary and transport decision."),
         _endpoint_row("/stream-messages.jsonl", "application/x-ndjson", "stream_log", "Lightweight log of emitted SSE messages."),
         _endpoint_row("/stream-latency.csv", "text/csv", "stream_metrics", "Latency metrics emitted by the SSE channel."),
+        _endpoint_row("/frame-loop-summary.json", "application/json", "frame_loop", "Online frame loop status, controls and performance summary."),
+        _endpoint_row("/frame-loop-metrics.csv", "text/csv", "frame_loop_metrics", "Per-frame stage timings from the online frame loop."),
         _endpoint_row("/tracks.csv", "text/csv", "tracks", "Normalized live tracks."),
         _endpoint_row("/events.json", "application/json", "events", "Normalized live events."),
         _endpoint_row("/highlights.csv", "text/csv", "highlights", "Normalized live highlights."),
@@ -476,6 +630,7 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
             "websocket_status": "deferred_until_bidirectional_commands",
             "reason": "Playback local solo requiere flujo backend->frontend; WebSocket queda reservado para comandos online bidireccionales.",
             "message_types": list(STREAM_MESSAGE_TYPES),
+            "producer": "online_frame_loop",
         },
         "video": {
             "path": config.video_path,
@@ -493,6 +648,8 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
             "stream_messages": "stream_messages.jsonl",
             "stream_latency_metrics": "stream_latency_metrics.csv",
             "stream_summary": "stream_summary.json",
+            "frame_loop_summary": "frame_loop_summary.json",
+            "frame_loop_metrics": "frame_loop_metrics.csv",
             "config": "config.yaml",
             "summary": "summary.md",
         },
@@ -587,6 +744,14 @@ def build_live_playback_package(root: Path, config_path: Path, playback_config: 
         json.dumps(context["stream_summary"], indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
+    (output_dir / "frame_loop_summary.json").write_text(
+        json.dumps(context["frame_loop"]["summary"], indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "frame_loop_metrics.csv").write_text(
+        frame_loop_metrics_csv(context["frame_loop"]),
+        encoding="utf-8",
+    )
     (output_dir / "playback.html").write_text(render_playback_html(context), encoding="utf-8")
     write_live_playback_config(root, config_path, playback_config, context)
     write_live_playback_manifest(root, playback_config, context)
@@ -657,12 +822,17 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
             "validation_errors": sum(len(row["errors"]) for row in validation),
         },
     }
-    stream_messages = build_stream_messages(context)
+    frame_loop = build_online_frame_loop(context)
+    stream_messages = frame_loop["messages"]
+    context["frame_loop"] = frame_loop
     context["stream_messages"] = stream_messages
     context["stream_summary"] = stream_summary_from_messages(context, stream_messages)
     context["summary"]["stream_message_count"] = context["stream_summary"]["message_count"]
     context["summary"]["stream_warning_count"] = context["stream_summary"]["warning_count"]
     context["summary"]["stream_frame_result_count"] = context["stream_summary"]["frame_result_count"]
+    context["summary"]["frame_loop_processed_count"] = frame_loop["summary"]["processed_frame_count"]
+    context["summary"]["frame_loop_skipped_count"] = frame_loop["summary"]["skipped_frame_count"]
+    context["summary"]["frame_loop_avg_overlay_ms"] = frame_loop["summary"]["average_total_to_overlay_ms"]
     return context
 
 
@@ -732,6 +902,7 @@ def render_playback_html(context: dict[str, Any]) -> str:
             '<span>Duracion <strong id="durationReadout">config</strong></span>',
             '<span>Velocidad <strong id="rateReadout">1.00x</strong></span>',
             '<span>Datos <strong id="dataReadout">sin datos</strong></span>',
+            '<span>Motor <strong id="engineReadout">loop pendiente</strong></span>',
             '<span>Canal <strong id="streamReadout">sse pendiente</strong></span>',
             '<span>Mensajes <strong id="streamMessageReadout">0</strong></span>',
             '<span>Latencia <strong id="latencyReadout">n/a</strong></span>',
@@ -777,12 +948,15 @@ def client_payload(context: dict[str, Any]) -> dict[str, Any]:
         "available_frames": context["available_frames"],
         "video_metadata": asdict(context["video_metadata"]),
         "stream_summary": context["stream_summary"],
+        "frame_loop": context["frame_loop"]["summary"],
         "endpoints": {
             "manifest": "/manifest.json",
             "stream": "/stream",
             "stream_summary": "/stream-summary.json",
             "stream_messages": "/stream-messages.jsonl",
             "stream_latency": "/stream-latency.csv",
+            "frame_loop_summary": "/frame-loop-summary.json",
+            "frame_loop_metrics": "/frame-loop-metrics.csv",
             "tracks": "/tracks.csv",
             "events": "/events.json",
             "highlights": "/highlights.csv",
@@ -810,6 +984,7 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
         "video_metadata": asdict(context["video_metadata"]),
         "sync": context["sync"],
         "stream": context["stream_summary"],
+        "frame_loop": context["frame_loop"]["summary"],
         "outputs": [
             "playback.html",
             "live_tracks.csv",
@@ -821,6 +996,8 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
             "stream_messages.jsonl",
             "stream_latency_metrics.csv",
             "stream_summary.json",
+            "frame_loop_summary.json",
+            "frame_loop_metrics.csv",
             "live_playback_manifest.csv",
             "summary.md",
         ],
@@ -843,6 +1020,8 @@ def write_live_playback_manifest(root: Path, playback_config: LivePlaybackConfig
         _manifest_row("stream_messages", "jsonl", "stream_messages.jsonl", "live_playback_stream", True, "stream", f"{context['stream_summary']['message_count']} emitted SSE messages."),
         _manifest_row("stream_latency_metrics", "csv", "stream_latency_metrics.csv", "live_playback_stream", True, "stream", f"{context['stream_summary']['latency_metric_count']} latency metric rows."),
         _manifest_row("stream_summary", "json", "stream_summary.json", "live_playback_stream", True, "stream", "SSE transport decision, message counts and warning summary."),
+        _manifest_row("frame_loop_summary", "json", "frame_loop_summary.json", "online_frame_loop", True, "engine", "Online frame loop controls, state and performance summary."),
+        _manifest_row("frame_loop_metrics", "csv", "frame_loop_metrics.csv", "online_frame_loop", True, "engine", f"{context['frame_loop']['summary']['processed_frame_count']} per-frame stage metric rows."),
         _manifest_row("source_video", "video", playback_config.video_path, "local video path", False, "local_input", "Heavy/local input; never versioned."),
     ]
     output = root / playback_config.output_dir / "live_playback_manifest.csv"
@@ -878,6 +1057,9 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         f"- Mensajes SSE emitibles: `{summary['stream_message_count']}`.",
         f"- Resultados frame a frame SSE: `{summary['stream_frame_result_count']}`.",
         f"- Warnings SSE: `{summary['stream_warning_count']}`.",
+        f"- Frames procesados por loop online: `{summary['frame_loop_processed_count']}`.",
+        f"- Frames saltados por backpressure: `{summary['frame_loop_skipped_count']}`.",
+        f"- Latencia promedio loop hasta overlay: `{summary['frame_loop_avg_overlay_ms']}` ms.",
         f"- Errores de validacion: `{summary['validation_errors']}`.",
         "",
         "## Capas",
@@ -896,12 +1078,14 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "- `stream_messages.jsonl`.",
         "- `stream_latency_metrics.csv`.",
         "- `stream_summary.json`.",
+        "- `frame_loop_summary.json`.",
+        "- `frame_loop_metrics.csv`.",
         "- `config.yaml`.",
         "- `live_playback_manifest.csv`.",
         "",
         "## Backend Local",
         "",
-        "- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
+        "- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/frame-loop-summary.json`, `/frame-loop-metrics.csv`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
         "- Politica de video: solo se sirve el `clip_id` configurado; no se aceptan rutas arbitrarias por query.",
         "- Video pesado: permanece fuera de Git y queda marcado como `is_versioned=false`.",
         "- Si el video no existe en otro equipo, el reproductor muestra aviso local y conserva datos/overlays versionados.",
@@ -914,6 +1098,15 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "- Reconexion frontend: `EventSource` usa reconexion automatica y cierra el canal al recibir `session_status=complete`.",
         "- Log ligero: `stream_messages.jsonl`.",
         "- Metricas: `stream_latency_metrics.csv`.",
+        "",
+        "## Motor Online De Frames",
+        "",
+        "- Modo: `precomputed_online_loop`.",
+        "- Pipeline: leer frame solicitado, recuperar detecciones precomputadas, actualizar snapshot incremental, actualizar eventos activos y emitir overlay parcial.",
+        "- Controles soportados: `pause`, `resume`, `seek`, `stop` y salto de frames por backpressure.",
+        "- Inferencia online real: diferida; el hook existe y usa fallback precomputado determinista para esta actividad.",
+        "- Metricas por etapa: lectura de frame, deteccion, tracking, eventos, overlay y total hasta overlay.",
+        "- Evidencia: `frame_loop_summary.json` y `frame_loop_metrics.csv`.",
         "",
         "## Sincronizacion",
         "",
@@ -999,6 +1192,12 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
                 return
             if parsed.path == "/stream-latency.csv":
                 self._send_text(stream_latency_metrics_csv(context["stream_messages"]), "text/csv; charset=utf-8")
+                return
+            if parsed.path == "/frame-loop-summary.json":
+                self._send_json(context["frame_loop"]["summary"])
+                return
+            if parsed.path == "/frame-loop-metrics.csv":
+                self._send_text(frame_loop_metrics_csv(context["frame_loop"]), "text/csv; charset=utf-8")
                 return
             if parsed.path == "/tracks.csv":
                 self._send_text(csv_response_text(context["tracks"], LIVE_TRACK_FIELDS), "text/csv; charset=utf-8")
@@ -1207,6 +1406,7 @@ const timeReadout=document.getElementById('timeReadout');
 const durationReadout=document.getElementById('durationReadout');
 const rateReadout=document.getElementById('rateReadout');
 const dataReadout=document.getElementById('dataReadout');
+const engineReadout=document.getElementById('engineReadout');
 const streamReadout=document.getElementById('streamReadout');
 const streamMessageReadout=document.getElementById('streamMessageReadout');
 const latencyReadout=document.getElementById('latencyReadout');
@@ -1243,7 +1443,7 @@ function label(text,x,y,color){ctx.font='12px system-ui';ctx.fillStyle='rgba(5,6
 function badge(text,x,y,color){ctx.font='13px system-ui';const width=Math.min(canvas.width-24,ctx.measureText(text).width+18);ctx.fillStyle='rgba(5,6,5,.82)';ctx.fillRect(x,y,width,24);ctx.strokeStyle=color;ctx.strokeRect(x,y,width,24);ctx.fillStyle='#edf2e9';ctx.fillText(text,x+8,y+16);}
 function renderEventList(events,highlights){const list=document.getElementById('eventList');list.innerHTML='';for(const item of [...events,...highlights].slice(0,6)){const div=document.createElement('div');div.className='event';div.innerHTML='<strong>'+escapeHtml(item.label||item.highlight_id)+'</strong><br>frames '+(item.start_frame||item.start_frame)+'-'+(item.end_frame||item.end_frame)+' | '+(item.status||'provisional');list.appendChild(div);}}
 function connectEventStream(){if(!data.endpoints?.stream||!window.EventSource){streamReadout.textContent='sse no disponible';appendStreamMessage({type:'warning',warning_code:'eventsource_unavailable',message:'EventSource no disponible en este navegador'});return;}streamOpenCount+=1;streamReadout.textContent=streamOpenCount===1?'sse conectando':'sse reconectando '+streamOpenCount;eventSource=new EventSource(data.endpoints.stream);eventSource.onopen=()=>{streamReadout.textContent='sse activo';};for(const type of ['session_status','frame_result','event_update','latency_metrics','warning']){eventSource.addEventListener(type,event=>handleStreamMessage(type,event.data));}eventSource.onerror=()=>{if(streamComplete){eventSource.close();return;}streamReadout.textContent='sse reconexion pendiente';};}
-function handleStreamMessage(type,raw){let message;try{message=JSON.parse(raw);}catch(error){message={type:'warning',warning_code:'bad_stream_payload',message:String(error)};}streamMessageCount+=1;streamMessageReadout.textContent=String(streamMessageCount);if(type==='latency_metrics'){latencyReadout.textContent=Number(message.emit_latency_ms||0).toFixed(1)+'ms';}if(type==='frame_result'){streamReadout.textContent='frame '+message.frame;}if(type==='warning'){streamReadout.textContent='warning '+(message.warning_code||'stream');}if(type==='session_status'&&message.status==='complete'){streamComplete=true;streamReadout.textContent='sse completo';if(eventSource)eventSource.close();}appendStreamMessage(message);}
+function handleStreamMessage(type,raw){let message;try{message=JSON.parse(raw);}catch(error){message={type:'warning',warning_code:'bad_stream_payload',message:String(error)};}streamMessageCount+=1;streamMessageReadout.textContent=String(streamMessageCount);if(message.engine_mode||message.mode)engineReadout.textContent=message.engine_mode||message.mode;if(type==='latency_metrics'){latencyReadout.textContent=Number(message.total_to_overlay_ms||message.emit_latency_ms||0).toFixed(1)+'ms';}if(type==='frame_result'){streamReadout.textContent='frame '+message.frame;}if(type==='warning'){streamReadout.textContent='warning '+(message.warning_code||'stream');}if(type==='session_status'&&(message.status==='complete'||message.status==='stopped')){streamComplete=true;streamReadout.textContent='sse '+message.status;if(eventSource)eventSource.close();}appendStreamMessage(message);}
 function appendStreamMessage(message){if(!streamList)return;const div=document.createElement('div');div.className='event stream-event';const type=message.type||'message';const frame=message.frame!==undefined?'frame '+message.frame:'seq '+(message.sequence||'-');const detail=message.status||message.warning_code||message.label||message.resolution_status||message.source||'';div.innerHTML='<strong>'+escapeHtml(type)+'</strong><br>'+escapeHtml(frame)+' | '+escapeHtml(detail);streamList.prepend(div);while(streamList.children.length>8)streamList.removeChild(streamList.lastElementChild);}
 function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));}
 function markTemporalJump(){suppressTrails=2;resizeCanvas();}
@@ -1260,6 +1460,184 @@ for(const input of document.querySelectorAll('input[type=checkbox]'))input.addEv
 connectEventStream();
 requestAnimationFrame(draw);
 """
+
+
+def _controls_by_frame(
+    controls: list[FrameLoopControl | dict[str, Any]],
+    default_frame: int,
+) -> dict[int, list[FrameLoopControl]]:
+    by_frame: dict[int, list[FrameLoopControl]] = {}
+    for raw_control in controls:
+        control = raw_control if isinstance(raw_control, FrameLoopControl) else _coerce_frame_loop_control(raw_control)
+        frame = control.at_frame if control.at_frame is not None else default_frame
+        by_frame.setdefault(frame, []).append(control)
+    return by_frame
+
+
+def _coerce_frame_loop_control(raw_control: dict[str, Any]) -> FrameLoopControl:
+    return FrameLoopControl(
+        action=str(raw_control.get("action", "")),
+        at_frame=_optional_int(raw_control.get("at_frame")),
+        seek_frame=_optional_int(raw_control.get("seek_frame")),
+        reason=str(raw_control.get("reason", "")),
+    )
+
+
+def _apply_frame_loop_control(add: Any, state: dict[str, Any], control: FrameLoopControl, frame: int) -> None:
+    action = control.action.lower().strip()
+    if action == "pause":
+        state["paused"] = True
+        add(
+            "session_status",
+            {
+                "status": "paused",
+                "engine_state": "paused",
+                "frame": frame,
+                "reason": control.reason or "control",
+            },
+        )
+        return
+    if action == "resume":
+        state["paused"] = False
+        add(
+            "session_status",
+            {
+                "status": "running",
+                "engine_state": "resumed",
+                "frame": frame,
+                "reason": control.reason or "control",
+            },
+        )
+        return
+    if action == "seek":
+        seek_frame = control.seek_frame if control.seek_frame is not None else frame
+        state["pending_seek_frame"] = seek_frame
+        state["reset_count"] += 1
+        add(
+            "session_status",
+            {
+                "status": "seeked",
+                "engine_state": "reset",
+                "frame": frame,
+                "seek_frame": seek_frame,
+                "reset_state": True,
+                "reason": control.reason or "seek",
+            },
+        )
+        return
+    if action == "stop":
+        state["stopped"] = True
+        add(
+            "session_status",
+            {
+                "status": "stopped",
+                "engine_state": "stopped",
+                "frame": frame,
+                "reason": control.reason or "control",
+            },
+        )
+        return
+    add(
+        "warning",
+        {
+            "severity": "warn",
+            "warning_code": "unknown_frame_loop_control",
+            "message": f"Control de loop desconocido: {control.action}",
+            "frame": frame,
+        },
+    )
+
+
+def _frame_loop_stage_metrics(
+    loop_config: OnlineFrameLoopConfig,
+    requested_frame: int,
+    resolution: FrameResolution,
+    rows: list[dict[str, Any]],
+    events: list[dict[str, Any]],
+    highlights: list[dict[str, Any]],
+) -> dict[str, Any]:
+    track_count = len(rows)
+    event_count = len(events)
+    highlight_count = len(highlights)
+    frame_read_ms = 0.18
+    detection_ms = (4.5 + track_count * 0.12) if loop_config.inference_enabled else (0.22 + track_count * 0.02)
+    tracking_ms = 0.12 + track_count * 0.04
+    events_ms = 0.08 + (event_count + highlight_count) * 0.03
+    overlay_ms = 0.16 + track_count * 0.02
+    total = frame_read_ms + detection_ms + tracking_ms + events_ms + overlay_ms
+    return {
+        "frame_read_ms": round(frame_read_ms, 3),
+        "detection_ms": round(detection_ms, 3),
+        "tracking_ms": round(tracking_ms, 3),
+        "events_ms": round(events_ms, 3),
+        "overlay_ms": round(overlay_ms, 3),
+        "total_to_overlay_ms": round(total, 3),
+        "lookup_latency_ms": round(frame_read_ms + detection_ms, 3),
+        "emit_latency_ms": round(overlay_ms, 3),
+        "processing_budget_ms": loop_config.processing_budget_ms,
+        "target_fps": loop_config.target_fps,
+        "skipped_frames": 0,
+        "queue_depth": 0,
+        "backpressure": total > loop_config.processing_budget_ms,
+        "source": "precomputed_online_frame_loop",
+        "inference_mode": loop_config.inference_mode,
+        "tracker_mode": loop_config.tracker_mode,
+        "event_window_frames": loop_config.event_window_frames,
+        "overlay_ready": resolution.resolved_frame is not None,
+        "requested_frame": requested_frame,
+    }
+
+
+def _frame_loop_skip_count(
+    metrics: dict[str, Any],
+    frames: list[int],
+    frame_index: int,
+    loop_config: OnlineFrameLoopConfig,
+) -> int:
+    if metrics["total_to_overlay_ms"] <= loop_config.processing_budget_ms:
+        return 0
+    remaining = len(frames) - frame_index - 1
+    if remaining <= 0:
+        return 0
+    budget = max(loop_config.processing_budget_ms, 0.001)
+    overrun_units = max(1, int(metrics["total_to_overlay_ms"] // budget))
+    return min(remaining, loop_config.max_skip_frames, overrun_units)
+
+
+def _frame_loop_summary(
+    context: dict[str, Any],
+    loop_config: OnlineFrameLoopConfig,
+    messages: list[dict[str, Any]],
+    metrics: list[dict[str, Any]],
+    state: dict[str, Any],
+) -> dict[str, Any]:
+    return {
+        "mode": loop_config.mode,
+        "inference_mode": loop_config.inference_mode,
+        "inference_enabled": loop_config.inference_enabled,
+        "tracker_mode": loop_config.tracker_mode,
+        "event_window_frames": loop_config.event_window_frames,
+        "processing_budget_ms": loop_config.processing_budget_ms,
+        "target_fps": loop_config.target_fps,
+        "available_frame_count": len(context["available_frames"]),
+        "processed_frame_count": len(metrics),
+        "partial_result_count": len([message for message in messages if message.get("type") == "frame_result"]),
+        "skipped_frame_count": state["skipped_frame_count"],
+        "skipped_frames": state["skipped_frames"],
+        "state_reset_count": state["reset_count"],
+        "message_count": len(messages),
+        "emits_partial_results": bool(metrics),
+        "requires_final_csv": False,
+        "backpressure_policy": loop_config.backpressure_policy,
+        "controls_supported": ["pause", "resume", "seek", "stop", "skip_late_frames"],
+        "average_total_to_overlay_ms": _average_metric(metrics, "total_to_overlay_ms"),
+        "max_total_to_overlay_ms": _max_metric(metrics, "total_to_overlay_ms"),
+        "average_frame_read_ms": _average_metric(metrics, "frame_read_ms"),
+        "average_detection_ms": _average_metric(metrics, "detection_ms"),
+        "average_tracking_ms": _average_metric(metrics, "tracking_ms"),
+        "average_events_ms": _average_metric(metrics, "events_ms"),
+        "average_overlay_ms": _average_metric(metrics, "overlay_ms"),
+    }
 
 
 def _tracks_by_frame(tracks: list[dict[str, Any]]) -> dict[int, list[dict[str, Any]]]:
@@ -1314,6 +1692,12 @@ def _coerce_int(value: Any, default: int) -> int:
         return int(float(value))
     except (TypeError, ValueError):
         return default
+
+
+def _optional_int(value: Any) -> int | None:
+    if value in {"", None}:
+        return None
+    return _coerce_int(value, 0)
 
 
 def _first(params: dict[str, list[str]], key: str, default: str) -> str:

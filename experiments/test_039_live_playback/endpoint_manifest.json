@@ -14,7 +14,8 @@
       "event_update",
       "latency_metrics",
       "warning"
-    ]
+    ],
+    "producer": "online_frame_loop"
   },
   "video": {
     "path": "/home/guillermo/V\u00eddeos/CopaFutMX/17 Abril/video-595_singular_display.mov",
@@ -32,6 +33,8 @@
     "stream_messages": "stream_messages.jsonl",
     "stream_latency_metrics": "stream_latency_metrics.csv",
     "stream_summary": "stream_summary.json",
+    "frame_loop_summary": "frame_loop_summary.json",
+    "frame_loop_metrics": "frame_loop_metrics.csv",
     "config": "config.yaml",
     "summary": "summary.md"
   },
@@ -91,6 +94,20 @@
       "content_type": "text/csv",
       "role": "stream_metrics",
       "notes": "Latency metrics emitted by the SSE channel."
+    },
+    {
+      "method": "GET",
+      "path": "/frame-loop-summary.json",
+      "content_type": "application/json",
+      "role": "frame_loop",
+      "notes": "Online frame loop status, controls and performance summary."
+    },
+    {
+      "method": "GET",
+      "path": "/frame-loop-metrics.csv",
+      "content_type": "text/csv",
+      "role": "frame_loop_metrics",
+      "notes": "Per-frame stage timings from the online frame loop."
     },
     {
       "method": "GET",

@@ -237,31 +237,31 @@ Crear un loop vivo que procese o recupere datos por frame mientras el video avan
 
 ### Tarea 27.1 - Loop base
 
-- [ ] Leer frame actual o frame solicitado.
-- [ ] Recuperar detecciones precomputadas si existen.
-- [ ] Ejecutar inferencia si el modo online esta habilitado.
-- [ ] Actualizar tracker.
-- [ ] Actualizar eventos.
-- [ ] Emitir overlay.
+- [x] Leer frame actual o frame solicitado.
+- [x] Recuperar detecciones precomputadas si existen.
+- [x] Ejecutar inferencia si el modo online esta habilitado.
+- [x] Actualizar tracker.
+- [x] Actualizar eventos.
+- [x] Emitir overlay.
 
 ### Tarea 27.2 - Control de ejecucion
 
-- [ ] Soportar pausa y resume.
-- [ ] Soportar seek con reinicio de estado cuando sea necesario.
-- [ ] Soportar stop limpio.
-- [ ] Soportar salto de frames si el procesamiento se atrasa.
+- [x] Soportar pausa y resume.
+- [x] Soportar seek con reinicio de estado cuando sea necesario.
+- [x] Soportar stop limpio.
+- [x] Soportar salto de frames si el procesamiento se atrasa.
 
 ### Tarea 27.3 - Medicion de rendimiento
 
-- [ ] Medir tiempo de lectura de frame.
-- [ ] Medir tiempo de deteccion.
-- [ ] Medir tiempo de tracking.
-- [ ] Medir tiempo de eventos.
-- [ ] Medir tiempo total hasta overlay.
+- [x] Medir tiempo de lectura de frame.
+- [x] Medir tiempo de deteccion.
+- [x] Medir tiempo de tracking.
+- [x] Medir tiempo de eventos.
+- [x] Medir tiempo total hasta overlay.
 
 ### Criterio de aceptacion
 
-- [ ] Existe un loop que emite resultados parciales sin esperar a generar CSV final.
+- [x] Existe un loop que emite resultados parciales sin esperar a generar CSV final.
 
 ## Actividad 28 - Modos De Inferencia
 

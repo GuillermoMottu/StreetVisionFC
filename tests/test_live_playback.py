@@ -10,18 +10,23 @@ import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
 from futbotmx.live_playback import (
+    FrameLoopControl,
     LivePlaybackConfig,
+    OnlineFrameLoopConfig,
     STREAM_MESSAGE_TYPES,
     available_frame_numbers,
     backend_endpoint_manifest,
+    build_online_frame_loop,
     build_stream_messages,
     build_live_playback_context,
     build_live_playback_package,
     calibration_payload,
     client_payload,
     csv_response_text,
+    frame_loop_metrics_csv,
     frame_from_timestamp,
     live_playback_config_from_project,
+    online_frame_loop_config_from_playback,
     minimap_payload_for_frame,
     playback_clips_from_config,
     render_playback_html,
@@ -45,6 +50,27 @@ def write_csv(path: Path, rows: list[dict[str, object]], fieldnames: list[str]) 
         writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def clone_context_with_frames(context: dict[str, object], frames: list[int]) -> dict[str, object]:
+    playback_config = context["config"]
+    tracks: list[dict[str, object]] = []
+    for frame in frames:
+        for row in context["tracks"]:
+            clone = dict(row)
+            clone["frame"] = frame
+            clone["timestamp_sec"] = timestamp_from_frame(frame, playback_config.fps)
+            clone["x"] = float(clone["x"]) + (frame - frames[0])
+            clone["center_x"] = float(clone["center_x"]) + (frame - frames[0])
+            tracks.append(clone)
+    cloned = dict(context)
+    cloned["tracks"] = tracks
+    cloned["available_frames"] = available_frame_numbers(tracks)
+    cloned["sync"] = sync_summary_from_frames(playback_config, cloned["available_frames"])
+    cloned["summary"] = dict(context["summary"])
+    cloned["summary"]["track_rows"] = len(tracks)
+    cloned["summary"]["available_frame_count"] = len(cloned["available_frames"])
+    return cloned
 
 
 class LivePlaybackTests(unittest.TestCase):
@@ -112,6 +138,7 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("seeked", html)
             self.assertIn("ratechange", html)
             self.assertIn("streamReadout", html)
+            self.assertIn("engineReadout", html)
             self.assertIn("EventSource", html)
             self.assertIn("connectEventStream", html)
 
@@ -138,6 +165,8 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue((output_dir / "stream_messages.jsonl").exists())
             self.assertTrue((output_dir / "stream_latency_metrics.csv").exists())
             self.assertTrue((output_dir / "stream_summary.json").exists())
+            self.assertTrue((output_dir / "frame_loop_summary.json").exists())
+            self.assertTrue((output_dir / "frame_loop_metrics.csv").exists())
             summary = (output_dir / "summary.md").read_text(encoding="utf-8")
             self.assertIn("Playback Vivo Con Overlays Precomputados", summary)
             self.assertIn("Tracks normalizados: `2`", summary)
@@ -148,6 +177,9 @@ class LivePlaybackTests(unittest.TestCase):
             stream_summary = json.loads((output_dir / "stream_summary.json").read_text(encoding="utf-8"))
             self.assertEqual(stream_summary["transport"], "sse")
             self.assertEqual(stream_summary["frame_result_count"], 1)
+            frame_loop_summary = json.loads((output_dir / "frame_loop_summary.json").read_text(encoding="utf-8"))
+            self.assertEqual(frame_loop_summary["mode"], "precomputed_online_loop")
+            self.assertEqual(frame_loop_summary["processed_frame_count"], 1)
             self.assertIn("frame_result", (output_dir / "stream_messages.jsonl").read_text(encoding="utf-8"))
 
     def test_client_payload_is_small_frontend_contract(self) -> None:
@@ -167,7 +199,9 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertEqual(payload["video_metadata"]["configured_frame_count"], 4)
             self.assertEqual(payload["endpoints"]["manifest"], "/manifest.json")
             self.assertEqual(payload["endpoints"]["stream"], "/stream")
+            self.assertEqual(payload["endpoints"]["frame_loop_summary"], "/frame-loop-summary.json")
             self.assertEqual(payload["stream_summary"]["transport"], "sse")
+            self.assertEqual(payload["frame_loop"]["mode"], "precomputed_online_loop")
 
     def test_frame_timestamp_conversion_and_resolution_prefers_previous_frame(self) -> None:
         self.assertEqual(frame_from_timestamp(2.01, 60.0), 121)
@@ -220,6 +254,8 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("/stream-summary.json", endpoint_paths)
             self.assertIn("/stream-messages.jsonl", endpoint_paths)
             self.assertIn("/stream-latency.csv", endpoint_paths)
+            self.assertIn("/frame-loop-summary.json", endpoint_paths)
+            self.assertIn("/frame-loop-metrics.csv", endpoint_paths)
             self.assertIn("/tracks.csv", endpoint_paths)
             self.assertIn("/events.json", endpoint_paths)
             self.assertIn("/highlights.csv", endpoint_paths)
@@ -228,6 +264,7 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("/video-metadata.json", endpoint_paths)
             self.assertIn("/video?clip_id=video_fixture", endpoint_paths)
             self.assertEqual(manifest["channel"]["selected"], "sse")
+            self.assertEqual(manifest["channel"]["producer"], "online_frame_loop")
             self.assertEqual(manifest["channel"]["websocket_status"], "deferred_until_bidirectional_commands")
             self.assertEqual(manifest["path_policy"]["artifacts"], "fixed endpoint names only; no arbitrary filesystem path endpoint")
             self.assertFalse(manifest["video"]["is_versioned"])
@@ -272,6 +309,71 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue(sse_stream.startswith("retry: 3000\n\n"))
             self.assertIn('"type":"latency_metrics"', jsonl)
             self.assertTrue(latency_csv.startswith("sequence,message_id,clip_id,frame"))
+
+    def test_online_frame_loop_emits_partial_results_and_stage_metrics(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            create_source_artifacts(root)
+            playback_config = fixture_playback_config(root)
+            context = build_live_playback_context(root, playback_config)
+
+            loop = build_online_frame_loop(context)
+            frame_results = [message for message in loop["messages"] if message["type"] == "frame_result"]
+            metrics_csv = frame_loop_metrics_csv(loop)
+            loop_config = online_frame_loop_config_from_playback(playback_config)
+
+            self.assertEqual(loop["summary"]["mode"], "precomputed_online_loop")
+            self.assertTrue(loop["summary"]["emits_partial_results"])
+            self.assertFalse(loop["summary"]["requires_final_csv"])
+            self.assertEqual(loop["summary"]["processed_frame_count"], 1)
+            self.assertEqual(frame_results[0]["detection_source"], "precomputed_tracks")
+            self.assertEqual(frame_results[0]["tracker_state"], "updated_incremental_snapshot")
+            self.assertTrue(frame_results[0]["overlay_ready"])
+            self.assertIn("frame_read_ms", metrics_csv)
+            self.assertIn("total_to_overlay_ms", metrics_csv)
+            self.assertGreater(loop_config.processing_budget_ms, 0)
+
+    def test_online_frame_loop_supports_controls_and_backpressure_skip(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            create_source_artifacts(root)
+            context = clone_context_with_frames(build_live_playback_context(root, fixture_playback_config(root)), [120, 121, 122, 123])
+
+            controlled = build_online_frame_loop(
+                context,
+                controls=[
+                    FrameLoopControl("pause", at_frame=120),
+                    FrameLoopControl("resume", at_frame=121),
+                    FrameLoopControl("seek", at_frame=121, seek_frame=120),
+                    FrameLoopControl("stop", at_frame=123),
+                ],
+            )
+            statuses = [message.get("status") for message in controlled["messages"] if message["type"] == "session_status"]
+            frame_results = [message for message in controlled["messages"] if message["type"] == "frame_result"]
+
+            self.assertIn("paused", statuses)
+            self.assertIn("running", statuses)
+            self.assertIn("seeked", statuses)
+            self.assertIn("stopped", statuses)
+            self.assertEqual(controlled["summary"]["state_reset_count"], 1)
+            self.assertEqual(frame_results[0]["requested_frame"], 120)
+
+            tight_budget = OnlineFrameLoopConfig(
+                mode="precomputed_online_loop",
+                target_fps=60.0,
+                inference_enabled=False,
+                inference_mode="precomputed_lookup",
+                tracker_mode="incremental_precomputed_snapshot",
+                event_window_frames=12,
+                processing_budget_ms=0.2,
+                max_skip_frames=2,
+                backpressure_policy="skip_next_available_frames",
+            )
+            backpressured = build_online_frame_loop(context, loop_config=tight_budget)
+            skip_statuses = [message for message in backpressured["messages"] if message.get("status") == "skipping_frames"]
+
+            self.assertGreater(backpressured["summary"]["skipped_frame_count"], 0)
+            self.assertTrue(skip_statuses)
 
     def test_csv_response_and_minimap_endpoint_payloads_are_reproducible(self) -> None:
         with TemporaryDirectory() as tmpdir:
