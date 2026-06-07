@@ -14,7 +14,8 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 ## Estado General
 
 - [x] Actividad 11 desarrollada como interfaz local con backend estandar de Python.
-- [ ] Actividades 12 a 20 pendientes.
+- [x] Actividad 12 desarrollada con editor local de puntos y validacion manual reproducible.
+- [ ] Actividades 13 a 20 pendientes.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -74,26 +75,37 @@ Mejorar homografia, mini-mapa, Voronoi y control espacial.
 
 ### Tarea 12.1 - Editor de puntos
 
-- [ ] Mostrar frame/overlay ligero.
-- [ ] Permitir seleccionar 4 esquinas del campo.
-- [ ] Guardar puntos en `field_calibration.json`.
+- [x] Mostrar frame/overlay ligero.
+- [x] Permitir seleccionar 4 esquinas del campo.
+- [x] Guardar puntos en `field_calibration.json`.
 
 ### Tarea 12.2 - Validar calibracion
 
-- [ ] Proyectar tracks sobre mini-mapa.
-- [ ] Calcular confianza de calibracion.
-- [ ] Comparar homografia automatica vs manual.
+- [x] Proyectar tracks sobre mini-mapa.
+- [x] Calcular confianza de calibracion.
+- [x] Comparar homografia automatica vs manual.
 
 ### Tarea 12.3 - Integrar al pipeline
 
-- [ ] Permitir `--calibration-json`.
-- [ ] Registrar si se uso calibracion manual.
-- [ ] Actualizar resumen y manifest.
+- [x] Permitir `--calibration-json`.
+- [x] Registrar si se uso calibracion manual.
+- [x] Actualizar resumen y manifest.
+
+### Artefactos
+
+- [x] `scripts/run_field_calibration_editor.py`.
+- [x] `src/futbotmx/level3/manual_calibration.py`.
+- [x] `experiments/test_029_manual_calibration/calibration_editor.html`.
+- [x] `experiments/test_029_manual_calibration/field_calibration.json`.
+- [x] `experiments/test_029_manual_calibration/calibration_editor_manifest.csv`.
+- [x] `experiments/test_030_manual_spatial_model/calibration_comparison.csv`.
+- [x] `experiments/test_030_manual_spatial_model/spatial_manifest.csv`.
+- [x] `experiments/test_030_manual_spatial_model/minimap_tracks.png`.
 
 ### Criterio de aceptacion
 
-- [ ] Un clip puede usar calibracion manual reproducible.
-- [ ] El resumen diferencia calibracion automatica, manual y fallback.
+- [x] Un clip puede usar calibracion manual reproducible.
+- [x] El resumen diferencia calibracion automatica, manual y fallback.
 
 ## Actividad 13 - Asignacion De Equipos
 
