@@ -8,9 +8,9 @@
 - Clips procesados: `video_595, video_667`.
 - Filas exportadas: `512`.
 - Filas rectificadas por homografia: `512`.
-- Calibraciones manuales usadas: `0`.
-- Calibraciones automaticas usadas: `2`.
-- Entrada manual: `no_aplica`.
+- Calibraciones manuales usadas: `2`.
+- Calibraciones automaticas usadas: `0`.
+- Entrada manual: `experiments/test_029_manual_calibration/field_calibration.json`.
 
 ## Modelo De Cancha
 
@@ -24,19 +24,19 @@
 
 ### video_595
 
-- Metodo: `field_bbox_homography_seed`.
+- Metodo: `manual_four_corner_homography_seed`.
 - Estado: `usable`.
-- Confianza: `0.824417`.
-- ID calibracion: `video_595_field_bbox_homography_v0.1`.
-- Notas: Median green field bbox from 61 rows; mean confidence 0.749, image coverage 0.725.
+- Confianza: `0.95`.
+- ID calibracion: `video_595_manual_four_corner_seed_v0.1`.
+- Notas: Seeded from automatic field bbox for the manual editor. Replace the four corners in the browser editor for human-reviewed calibration.
 
 ### video_667
 
-- Metodo: `field_bbox_homography_seed`.
+- Metodo: `manual_four_corner_homography_seed`.
 - Estado: `usable`.
-- Confianza: `0.738172`.
-- ID calibracion: `video_667_field_bbox_homography_v0.1`.
-- Notas: Median green field bbox from 61 rows; mean confidence 0.626, image coverage 0.618.
+- Confianza: `0.95`.
+- ID calibracion: `video_667_manual_four_corner_seed_v0.1`.
+- Notas: Seeded from automatic field bbox for the manual editor. Replace the four corners in the browser editor for human-reviewed calibration.
 
 ## Validacion Visual Ligera
 
@@ -49,8 +49,8 @@
 
 ## Comparacion Automatica Vs Manual
 
-- `video_595` usa `automatic`; confianza seleccionada `0.824417`; delta medio esquinas `0.0` px.
-- `video_667` usa `automatic`; confianza seleccionada `0.738172`; delta medio esquinas `0.0` px.
+- `video_595` usa `manual`; confianza seleccionada `0.95`; delta medio esquinas `0.0` px.
+- `video_667` usa `manual`; confianza seleccionada `0.95`; delta medio esquinas `0.0` px.
 
 ## Limitaciones Y Supuestos
 
@@ -73,7 +73,7 @@
 
 ## Manifest
 
-- Filas en `spatial_manifest.csv`: `9`.
+- Filas en `spatial_manifest.csv`: `10`.
 
 ## Comando
 

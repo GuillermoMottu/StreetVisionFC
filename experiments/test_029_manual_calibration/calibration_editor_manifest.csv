@@ -1,0 +1,8 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+config,yaml,config.yaml,configs/default.yaml,true,configuration,Configuration snapshot.
+calibration_editor,html,calibration_editor.html,field_calibration.json,true,editor,Browser point editor.
+field_calibration,json,field_calibration.json,automatic seed/manual editor,true,manual_input,Manual calibration JSON input.
+summary,md,summary.md,calibration_editor.html,true,summary,Editor summary.
+manifest,csv,calibration_editor_manifest.csv,calibration_editor.html,true,manifest,Editor artifact manifest.
+video_595_overlay,png,../test_017_level2_closure/video_595/overlay_lvl2_evt_000001_frame_120.png,/home/guillermo/Documentos/StreetVisionFC/experiments/test_017_level2_closure/video_595/overlay_lvl2_evt_000001_frame_120.png,true,reference_overlay,Frame 120 lightweight overlay for point selection.
+video_667_overlay,png,../test_017_level2_closure/video_667/overlay_lvl2_evt_000001_frame_120.png,/home/guillermo/Documentos/StreetVisionFC/experiments/test_017_level2_closure/video_667/overlay_lvl2_evt_000001_frame_120.png,true,reference_overlay,Frame 120 lightweight overlay for point selection.

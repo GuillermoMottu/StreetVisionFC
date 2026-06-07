@@ -135,32 +135,18 @@ visualization:
   export_video: false
   export_heatmap: true
   export_timeline: true
-level3_spatial_model:
-  rule_version: level3_spatial_model_v0.1
-  source_experiment: experiments/test_017_level2_closure
-  output_dir: experiments/test_020_level3_spatial_model
+manual_field_calibration:
+  rule_version: manual_field_calibration_v0.1
+  source_dir: /home/guillermo/Documentos/StreetVisionFC/experiments/test_017_level2_closure
+  output_dir: /home/guillermo/Documentos/StreetVisionFC/experiments/test_029_manual_calibration
   clips:
   - video_595
   - video_667
-  coordinate_system:
-    origin: top_left_visible_field
-    direction: x_norm left_to_right, y_norm top_to_bottom
-    units: normalized_visible_field
-    zone_axis: y
-  calibration:
-    method: field_bbox_homography_seed
-    manual_four_corner_override_supported: true
-    manual_calibration_input: ''
-    min_field_confidence: 0.55
-    min_field_coverage: 0.35
-    fallback: image_extent_normalization
+  editor: calibration_editor.html
+  calibration_json: field_calibration.json
   outputs:
+  - calibration_editor.html
   - field_calibration.json
-  - level3_tracks.csv
-  - minimap_base.png
-  - minimap_tracks.png
-  - overlay_comparison.csv
-  - calibration_comparison.csv
-  - spatial_validation.csv
-  - spatial_manifest.csv
+  - calibration_editor_manifest.csv
+  - config.yaml
   - summary.md

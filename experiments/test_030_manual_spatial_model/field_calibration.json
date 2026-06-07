@@ -1,0 +1,235 @@
+{
+  "rule_version": "level3_spatial_model_v0.1",
+  "field_model": {
+    "coordinate_system": {
+      "origin": "top_left_visible_field",
+      "direction": "x_norm left_to_right, y_norm top_to_bottom",
+      "units": "normalized_visible_field",
+      "x_norm_range": [
+        0.0,
+        1.0
+      ],
+      "y_norm_range": [
+        0.0,
+        1.0
+      ],
+      "level2_zone_axis": "y"
+    },
+    "relative_dimensions": {
+      "field_width_x_norm": 1.0,
+      "field_length_y_norm": 1.0,
+      "goal_width_norm": 0.22
+    },
+    "goals": [
+      {
+        "goal_id": "top_goal",
+        "line_y_norm": 0.0,
+        "x_norm_start": 0.39,
+        "x_norm_end": 0.61
+      },
+      {
+        "goal_id": "bottom_goal",
+        "line_y_norm": 1.0,
+        "x_norm_start": 0.39,
+        "x_norm_end": 0.61
+      }
+    ],
+    "tactical_zones": [
+      {
+        "zone": "defensive_third",
+        "y_norm_min": 0.0,
+        "y_norm_max": 0.3333333333333333
+      },
+      {
+        "zone": "middle_third",
+        "y_norm_min": 0.3333333333333333,
+        "y_norm_max": 0.6666666666666666
+      },
+      {
+        "zone": "attacking_third",
+        "y_norm_min": 0.6666666666666666,
+        "y_norm_max": 1.0
+      }
+    ]
+  },
+  "clips": {
+    "video_595": {
+      "clip_id": "video_595",
+      "calibration_id": "video_595_manual_four_corner_seed_v0.1",
+      "method": "manual_four_corner_homography_seed",
+      "status": "usable",
+      "confidence": 0.95,
+      "image_size": {
+        "width": 1344,
+        "height": 1792
+      },
+      "image_points": [
+        {
+          "label": "top_left",
+          "x": 2.223736,
+          "y": 486.546295
+        },
+        {
+          "label": "top_right",
+          "x": 1342.599731,
+          "y": 486.546295
+        },
+        {
+          "label": "bottom_right",
+          "x": 1342.599731,
+          "y": 1788.479614
+        },
+        {
+          "label": "bottom_left",
+          "x": 2.223736,
+          "y": 1788.479614
+        }
+      ],
+      "field_points": [
+        {
+          "label": "top_left",
+          "x_norm": 0.0,
+          "y_norm": 0.0
+        },
+        {
+          "label": "top_right",
+          "x_norm": 1.0,
+          "y_norm": 0.0
+        },
+        {
+          "label": "bottom_right",
+          "x_norm": 1.0,
+          "y_norm": 1.0
+        },
+        {
+          "label": "bottom_left",
+          "x_norm": 0.0,
+          "y_norm": 1.0
+        }
+      ],
+      "homography": [
+        [
+          0.0007460593174828528,
+          -1.967648495664736e-18,
+          -0.0016590389624209527
+        ],
+        [
+          1.713011631519888e-17,
+          0.0007680884922494591,
+          -0.37371061013610213
+        ],
+        [
+          5.173758103306689e-17,
+          1.7824580490139375e-17,
+          1.0
+        ]
+      ],
+      "fallback": {
+        "method": "image_extent_normalization",
+        "status": "available_when_homography_unusable"
+      },
+      "manual_calibration": {
+        "supported": true,
+        "instruction": "Replace image_points with four reviewed field corners in top_left/top_right/bottom_right/bottom_left order."
+      },
+      "assumptions": [
+        "Visible green field bbox approximates the playable area for Level 3 demo coordinates.",
+        "x_norm follows image left-to-right and y_norm follows image top-to-bottom to preserve Level 2 zone_axis direction."
+      ],
+      "limitations": [
+        "Perspective and lens distortion are not fully solved by the bbox seed.",
+        "Team side/orientation is still unknown, so zones are tactical thirds rather than official attacking direction."
+      ],
+      "notes": "Seeded from automatic field bbox for the manual editor. Replace the four corners in the browser editor for human-reviewed calibration."
+    },
+    "video_667": {
+      "clip_id": "video_667",
+      "calibration_id": "video_667_manual_four_corner_seed_v0.1",
+      "method": "manual_four_corner_homography_seed",
+      "status": "usable",
+      "confidence": 0.95,
+      "image_size": {
+        "width": 1360,
+        "height": 1808
+      },
+      "image_points": [
+        {
+          "label": "top_left",
+          "x": 3.796716,
+          "y": 685.824585
+        },
+        {
+          "label": "top_right",
+          "x": 1360.0,
+          "y": 685.824585
+        },
+        {
+          "label": "bottom_right",
+          "x": 1360.0,
+          "y": 1806.995239
+        },
+        {
+          "label": "bottom_left",
+          "x": 3.796716,
+          "y": 1806.995239
+        }
+      ],
+      "field_points": [
+        {
+          "label": "top_left",
+          "x_norm": 0.0,
+          "y_norm": 0.0
+        },
+        {
+          "label": "top_right",
+          "x_norm": 1.0,
+          "y_norm": 0.0
+        },
+        {
+          "label": "bottom_right",
+          "x_norm": 1.0,
+          "y_norm": 1.0
+        },
+        {
+          "label": "bottom_left",
+          "x_norm": 0.0,
+          "y_norm": 1.0
+        }
+      ],
+      "homography": [
+        [
+          0.0007373525870329951,
+          5.592248931945055e-18,
+          -0.002799518364833398
+        ],
+        [
+          6.481924898390859e-18,
+          0.0008919248790827288,
+          -0.6117040100480965
+        ],
+        [
+          1.512449142957867e-17,
+          2.0843836928158843e-17,
+          1.0
+        ]
+      ],
+      "fallback": {
+        "method": "image_extent_normalization",
+        "status": "available_when_homography_unusable"
+      },
+      "manual_calibration": {
+        "supported": true,
+        "instruction": "Replace image_points with four reviewed field corners in top_left/top_right/bottom_right/bottom_left order."
+      },
+      "assumptions": [
+        "Visible green field bbox approximates the playable area for Level 3 demo coordinates.",
+        "x_norm follows image left-to-right and y_norm follows image top-to-bottom to preserve Level 2 zone_axis direction."
+      ],
+      "limitations": [
+        "Perspective and lens distortion are not fully solved by the bbox seed.",
+        "Team side/orientation is still unknown, so zones are tactical thirds rather than official attacking direction."
+      ],
+      "notes": "Seeded from automatic field bbox for the manual editor. Replace the four corners in the browser editor for human-reviewed calibration."
+    }
+  }
+}
