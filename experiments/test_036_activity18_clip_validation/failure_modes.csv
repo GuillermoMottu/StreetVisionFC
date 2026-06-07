@@ -1,0 +1,8 @@
+clip_id,failure_type,severity,status,evidence,recommendation
+video_595,falsos_highlights,media,riesgo,revision_visual_provisional|equipos_neutrales,Mantener highlights como candidatos y revisar visualmente los top antes de narrarlos.
+video_667,mala_homografia,media,degradacion,Homografia usable pero confianza conservadora: 0.738172.,Usar calibracion manual o descartar metricas espaciales finas para este clip.
+video_667,falsos_highlights,media,riesgo,homografia_provisional|revision_visual_provisional|equipos_neutrales,Mantener highlights como candidatos y revisar visualmente los top antes de narrarlos.
+video_836,mala_homografia,media,not_evaluated,Sin salida Level 3 espacial versionada para este clip.,Usar calibracion manual o descartar metricas espaciales finas para este clip.
+video_836,perdida_de_balon,media,degradacion,experiments/test_015_level2_multiclip/video_836/summary.md,Reprocesar SAM 3 con prompts de balon y revisar overlays ligeros antes de usar eventos de posesion.
+video_480,mala_homografia,alta,not_evaluated,Sin salida Level 3 espacial versionada para este clip.,Usar calibracion manual o descartar metricas espaciales finas para este clip.
+video_480,perdida_de_balon,alta,fallo_conocido,experiments/test_017_level2_closure/video_480/diagnostic_summary.md,Reprocesar SAM 3 con prompts de balon y revisar overlays ligeros antes de usar eventos de posesion.

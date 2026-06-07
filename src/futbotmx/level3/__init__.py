@@ -26,6 +26,14 @@ from futbotmx.level3.dashboard import (
     render_dashboard_html,
     write_dashboard_manifest,
 )
+from futbotmx.level3.clip_validation import (
+    RULE_VERSION as ACTIVITY18_CLIP_VALIDATION_RULE_VERSION,
+    ClipValidationSpec,
+    build_activity18_package,
+    build_validation_context,
+    classify_outcome as classify_activity18_outcome,
+    classify_visibility as classify_activity18_visibility,
+)
 from futbotmx.level3.executive_report import (
     RULE_VERSION as EXECUTIVE_REPORT_RULE_VERSION,
     ExecutiveReportConfig,
@@ -169,10 +177,12 @@ from futbotmx.level3.visualizations import (
 
 __all__ = [
     "AdvancedEventsConfig",
+    "ACTIVITY18_CLIP_VALIDATION_RULE_VERSION",
     "ArtifactSchema",
     "COMPARISON_FIELDS",
     "ClipCalibration",
     "ClipMulticlipArtifacts",
+    "ClipValidationSpec",
     "ClipSpatialSpec",
     "FieldModel",
     "EXECUTIVE_REPORT_RULE_VERSION",
@@ -215,6 +225,7 @@ __all__ = [
     "build_executive_report_context",
     "build_executive_report_package",
     "build_advanced_events",
+    "build_activity18_package",
     "build_dashboard",
     "build_dashboard_context",
     "build_highlight_events",
@@ -229,7 +240,10 @@ __all__ = [
     "build_team_assignment_package",
     "build_team_assignments",
     "build_visualizations",
+    "build_validation_context",
     "classify_review_status",
+    "classify_activity18_outcome",
+    "classify_activity18_visibility",
     "dashboard_config_to_dict",
     "default_review_status",
     "dashboard_manifest_rows",

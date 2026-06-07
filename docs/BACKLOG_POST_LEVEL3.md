@@ -20,7 +20,8 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 - [x] Actividad 15 desarrollada con panel local de revision, `human_review.csv` validable e integracion en dashboard/reel.
 - [x] Actividad 16 desarrollada con reporte ejecutivo local, links relativos y capturas Nivel 3.
 - [x] Actividad 17 desarrollada con cache local por etapa, `--force`, `cache_manifest.csv` y runtime con estado de cache.
-- [ ] Actividades 18 a 20 pendientes.
+- [x] Actividad 18 desarrollada con validacion ligera de 4 clips, clasificacion exito/degradacion/fallo y fallos documentados.
+- [ ] Actividades 19 a 20 pendientes.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -331,26 +332,45 @@ Aumentar robustez comparando mas condiciones de camara, luz y oclusion.
 
 ### Tarea 18.1 - Seleccionar clips
 
-- [ ] Elegir 3-5 videos nuevos.
-- [ ] Clasificar por visibilidad, balon, robots y campo.
-- [ ] Documentar motivos de seleccion.
+- [x] Elegir 3-5 videos nuevos.
+- [x] Clasificar por visibilidad, balon, robots y campo.
+- [x] Documentar motivos de seleccion.
 
 ### Tarea 18.2 - Ejecutar pipeline
 
-- [ ] Procesar cada clip con mismas reglas.
-- [ ] Exportar subcarpetas por clip.
-- [ ] Generar comparacion agregada.
+- [x] Procesar cada clip con mismas reglas.
+- [x] Exportar subcarpetas por clip.
+- [x] Generar comparacion agregada.
 
 ### Tarea 18.3 - Documentar fallos
 
-- [ ] Identificar casos con mala homografia.
-- [ ] Identificar perdida de balon.
-- [ ] Identificar falsos highlights.
+- [x] Identificar casos con mala homografia.
+- [x] Identificar perdida de balon.
+- [x] Identificar falsos highlights.
+
+### Decision tecnica
+
+- [x] Reusar evidencia ligera existente y no relanzar inferencia pesada SAM 3.
+- [x] Evaluar 4 clips: `video_595`, `video_667`, `video_836` y `video_480`.
+- [x] Separar resultados en `exito`, `degradacion` y `fallo_conocido`.
+- [x] Mantener `video_480` como diagnostico por perdida/no deteccion de balon.
+
+### Artefactos
+
+- [x] `src/futbotmx/level3/clip_validation.py`.
+- [x] `scripts/run_activity18_clip_validation.py`.
+- [x] `tests/test_activity18_clip_validation.py`.
+- [x] `experiments/test_036_activity18_clip_validation/config.yaml`.
+- [x] `experiments/test_036_activity18_clip_validation/summary.md`.
+- [x] `experiments/test_036_activity18_clip_validation/clip_selection.csv`.
+- [x] `experiments/test_036_activity18_clip_validation/clip_validation_comparison.csv`.
+- [x] `experiments/test_036_activity18_clip_validation/failure_modes.csv`.
+- [x] `experiments/test_036_activity18_clip_validation/activity18_manifest.csv`.
 
 ### Criterio de aceptacion
 
-- [ ] La comparacion separa exito, degradacion y fallo conocido.
-- [ ] No se versionan videos ni renders pesados.
+- [x] La comparacion separa exito, degradacion y fallo conocido.
+- [x] No se versionan videos ni renders pesados.
 
 ## Actividad 19 - Overlay De Video Corto
 
