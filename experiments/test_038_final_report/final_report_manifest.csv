@@ -1,0 +1,26 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+config,yaml,config.yaml,configs/default.yaml,true,configuration,Configuration snapshot.
+final_report,html,final_report.html,README.md|experiments/final_demo_report/FINAL_DEMO_REPORT.html|experiments/test_035_human_review/dashboard/dashboard.html|experiments/test_035_human_review/reel/reel_demo.html|experiments/test_035_human_review/human_review_panel.html|experiments/test_027_level3_closure/LEVEL3_CLOSURE_SUMMARY.md|experiments/test_027_level3_closure/closure_checks.csv|experiments/test_034_full_analysis/summary.md|experiments/test_034_full_analysis/full_analysis_manifest.csv|experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv|experiments/test_036_activity18_clip_validation/summary.md|experiments/test_036_activity18_clip_validation/clip_validation_comparison.csv|experiments/test_036_activity18_clip_validation/failure_modes.csv|experiments/test_037_activity19_video_overlay/summary.md|experiments/test_037_activity19_video_overlay/video_overlay_segments.csv|experiments/test_037_activity19_video_overlay/video_overlay_contact_sheet.png|experiments/test_037_activity19_video_overlay/render_overlay_clip_plan.md|experiments/test_038_final_report/pdf_export_plan.md|experiments/test_038_final_report/render_final_report_pdf.sh,true,report,Printable final report.
+summary,md,summary.md,final_report.html,true,summary,Activity 20 package summary.
+link_validation,csv,link_validation.csv,final_report.html,true,validation,All report links checked for existence.
+final_report_manifest,csv,final_report_manifest.csv,final_report.html,true,manifest,Report package manifest.
+pdf_export_plan,md,pdf_export_plan.md,final_report.html,true,pdf_plan,Local PDF export notes.
+pdf_render_script,sh,render_final_report_pdf.sh,pdf_export_plan.md,true,pdf_helper,Optional local PDF helper.
+local_pdf,pdf,../../local_outputs/activity20/futbotmx_final_report.pdf,render_final_report_pdf.sh,false,local_output,Optional PDF outside Git.
+project_readme,md,../../README.md,README.md,true,linked_evidence,Entrada del proyecto y regla principal.
+final_demo_report,html,../final_demo_report/FINAL_DEMO_REPORT.html,experiments/final_demo_report/FINAL_DEMO_REPORT.html,true,linked_evidence,Reporte HTML previo para evaluadores.
+dashboard,html,../test_035_human_review/dashboard/dashboard.html,experiments/test_035_human_review/dashboard/dashboard.html,true,linked_evidence,Dashboard local con revision humana.
+reel,html,../test_035_human_review/reel/reel_demo.html,experiments/test_035_human_review/reel/reel_demo.html,true,linked_evidence,Reel HTML con segmentos destacados.
+review_panel,html,../test_035_human_review/human_review_panel.html,experiments/test_035_human_review/human_review_panel.html,true,linked_evidence,Panel local para editar estados de highlights.
+closure_summary,md,../test_027_level3_closure/LEVEL3_CLOSURE_SUMMARY.md,experiments/test_027_level3_closure/LEVEL3_CLOSURE_SUMMARY.md,true,linked_evidence,Resumen de cierre tecnico.
+closure_checks,csv,../test_027_level3_closure/closure_checks.csv,experiments/test_027_level3_closure/closure_checks.csv,true,linked_evidence,Gate tecnico Nivel 3.
+full_analysis_summary,md,../test_034_full_analysis/summary.md,experiments/test_034_full_analysis/summary.md,true,linked_evidence,Resumen del orquestador completo local.
+full_analysis_manifest,csv,../test_034_full_analysis/full_analysis_manifest.csv,experiments/test_034_full_analysis/full_analysis_manifest.csv,true,linked_evidence,Manifest del pipeline completo.
+multiclip_comparison,csv,../test_026_level3_multiclip/level3_multiclip_comparison.csv,experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv,true,linked_evidence,Metricas comparadas de clips Nivel 3.
+activity18_summary,md,../test_036_activity18_clip_validation/summary.md,experiments/test_036_activity18_clip_validation/summary.md,true,linked_evidence,Validacion ligera de clips.
+activity18_comparison,csv,../test_036_activity18_clip_validation/clip_validation_comparison.csv,experiments/test_036_activity18_clip_validation/clip_validation_comparison.csv,true,linked_evidence,Estados exito/degradacion/fallo.
+activity18_failures,csv,../test_036_activity18_clip_validation/failure_modes.csv,experiments/test_036_activity18_clip_validation/failure_modes.csv,true,linked_evidence,Modos de fallo documentados.
+activity19_summary,md,../test_037_activity19_video_overlay/summary.md,experiments/test_037_activity19_video_overlay/summary.md,true,linked_evidence,Overlay corto local.
+activity19_segments,csv,../test_037_activity19_video_overlay/video_overlay_segments.csv,experiments/test_037_activity19_video_overlay/video_overlay_segments.csv,true,linked_evidence,Timeline reproducible para MP4 local.
+activity19_contact_sheet,png,../test_037_activity19_video_overlay/video_overlay_contact_sheet.png,experiments/test_037_activity19_video_overlay/video_overlay_contact_sheet.png,true,linked_evidence,Evidencia visual ligera del overlay.
+activity19_render_plan,md,../test_037_activity19_video_overlay/render_overlay_clip_plan.md,experiments/test_037_activity19_video_overlay/render_overlay_clip_plan.md,true,linked_evidence,Render MP4 local fuera de Git.

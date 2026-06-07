@@ -22,7 +22,7 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 - [x] Actividad 17 desarrollada con cache local por etapa, `--force`, `cache_manifest.csv` y runtime con estado de cache.
 - [x] Actividad 18 desarrollada con validacion ligera de 4 clips, clasificacion exito/degradacion/fallo y fallos documentados.
 - [x] Actividad 19 desarrollada con paquete de overlay corto, thumbnails, contact sheet y render local fuera de Git.
-- [ ] Actividad 20 pendiente.
+- [x] Actividad 20 desarrollada con reporte final HTML imprimible, validacion de links, manifest y PDF local documentado fuera de Git.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -430,23 +430,36 @@ Convertir la entrega en un reporte presentable y autocontenido.
 
 ### Tarea 20.1 - Definir plantilla
 
-- [ ] Crear estructura HTML imprimible.
-- [ ] Incluir portada, resumen, metricas y evidencias.
-- [ ] Mantener links relativos a artefactos.
+- [x] Crear estructura HTML imprimible.
+- [x] Incluir portada, resumen, metricas y evidencias.
+- [x] Mantener links relativos a artefactos.
 
 ### Tarea 20.2 - Generar reporte
 
-- [ ] Crear `scripts/build_final_report.py`.
-- [ ] Exportar `final_report.html`.
-- [ ] Opcionalmente exportar PDF local fuera de Git.
+- [x] Crear `scripts/build_final_report.py`.
+- [x] Exportar `final_report.html`.
+- [x] Opcionalmente exportar PDF local fuera de Git.
 
 ### Tarea 20.3 - Validar reporte
 
-- [ ] Verificar que todos los links existen.
-- [ ] Verificar que no duplica archivos pesados.
-- [ ] Agregar manifest y summary.
+- [x] Verificar que todos los links existen.
+- [x] Verificar que no duplica archivos pesados.
+- [x] Agregar manifest y summary.
+
+### Artefactos
+
+- [x] `scripts/build_final_report.py`.
+- [x] `src/futbotmx/level3/final_report.py`.
+- [x] `tests/test_final_report.py`.
+- [x] `experiments/test_038_final_report/config.yaml`.
+- [x] `experiments/test_038_final_report/final_report.html`.
+- [x] `experiments/test_038_final_report/link_validation.csv`.
+- [x] `experiments/test_038_final_report/final_report_manifest.csv`.
+- [x] `experiments/test_038_final_report/summary.md`.
+- [x] `experiments/test_038_final_report/pdf_export_plan.md`.
+- [x] `experiments/test_038_final_report/render_final_report_pdf.sh`.
 
 ### Criterio de aceptacion
 
-- [ ] El HTML imprimible queda versionado.
-- [ ] El PDF, si se genera, queda documentado como salida local no versionada.
+- [x] El HTML imprimible queda versionado.
+- [x] El PDF, si se genera, queda documentado como salida local no versionada.

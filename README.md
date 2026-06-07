@@ -143,6 +143,14 @@ experiments/test_037_activity19_video_overlay/summary.md
 
 El MP4 se renderiza localmente con `experiments/test_037_activity19_video_overlay/render_overlay_clip.sh` y queda fuera de Git.
 
+Reporte final imprimible:
+
+```text
+experiments/test_038_final_report/final_report.html
+```
+
+El PDF se exporta solo localmente con `experiments/test_038_final_report/render_final_report_pdf.sh` hacia `local_outputs/activity20/futbotmx_final_report.pdf` y queda fuera de Git.
+
 ### Metricas principales
 
 | Clip | Rol | Highlights | Score top | Interacciones | Aristas | Homografia | Revision |

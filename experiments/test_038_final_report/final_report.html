@@ -1,0 +1,336 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Reporte Final FutBotMX</title>
+<style>
+:root {
+  --ink: #18201c;
+  --muted: #5c675f;
+  --line: #cad5ce;
+  --paper: #fbfcfa;
+  --panel: #ffffff;
+  --field: #eaf3ec;
+  --green: #2e6a4f;
+  --blue: #315f9b;
+  --amber: #9a6a24;
+  --red: #9b4444;
+}
+* { box-sizing: border-box; }
+@page { size: A4; margin: 14mm; }
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+main {
+  width: min(1120px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 22px 0 40px;
+}
+.cover {
+  min-height: 58vh;
+  display: grid;
+  align-content: center;
+  border-bottom: 2px solid var(--line);
+  padding: 18px 0 24px;
+}
+.cover p {
+  margin: 0 0 8px;
+  color: var(--green);
+  font-size: 13px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+h1 {
+  margin: 0 0 10px;
+  font-size: 46px;
+  line-height: 1.03;
+  letter-spacing: 0;
+}
+h2 {
+  margin: 0 0 9px;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+h3 {
+  margin: 18px 0 8px;
+  font-size: 16px;
+  color: var(--green);
+  letter-spacing: 0;
+}
+.cover span,
+p,
+li,
+td,
+figcaption,
+.summary-grid em,
+.section-heading p {
+  color: var(--muted);
+}
+.cover dl {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin: 28px 0 0;
+}
+.cover dl div,
+.summary-grid li {
+  border-left: 4px solid var(--green);
+  background: var(--panel);
+  padding: 13px;
+}
+.cover dt,
+.summary-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.cover dd {
+  margin: 7px 0 0;
+  font-size: 28px;
+  font-weight: 800;
+}
+.quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 0 0;
+}
+.quick-links a {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  padding: 8px 10px;
+  color: var(--blue);
+}
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  padding: 16px 0;
+  margin: 0;
+  list-style: none;
+}
+.summary-grid li {
+  min-height: 92px;
+  display: grid;
+  align-content: space-between;
+}
+.summary-grid li:nth-child(2n) { border-left-color: var(--blue); }
+.summary-grid li:nth-child(3n) { border-left-color: var(--amber); }
+.summary-grid li:nth-child(6n) { border-left-color: var(--red); }
+.summary-grid strong {
+  font-size: 28px;
+  line-height: 1;
+}
+.summary-grid em {
+  font-size: 12px;
+  font-style: normal;
+}
+section {
+  border-top: 1px solid var(--line);
+  padding: 18px 0 24px;
+}
+.section-heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  align-items: baseline;
+  margin-bottom: 10px;
+}
+.section-heading p {
+  margin: 0;
+  font-size: 13px;
+  text-align: right;
+}
+figure {
+  margin: 0 0 14px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+}
+img {
+  width: 100%;
+  max-height: 520px;
+  object-fit: contain;
+  display: block;
+  background: var(--field);
+}
+figcaption {
+  border-top: 1px solid var(--line);
+  padding: 8px;
+  font-size: 13px;
+}
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  font-size: 13px;
+}
+th,
+td {
+  border-bottom: 1px solid var(--line);
+  padding: 8px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+thead th {
+  color: var(--green);
+  background: var(--field);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+a {
+  color: var(--blue);
+  text-underline-offset: 2px;
+}
+code {
+  color: var(--green);
+}
+.policy {
+  border-bottom: 2px solid var(--line);
+}
+@media (max-width: 860px) {
+  .cover dl {
+    grid-template-columns: 1fr;
+  }
+  .section-heading {
+    display: block;
+  }
+  .section-heading p {
+    text-align: left;
+  }
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}
+@media (max-width: 640px) {
+  main {
+    width: min(100vw - 20px, 1120px);
+  }
+  h1 {
+    font-size: 32px;
+  }
+}
+@media print {
+  body {
+    background: #ffffff;
+  }
+  main {
+    width: 100%;
+    padding: 0;
+  }
+  .cover {
+    min-height: 230mm;
+    page-break-after: always;
+  }
+  a {
+    color: #1f4f84;
+  }
+  section,
+  table,
+  figure {
+    break-inside: avoid;
+  }
+}
+</style>
+</head>
+<body>
+<main>
+
+<header class="cover">
+  <p>FutBotMX Nivel 3</p>
+  <h1>Reporte Final FutBotMX</h1>
+  <span>Entrega local reproducible | regla activity20_final_report_v0.1</span>
+  <dl>
+    <div><dt>Checks pass</dt><dd>11</dd></div>
+    <div><dt>Clips Nivel 3</dt><dd>2/2</dd></div>
+    <div><dt>Links OK</dt><dd>19/19</dd></div>
+  </dl>
+</header>
+<nav class="quick-links" aria-label="Evidencia principal"><a href="../test_035_human_review/dashboard/dashboard.html">Dashboard revisado</a><a href="../test_035_human_review/reel/reel_demo.html">Reel demo revisado</a><a href="../test_035_human_review/human_review_panel.html">Panel de revision humana</a><a href="../test_037_activity19_video_overlay/video_overlay_contact_sheet.png">Contact sheet overlay</a><a href="pdf_export_plan.md">Plan PDF local</a></nav>
+<ul class="summary-grid" aria-label="Resumen del reporte"><li><span>Highlights</span><strong>142</strong><em>comparados multi-clip</em></li><li><span>Score top</span><strong>82.9</strong><em>ranking Nivel 3</em></li><li><span>Clips validados</span><strong>4</strong><em>actividad 18</em></li><li><span>Fallo conocido</span><strong>1</strong><em>caso diagnostico</em></li><li><span>Overlay</span><strong>3 seg.</strong><em>7.5s sugeridos</em></li><li><span>Links faltantes</span><strong>0</strong><em>validacion HTML</em></li></ul>
+
+<section class="text-band">
+  <h2>Resumen</h2>
+  <p>Este reporte consolida la entrega local de FutBotMX despues del cierre Nivel 3: pipeline reproducible, dashboard, reel, revision humana ligera, validacion multi-clip, overlay corto y evidencia enlazada.</p>
+  <p>El alcance se mantiene conservador: analisis aproximado de futbol robotico, sin arbitraje oficial, sin SaaS, sin streaming en tiempo real y sin versionar archivos pesados.</p>
+</section>
+<section class="table-band">
+<div class="section-heading"><h2>Metricas principales</h2><p>Fuentes CSV versionadas.</p></div>
+
+<h3>Comparacion multi-clip</h3>
+<table>
+  <thead><tr><th>Clip</th><th>Rol</th><th>Pipeline</th><th>Highlights</th><th>Score top</th><th>Interacciones</th><th>Homografia</th></tr></thead>
+  <tbody><tr><th>video_595</th><td>primary</td><td>generated</td><td>82</td><td>82.9</td><td>57.0</td><td>usable (0.82)</td></tr>
+<tr><th>video_667</th><td>secondary</td><td>generated</td><td>60</td><td>74.0</td><td>428.0</td><td>usable (0.74)</td></tr></tbody>
+</table>
+
+<h3>Validacion actividad 18</h3>
+<table>
+  <thead><tr><th>Clip</th><th>Resultado</th><th>Alcance</th><th>Homografia</th><th>Balon</th><th>Highlights</th><th>Limitaciones</th></tr></thead>
+  <tbody><tr><th>video_595</th><td>exito</td><td>level3_reused</td><td>usable (0.82)</td><td>exito</td><td>degradacion</td><td>revision_visual_provisional|equipos_neutrales</td></tr>
+<tr><th>video_667</th><td>degradacion</td><td>level3_reused</td><td>usable (0.74)</td><td>exito</td><td>degradacion</td><td>homografia_provisional|revision_visual_provisional|equipos_neutrales</td></tr>
+<tr><th>video_836</th><td>degradacion</td><td>level2_baseline</td><td>not_evaluated (0.00)</td><td>degradacion</td><td>not_evaluated</td><td>no_level3_outputs</td></tr>
+<tr><th>video_480</th><td>fallo_conocido</td><td>diagnostic_only</td><td>not_evaluated (0.00)</td><td>fallo</td><td>not_evaluated</td><td>no_level3_outputs</td></tr></tbody>
+</table>
+</section>
+
+<section class="visual-band">
+  <div class="section-heading">
+    <h2>Evidencia visual final</h2>
+    <p>Overlay corto local documentado en actividad 19.</p>
+  </div>
+  <figure>
+    <a href="../test_037_activity19_video_overlay/video_overlay_contact_sheet.png"><img src="../test_037_activity19_video_overlay/video_overlay_contact_sheet.png" alt="Contact sheet overlay actividad 19"></a>
+    <figcaption>Contact sheet del overlay corto. El MP4 se renderiza localmente y queda fuera de Git.</figcaption>
+  </figure>
+  <table>
+    <thead><tr><th>Segmento</th><th>Clip</th><th>Frames</th><th>Score</th><th>Conf.</th><th>Etiqueta</th></tr></thead>
+    <tbody><tr><th>overlay_segment_01</th><td>video_595</td><td>122-123</td><td>82.9</td><td>0.89</td><td>velocidad_norm=0.272 | posesion_candidata | zona=defensive_third</td></tr>
+<tr><th>overlay_segment_02</th><td>video_595</td><td>128-129</td><td>81.4</td><td>0.83</td><td>velocidad_norm=0.271 | posesion_candidata | zona=defensive_third</td></tr>
+<tr><th>overlay_segment_03</th><td>video_595</td><td>133-135</td><td>81.1</td><td>0.81</td><td>velocidad_norm=0.271 | posesion_candidata | zona=defensive_third</td></tr></tbody>
+  </table>
+</section>
+
+<section class="table-band">
+  <div class="section-heading">
+    <h2>Evidencias enlazadas</h2>
+    <p>Todos los links son relativos al HTML final.</p>
+  </div>
+  <table>
+    <thead><tr><th>Evidencia</th><th>Ruta</th><th>Existe</th><th>Uso</th></tr></thead>
+    <tbody><tr><th>README principal</th><td><a href="../../README.md">../../README.md</a></td><td>true</td><td>Entrada del proyecto y regla principal.</td></tr>
+<tr><th>Reporte ejecutivo Nivel 3</th><td><a href="../final_demo_report/FINAL_DEMO_REPORT.html">../final_demo_report/FINAL_DEMO_REPORT.html</a></td><td>true</td><td>Reporte HTML previo para evaluadores.</td></tr>
+<tr><th>Dashboard revisado</th><td><a href="../test_035_human_review/dashboard/dashboard.html">../test_035_human_review/dashboard/dashboard.html</a></td><td>true</td><td>Dashboard local con revision humana.</td></tr>
+<tr><th>Reel demo revisado</th><td><a href="../test_035_human_review/reel/reel_demo.html">../test_035_human_review/reel/reel_demo.html</a></td><td>true</td><td>Reel HTML con segmentos destacados.</td></tr>
+<tr><th>Panel de revision humana</th><td><a href="../test_035_human_review/human_review_panel.html">../test_035_human_review/human_review_panel.html</a></td><td>true</td><td>Panel local para editar estados de highlights.</td></tr>
+<tr><th>Cierre Nivel 3</th><td><a href="../test_027_level3_closure/LEVEL3_CLOSURE_SUMMARY.md">../test_027_level3_closure/LEVEL3_CLOSURE_SUMMARY.md</a></td><td>true</td><td>Resumen de cierre tecnico.</td></tr>
+<tr><th>Checks de cierre</th><td><a href="../test_027_level3_closure/closure_checks.csv">../test_027_level3_closure/closure_checks.csv</a></td><td>true</td><td>Gate tecnico Nivel 3.</td></tr>
+<tr><th>Resumen analisis completo</th><td><a href="../test_034_full_analysis/summary.md">../test_034_full_analysis/summary.md</a></td><td>true</td><td>Resumen del orquestador completo local.</td></tr>
+<tr><th>Manifest analisis completo</th><td><a href="../test_034_full_analysis/full_analysis_manifest.csv">../test_034_full_analysis/full_analysis_manifest.csv</a></td><td>true</td><td>Manifest del pipeline completo.</td></tr>
+<tr><th>Comparacion multi-clip</th><td><a href="../test_026_level3_multiclip/level3_multiclip_comparison.csv">../test_026_level3_multiclip/level3_multiclip_comparison.csv</a></td><td>true</td><td>Metricas comparadas de clips Nivel 3.</td></tr>
+<tr><th>Resumen actividad 18</th><td><a href="../test_036_activity18_clip_validation/summary.md">../test_036_activity18_clip_validation/summary.md</a></td><td>true</td><td>Validacion ligera de clips.</td></tr>
+<tr><th>Comparacion actividad 18</th><td><a href="../test_036_activity18_clip_validation/clip_validation_comparison.csv">../test_036_activity18_clip_validation/clip_validation_comparison.csv</a></td><td>true</td><td>Estados exito/degradacion/fallo.</td></tr>
+<tr><th>Fallos actividad 18</th><td><a href="../test_036_activity18_clip_validation/failure_modes.csv">../test_036_activity18_clip_validation/failure_modes.csv</a></td><td>true</td><td>Modos de fallo documentados.</td></tr>
+<tr><th>Resumen actividad 19</th><td><a href="../test_037_activity19_video_overlay/summary.md">../test_037_activity19_video_overlay/summary.md</a></td><td>true</td><td>Overlay corto local.</td></tr>
+<tr><th>Segmentos overlay</th><td><a href="../test_037_activity19_video_overlay/video_overlay_segments.csv">../test_037_activity19_video_overlay/video_overlay_segments.csv</a></td><td>true</td><td>Timeline reproducible para MP4 local.</td></tr>
+<tr><th>Contact sheet overlay</th><td><a href="../test_037_activity19_video_overlay/video_overlay_contact_sheet.png">../test_037_activity19_video_overlay/video_overlay_contact_sheet.png</a></td><td>true</td><td>Evidencia visual ligera del overlay.</td></tr>
+<tr><th>Plan render overlay</th><td><a href="../test_037_activity19_video_overlay/render_overlay_clip_plan.md">../test_037_activity19_video_overlay/render_overlay_clip_plan.md</a></td><td>true</td><td>Render MP4 local fuera de Git.</td></tr>
+<tr><th>Plan PDF local</th><td><a href="pdf_export_plan.md">pdf_export_plan.md</a></td><td>true</td><td>Instrucciones para PDF local no versionado.</td></tr>
+<tr><th>Script PDF local</th><td><a href="render_final_report_pdf.sh">render_final_report_pdf.sh</a></td><td>true</td><td>Ayuda local para imprimir PDF fuera de Git.</td></tr></tbody>
+  </table>
+</section>
+
+<section class="text-band policy">
+  <h2>PDF local</h2>
+  <p>El PDF es opcional y se genera fuera del repositorio en <code>local_outputs/activity20/futbotmx_final_report.pdf</code>. El paquete versionado conserva HTML, CSV, Markdown, configuracion y scripts ligeros.</p>
+  <p>No se copian videos, checkpoints, frames masivos, mascaras ni renders pesados. El reporte enlaza la evidencia existente para mantener la entrega reproducible y liviana.</p>
+</section>
+</main>
+</body>
+</html>

@@ -35,6 +35,7 @@ datasets/
 outputs/videos/
 outputs/masks/
 outputs/frames/
+local_outputs/
 *.npy
 *.npz
 
