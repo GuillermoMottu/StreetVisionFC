@@ -15,7 +15,8 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 
 - [x] Actividad 11 desarrollada como interfaz local con backend estandar de Python.
 - [x] Actividad 12 desarrollada con editor local de puntos y validacion manual reproducible.
-- [ ] Actividades 13 a 20 pendientes.
+- [x] Actividad 13 desarrollada con asignacion aproximada de equipos, tracks enriquecidos, metricas y eventos regenerados.
+- [ ] Actividades 14 a 20 pendientes.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -115,26 +116,39 @@ Pasar de robots neutrales a equipos aproximados para mejorar posesion, pases y n
 
 ### Tarea 13.1 - Definir estrategia
 
-- [ ] Evaluar asignacion manual por ID.
-- [ ] Evaluar color dominante del robot.
-- [ ] Evaluar lado/zona inicial como fallback.
+- [x] Evaluar asignacion manual por ID.
+- [x] Evaluar color dominante del robot.
+- [x] Evaluar lado/zona inicial como fallback.
 
 ### Tarea 13.2 - Crear `team_assignment.csv`
 
-- [ ] Incluir `clip_id`, `track_id`, `team`, `confidence`, `source`.
-- [ ] Permitir edicion humana.
-- [ ] Validar IDs existentes en tracks.
+- [x] Incluir `clip_id`, `track_id`, `team`, `confidence`, `source`.
+- [x] Permitir edicion humana.
+- [x] Validar IDs existentes en tracks.
 
 ### Tarea 13.3 - Usar equipos en Nivel 3
 
-- [ ] Recalcular control por equipo.
-- [ ] Mejorar cadenas de pases.
-- [ ] Ajustar narrativa para no marcar todo como dudoso.
+- [x] Recalcular control por equipo.
+- [x] Mejorar cadenas de pases.
+- [x] Ajustar narrativa para no marcar todo como dudoso.
+
+### Artefactos
+
+- [x] `scripts/run_team_assignment.py`.
+- [x] `src/futbotmx/level3/team_assignment.py`.
+- [x] `experiments/test_031_team_assignment/team_assignment.csv`.
+- [x] `experiments/test_031_team_assignment/strategy_evaluation.csv`.
+- [x] `experiments/test_031_team_assignment/team_assignment_validation.csv`.
+- [x] `experiments/test_031_team_assignment/level3_tracks_with_teams.csv`.
+- [x] `experiments/test_032_level3_team_metrics/level3_metrics.csv`.
+- [x] `experiments/test_032_level3_team_metrics/spatial_control.csv`.
+- [x] `experiments/test_033_level3_team_events/level3_events.json`.
+- [x] `experiments/test_033_level3_team_events/level3_narrative.md`.
 
 ### Criterio de aceptacion
 
-- [ ] Las metricas por equipo son opcionales y trazables.
-- [ ] Si no hay equipo confiable, el pipeline conserva fallback neutral.
+- [x] Las metricas por equipo son opcionales y trazables.
+- [x] Si no hay equipo confiable, el pipeline conserva fallback neutral.
 
 ## Actividad 14 - Pipeline Completo Para Video Nuevo
 
