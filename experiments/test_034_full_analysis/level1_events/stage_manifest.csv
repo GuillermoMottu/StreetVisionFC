@@ -1,0 +1,4 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+config,yaml,config.yaml,level1_events,true,configuration,stage_status=pass; size_bytes=4685
+events,json,events.json,level1_events,true,structured_data,stage_status=pass; size_bytes=1447
+summary,md,summary.md,level1_events,true,summary,stage_status=pass; size_bytes=663

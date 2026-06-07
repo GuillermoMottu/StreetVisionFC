@@ -1,0 +1,54 @@
+[
+  {
+    "event_id": "evt_000001",
+    "event_type": "shot",
+    "frame_start": 122,
+    "frame_end": 123,
+    "time_start_sec": 2.043,
+    "time_end_sec": 2.06,
+    "team": "unknown",
+    "primary_object_id": null,
+    "secondary_object_id": null,
+    "ball_id": "ball_bt_01",
+    "zone": "attacking_third",
+    "position_start": {
+      "x": 1014.3500671386719,
+      "y": 734.3895263671875
+    },
+    "position_end": {
+      "x": 1020.5497131347656,
+      "y": 734.1890869140625
+    },
+    "confidence": 0.5,
+    "rule_version": "events_v0.2_real",
+    "evidence": {
+      "source_experiment": "experiments/test_004_events",
+      "tracks_file": "tracks.csv",
+      "config_file": "config.yaml",
+      "notes": "Ball speed exceeded threshold while moving toward goal area."
+    }
+  },
+  {
+    "event_id": "evt_000002",
+    "event_type": "activity_zone",
+    "frame_start": 120,
+    "frame_end": 180,
+    "time_start_sec": 2.01,
+    "time_end_sec": 3.014,
+    "team": "unknown",
+    "primary_object_id": null,
+    "secondary_object_id": null,
+    "ball_id": "ball_01",
+    "zone": "attacking_third",
+    "position_start": null,
+    "position_end": null,
+    "confidence": 0.9,
+    "rule_version": "events_v0.2_real",
+    "evidence": {
+      "source_experiment": "experiments/test_004_events",
+      "tracks_file": "tracks.csv",
+      "config_file": "config.yaml",
+      "notes": "Dominant ball activity zone from tracked positions."
+    }
+  }
+]

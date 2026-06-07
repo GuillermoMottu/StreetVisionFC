@@ -1,0 +1,8 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+config,yaml,config.yaml,configs/default.yaml,true,configuration,Configuration snapshot.
+team_assignment,csv,team_assignment.csv,experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv,true,editable_assignment,Editable team assignment by track ID.
+team_assignment_validation,csv,team_assignment_validation.csv,team_assignment.csv,true,validation,Validation of track IDs and team labels.
+strategy_evaluation,csv,strategy_evaluation.csv,experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv,true,strategy,Manual/color/side strategy evaluation.
+level3_tracks_with_teams,csv,level3_tracks_with_teams.csv,level3_tracks.csv|team_assignment.csv,true,tracks,Level 3 tracks with approximate teams applied.
+summary,md,summary.md,team_assignment.csv,true,summary,Team assignment summary.
+manifest,csv,team_assignment_manifest.csv,team_assignment.csv,true,manifest,Team assignment artifact manifest.

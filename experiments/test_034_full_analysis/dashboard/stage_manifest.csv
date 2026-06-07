@@ -1,0 +1,5 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+config,yaml,config.yaml,dashboard,true,configuration,stage_status=pass; size_bytes=4728
+dashboard,html,dashboard.html,dashboard,true,local_demo,stage_status=pass; size_bytes=10853
+dashboard_manifest,csv,dashboard_manifest.csv,dashboard,true,manifest,stage_status=pass; size_bytes=2870
+summary,md,summary.md,dashboard,true,summary,stage_status=pass; size_bytes=1610
