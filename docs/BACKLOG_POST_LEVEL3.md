@@ -18,7 +18,8 @@ Este backlog continua despues del cierre tecnico de Nivel 3. El objetivo es mejo
 - [x] Actividad 13 desarrollada con asignacion aproximada de equipos, tracks enriquecidos, metricas y eventos regenerados.
 - [x] Actividad 14 desarrollada con orquestador completo local, frontera GPU documentada y evidencia ligera reproducible.
 - [x] Actividad 15 desarrollada con panel local de revision, `human_review.csv` validable e integracion en dashboard/reel.
-- [ ] Actividades 16 a 20 pendientes.
+- [x] Actividad 16 desarrollada con reporte ejecutivo local, links relativos y capturas Nivel 3.
+- [ ] Actividades 17 a 20 pendientes.
 
 ## Actividad 11 - Interfaz Local De Ejecucion
 
@@ -245,26 +246,38 @@ Crear una entrada clara y rapida para jueces o evaluadores.
 
 ### Tarea 16.1 - Crear reporte HTML
 
-- [ ] Crear `experiments/final_demo_report/`.
-- [ ] Incluir objetivo, resultado y limitaciones.
-- [ ] Incluir links a dashboard, reel y cierre.
+- [x] Crear `experiments/final_demo_report/`.
+- [x] Incluir objetivo, resultado y limitaciones.
+- [x] Incluir links a dashboard, reel y cierre.
 
 ### Tarea 16.2 - Incluir evidencia clave
 
-- [ ] Agregar 3 capturas Nivel 3.
-- [ ] Agregar tabla multi-clip.
-- [ ] Agregar narrativa ejemplo.
+- [x] Agregar 3 capturas Nivel 3.
+- [x] Agregar tabla multi-clip.
+- [x] Agregar narrativa ejemplo.
 
 ### Tarea 16.3 - Empaquetar lectura
 
-- [ ] Crear `FINAL_DEMO_REPORT.html`.
-- [ ] Crear `summary.md`.
-- [ ] Crear manifest de assets.
+- [x] Crear `FINAL_DEMO_REPORT.html`.
+- [x] Crear `summary.md`.
+- [x] Crear manifest de assets.
+
+### Artefactos
+
+- [x] `scripts/run_final_demo_report.py`.
+- [x] `src/futbotmx/level3/executive_report.py`.
+- [x] `tests/test_executive_report.py`.
+- [x] `experiments/final_demo_report/FINAL_DEMO_REPORT.html`.
+- [x] `experiments/final_demo_report/summary.md`.
+- [x] `experiments/final_demo_report/final_demo_report_manifest.csv`.
+- [x] `experiments/final_demo_report/assets/highlight_storyboard.png`.
+- [x] `experiments/final_demo_report/assets/interaction_graph.png`.
+- [x] `experiments/final_demo_report/assets/reel_contact_sheet.png`.
 
 ### Criterio de aceptacion
 
-- [ ] El reporte se abre localmente y se entiende sin recorrer todo el repositorio.
-- [ ] Los links relativos apuntan a artefactos versionados.
+- [x] El reporte se abre localmente y se entiende sin recorrer todo el repositorio.
+- [x] Los links relativos apuntan a artefactos versionados.
 
 ## Actividad 17 - Optimizacion Y Cache
 
