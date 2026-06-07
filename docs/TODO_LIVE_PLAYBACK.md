@@ -63,34 +63,34 @@ Estandarizar los datos que usaran frontend y backend para sincronizar overlays p
 
 ### Tarea 22.1 - Normalizar tracks
 
-- [ ] Definir columnas minimas para `live_tracks.csv`.
-- [ ] Incluir `clip_id`, `frame`, `timestamp_sec`, `track_id`, `class`, `x`, `y`, `w`, `h`, `center_x`, `center_y`, `team`, `confidence`.
-- [ ] Permitir columnas opcionales de Nivel 3: `x_norm`, `y_norm`, `zone`, `calibration_confidence`.
-- [ ] Documentar conversion desde `tracks.csv`, `tracks_level2.csv` o `level3_tracks.csv`.
+- [x] Definir columnas minimas para `live_tracks.csv`.
+- [x] Incluir `clip_id`, `frame`, `timestamp_sec`, `track_id`, `class`, `x`, `y`, `w`, `h`, `center_x`, `center_y`, `team`, `confidence`.
+- [x] Permitir columnas opcionales de Nivel 3: `x_norm`, `y_norm`, `zone`, `calibration_confidence`.
+- [x] Documentar conversion desde `tracks.csv`, `tracks_level2.csv` o `level3_tracks.csv`.
 
 ### Tarea 22.2 - Normalizar eventos
 
-- [ ] Definir `live_events.json` con `event_id`, `label`, `start_frame`, `end_frame`, `start_time_sec`, `end_time_sec`, `confidence`, `status`.
-- [ ] Usar `status` con valores como `candidate`, `provisional`, `confirmed`, `discarded`.
-- [ ] Incluir referencias a tracks participantes cuando existan.
-- [ ] Mantener compatibilidad con `events.json`, `level2_events.json` y `level3_events.json`.
+- [x] Definir `live_events.json` con `event_id`, `label`, `start_frame`, `end_frame`, `start_time_sec`, `end_time_sec`, `confidence`, `status`.
+- [x] Usar `status` con valores como `candidate`, `provisional`, `confirmed`, `discarded`.
+- [x] Incluir referencias a tracks participantes cuando existan.
+- [x] Mantener compatibilidad con `events.json`, `level2_events.json` y `level3_events.json`.
 
 ### Tarea 22.3 - Normalizar highlights y mini-mapa
 
-- [ ] Definir `live_highlights.csv` derivado de `level3_highlights.csv`.
-- [ ] Definir payload de mini-mapa por frame con coordenadas rectificadas o fallback.
-- [ ] Incluir confianza de calibracion.
-- [ ] Crear fixtures pequenos para pruebas de sincronizacion.
+- [x] Definir `live_highlights.csv` derivado de `level3_highlights.csv`.
+- [x] Definir payload de mini-mapa por frame con coordenadas rectificadas o fallback.
+- [x] Incluir confianza de calibracion.
+- [x] Crear fixtures pequenos para pruebas de sincronizacion.
 
 ### Artefactos esperados
 
-- [ ] `docs/LIVE_PLAYBACK_DATA_CONTRACT.md`.
-- [ ] Fixtures ligeros en `tests/fixtures/live_playback/`.
-- [ ] Validadores unitarios de tracks, eventos y highlights.
+- [x] `docs/LIVE_PLAYBACK_DATA_CONTRACT.md`.
+- [x] Fixtures ligeros en `tests/fixtures/live_playback/`.
+- [x] Validadores unitarios de tracks, eventos y highlights.
 
 ### Criterio de aceptacion
 
-- [ ] Frontend y backend pueden leer los mismos datos sin depender de formatos internos dispersos.
+- [x] Frontend y backend pueden leer los mismos datos sin depender de formatos internos dispersos.
 
 ## Actividad 23 - Reproductor Con Overlays Precomputados
 

@@ -1,0 +1,25 @@
+{
+  "clip_id": "video_fixture",
+  "frame": 120,
+  "timestamp_sec": 2.0,
+  "calibration_status": "rectified",
+  "calibration_confidence": 0.81,
+  "points": [
+    {
+      "track_id": "ball_bt_01",
+      "class": "ball",
+      "team": "neutral",
+      "x_norm": 0.746,
+      "y_norm": 0.191,
+      "confidence": 0.82
+    },
+    {
+      "track_id": "small_robot_bt_01",
+      "class": "small_robot",
+      "team": "blue",
+      "x_norm": 0.508,
+      "y_norm": 0.141,
+      "confidence": 0.88
+    }
+  ]
+}

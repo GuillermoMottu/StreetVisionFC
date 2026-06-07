@@ -1,0 +1,4 @@
+clip_id,frame,timestamp_sec,track_id,class,x,y,w,h,center_x,center_y,team,confidence,x_norm,y_norm,zone,calibration_confidence
+video_fixture,120,2,ball_bt_01,ball,981,714,44,42,1003,735,neutral,0.82,0.746,0.191,defensive_third,0.81
+video_fixture,120,2,small_robot_bt_01,small_robot,605,544,155,251,683,670,blue,0.88,0.508,0.141,defensive_third,0.81
+video_fixture,121,2.017,ball_bt_01,ball,986,713,43,43,1008,735,neutral,0.84,0.751,0.191,defensive_third,0.81

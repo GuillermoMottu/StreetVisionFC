@@ -1,0 +1,18 @@
+[
+  {
+    "event_id": "live_evt_0001",
+    "label": "possession_candidate",
+    "start_frame": 120,
+    "end_frame": 121,
+    "start_time_sec": 2.0,
+    "end_time_sec": 2.017,
+    "confidence": 0.76,
+    "status": "provisional",
+    "clip_id": "video_fixture",
+    "track_ids": ["small_robot_bt_01", "ball_bt_01"],
+    "team": "blue",
+    "zone": "defensive_third",
+    "reason": "robot-ball proximity under threshold",
+    "source_event_ids": ["lvl2_evt_fixture"]
+  }
+]

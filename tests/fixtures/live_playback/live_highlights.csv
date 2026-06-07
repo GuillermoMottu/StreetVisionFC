@@ -1,0 +1,2 @@
+clip_id,highlight_id,rank,score,label,start_frame,end_frame,start_time_sec,end_time_sec,primary_track_id,secondary_track_ids,zone,confidence,status,reason,source_event_ids
+video_fixture,live_hl_0001,1,82.5,advanced_highlight,120,121,2,2.017,small_robot_bt_01,ball_bt_01,defensive_third,0.89,provisional,velocidad_norm=0.272; posesion_candidata,lvl2_evt_fixture
