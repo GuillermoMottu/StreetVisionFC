@@ -100,41 +100,41 @@ Crear la primera demo funcional: reproducir un video local y dibujar encima info
 
 ### Tarea 23.1 - Crear UI de reproduccion
 
-- [ ] Crear vista HTML local con elemento `<video>`.
-- [ ] Crear canvas superpuesto para dibujar overlays.
-- [ ] Ajustar canvas al tamano real del video.
-- [ ] Mantener relacion de aspecto sin deformar coordenadas.
+- [x] Crear vista HTML local con elemento `<video>`.
+- [x] Crear canvas superpuesto para dibujar overlays.
+- [x] Ajustar canvas al tamano real del video.
+- [x] Mantener relacion de aspecto sin deformar coordenadas.
 
 ### Tarea 23.2 - Dibujar capas de analisis
 
-- [ ] Dibujar cajas, centroides o mascaras ligeras cuando existan.
-- [ ] Dibujar IDs de robots.
-- [ ] Dibujar balon con estilo diferenciado.
-- [ ] Dibujar trails cortos por track.
-- [ ] Dibujar evento activo.
-- [ ] Dibujar posesion candidata.
-- [ ] Dibujar mini-mapa sincronizado.
-- [ ] Dibujar marcador de highlight cuando corresponda.
+- [x] Dibujar cajas, centroides o mascaras ligeras cuando existan.
+- [x] Dibujar IDs de robots.
+- [x] Dibujar balon con estilo diferenciado.
+- [x] Dibujar trails cortos por track.
+- [x] Dibujar evento activo.
+- [x] Dibujar posesion candidata.
+- [x] Dibujar mini-mapa sincronizado.
+- [x] Dibujar marcador de highlight cuando corresponda.
 
 ### Tarea 23.3 - Controles de capas
 
-- [ ] Agregar toggles para tracks, IDs, balon, trails, eventos, posesion, mini-mapa y debug.
-- [ ] Agregar selector de experimento/clip.
-- [ ] Agregar indicador de frame actual y timestamp.
-- [ ] Agregar estado de datos disponibles para el frame actual.
+- [x] Agregar toggles para tracks, IDs, balon, trails, eventos, posesion, mini-mapa y debug.
+- [x] Agregar selector de experimento/clip.
+- [x] Agregar indicador de frame actual y timestamp.
+- [x] Agregar estado de datos disponibles para el frame actual.
 
 ### Artefactos esperados
 
-- [ ] `scripts/run_live_playback_app.py`.
-- [ ] `src/futbotmx/live_playback.py`.
-- [ ] `experiments/test_039_live_playback/playback.html`.
-- [ ] `experiments/test_039_live_playback/config.yaml`.
-- [ ] `experiments/test_039_live_playback/live_playback_manifest.csv`.
-- [ ] `experiments/test_039_live_playback/summary.md`.
+- [x] `scripts/run_live_playback_app.py`.
+- [x] `src/futbotmx/live_playback.py`.
+- [x] `experiments/test_039_live_playback/playback.html`.
+- [x] `experiments/test_039_live_playback/config.yaml`.
+- [x] `experiments/test_039_live_playback/live_playback_manifest.csv`.
+- [x] `experiments/test_039_live_playback/summary.md`.
 
 ### Criterio de aceptacion
 
-- [ ] Un video local reproduce fluido con overlays sincronizados usando tracks y eventos precomputados.
+- [x] Un video local reproduce fluido con overlays sincronizados usando tracks y eventos precomputados.
 
 ## Actividad 24 - Sincronizador Frame/Timestamp
 
