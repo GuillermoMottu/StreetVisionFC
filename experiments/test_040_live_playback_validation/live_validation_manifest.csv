@@ -1,0 +1,6 @@
+asset_id,asset_type,path,is_versioned,role,notes
+config,configuration,config.yaml,true,clip_configuration,configuracion por clip con umbrales
+runtime_metrics,metrics,runtime_metrics.csv,true,runtime_performance,fps latencia frames_saltados por clip
+event_comparison,metrics,event_comparison.csv,true,batch_comparison,comparacion eventos streaming vs batch
+summary,report,summary.md,true,validation_summary,resumen ejecutivo con tablas
+manifest,manifest,live_validation_manifest.csv,true,manifest,este archivo

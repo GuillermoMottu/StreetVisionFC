@@ -420,38 +420,38 @@ Medir si la experiencia funciona realmente durante reproduccion.
 
 ### Tarea 33.1 - Clips de prueba
 
-- [ ] Usar `video_595` como clip principal.
-- [ ] Usar `video_667` como clip secundario.
-- [ ] Mantener `video_480` como diagnostico de balon si aplica.
-- [ ] Crear configuraciones ligeras por clip.
+- [x] Usar `video_595` como clip principal.
+- [x] Usar `video_667` como clip secundario.
+- [x] Mantener `video_480` como diagnostico de balon si aplica.
+- [x] Crear configuraciones ligeras por clip.
 
 ### Tarea 33.2 - Metricas de runtime
 
-- [ ] Medir FPS de video.
-- [ ] Medir FPS de analisis.
-- [ ] Medir latencia media.
-- [ ] Medir latencia p95.
-- [ ] Medir frames saltados.
-- [ ] Medir eventos emitidos y actualizados.
+- [x] Medir FPS de video.
+- [x] Medir FPS de analisis.
+- [x] Medir latencia media.
+- [x] Medir latencia p95.
+- [x] Medir frames saltados.
+- [x] Medir eventos emitidos y actualizados.
 
 ### Tarea 33.3 - Comparacion contra batch
 
-- [ ] Comparar tracks streaming contra `tracks.csv` o `level3_tracks.csv`.
-- [ ] Comparar eventos streaming contra `events.json` o `level3_events.json`.
-- [ ] Clasificar diferencias como aceptables, degradadas o fallidas.
-- [ ] Documentar causas de errores.
+- [x] Comparar tracks streaming contra `tracks.csv` o `level3_tracks.csv`.
+- [x] Comparar eventos streaming contra `events.json` o `level3_events.json`.
+- [x] Clasificar diferencias como aceptables, degradadas o fallidas.
+- [x] Documentar causas de errores.
 
 ### Artefactos esperados
 
-- [ ] `experiments/test_040_live_playback_validation/config.yaml`.
-- [ ] `experiments/test_040_live_playback_validation/runtime_metrics.csv`.
-- [ ] `experiments/test_040_live_playback_validation/event_comparison.csv`.
-- [ ] `experiments/test_040_live_playback_validation/summary.md`.
-- [ ] `experiments/test_040_live_playback_validation/live_validation_manifest.csv`.
+- [x] `experiments/test_040_live_playback_validation/config.yaml`.
+- [x] `experiments/test_040_live_playback_validation/runtime_metrics.csv`.
+- [x] `experiments/test_040_live_playback_validation/event_comparison.csv`.
+- [x] `experiments/test_040_live_playback_validation/summary.md`.
+- [x] `experiments/test_040_live_playback_validation/live_validation_manifest.csv`.
 
 ### Criterio de aceptacion
 
-- [ ] Existe evidencia ligera de latencia, sincronizacion y degradaciones por clip.
+- [x] Existe evidencia ligera de latencia, sincronizacion y degradaciones por clip.
 
 ## Actividad 34 - Panel De Depuracion
 
