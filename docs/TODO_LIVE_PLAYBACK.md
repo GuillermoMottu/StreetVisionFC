@@ -489,28 +489,28 @@ Dejar la extension reproducible, acotada y documentada.
 
 ### Tarea 35.1 - Documentar uso
 
-- [ ] Agregar comandos para arrancar app local.
-- [ ] Agregar estructura esperada de artefactos.
-- [ ] Agregar ejemplos con datos precomputados.
-- [ ] Agregar notas de hardware y rendimiento.
+- [x] Agregar comandos para arrancar app local.
+- [x] Agregar estructura esperada de artefactos.
+- [x] Agregar ejemplos con datos precomputados.
+- [x] Agregar notas de hardware y rendimiento.
 
 ### Tarea 35.2 - Documentar decisiones
 
-- [ ] Registrar decision tecnica de usar playback precomputado como primer paso.
-- [ ] Registrar decision sobre SSE o WebSocket.
-- [ ] Registrar decision sobre modos de inferencia.
-- [ ] Registrar limitaciones de SAM 3 online.
+- [x] Registrar decision tecnica de usar playback precomputado como primer paso.
+- [x] Registrar decision sobre SSE o WebSocket.
+- [x] Registrar decision sobre modos de inferencia.
+- [x] Registrar limitaciones de SAM 3 online.
 
 ### Tarea 35.3 - Cierre
 
-- [ ] Crear resumen experimental.
-- [ ] Crear manifest de artefactos ligeros.
-- [ ] Registrar pruebas ejecutadas.
-- [ ] Registrar riesgos pendientes.
+- [x] Crear resumen experimental.
+- [x] Crear manifest de artefactos ligeros.
+- [x] Registrar pruebas ejecutadas.
+- [x] Registrar riesgos pendientes.
 
 ### Criterio de aceptacion
 
-- [ ] La extension tiene instrucciones claras y evidencia ligera sin agregar archivos pesados a Git.
+- [x] La extension tiene instrucciones claras y evidencia ligera sin agregar archivos pesados a Git.
 
 ## Criterio De Exito Inicial
 
