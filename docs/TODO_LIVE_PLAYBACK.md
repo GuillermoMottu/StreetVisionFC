@@ -332,30 +332,30 @@ Adaptar reglas de eventos para operar con ventanas temporales moviles.
 
 ### Tarea 30.1 - Buffers temporales
 
-- [ ] Mantener ultimos N frames de tracks.
-- [ ] Mantener historial reciente del balon.
-- [ ] Mantener historial de posesion candidata.
-- [ ] Mantener historial de proximidades robot-balon y robot-robot.
+- [x] Mantener ultimos N frames de tracks.
+- [x] Mantener historial reciente del balon.
+- [x] Mantener historial de posesion candidata.
+- [x] Mantener historial de proximidades robot-balon y robot-robot.
 
 ### Tarea 30.2 - Eventos candidatos
 
-- [ ] Detectar posesion candidata.
-- [ ] Detectar tiro aproximado.
-- [ ] Detectar pase simple o interaccion.
-- [ ] Detectar colision o disputa.
-- [ ] Detectar highlight provisional por velocidad, zona o cambio de posesion.
+- [x] Detectar posesion candidata.
+- [x] Detectar tiro aproximado.
+- [x] Detectar pase simple o interaccion.
+- [x] Detectar colision o disputa.
+- [x] Detectar highlight provisional por velocidad, zona o cambio de posesion.
 
 ### Tarea 30.3 - Ciclo de vida del evento
 
-- [ ] Crear evento candidato.
-- [ ] Actualizar evento si llegan nuevos frames compatibles.
-- [ ] Confirmar evento si cumple duracion/confianza minima.
-- [ ] Descartar evento si se contradice con frames nuevos.
-- [ ] Exportar `stream_events.jsonl`.
+- [x] Crear evento candidato.
+- [x] Actualizar evento si llegan nuevos frames compatibles.
+- [x] Confirmar evento si cumple duracion/confianza minima.
+- [x] Descartar evento si se contradice con frames nuevos.
+- [x] Exportar `stream_events.jsonl`.
 
 ### Criterio de aceptacion
 
-- [ ] Los eventos aparecen durante la reproduccion con estado provisional y se actualizan sin esperar el analisis batch.
+- [x] Los eventos aparecen durante la reproduccion con estado provisional y se actualizan sin esperar el analisis batch.
 
 ## Actividad 31 - Mini-Mapa Y Metricas Vivas
 
