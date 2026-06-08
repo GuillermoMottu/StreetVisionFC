@@ -389,28 +389,28 @@ Evitar que el video o la UI se congelen cuando el analisis se atrasa.
 
 ### Tarea 32.1 - Cola de frames
 
-- [ ] Definir tamano maximo de cola.
-- [ ] Descartar frames antiguos si ya no sirven para la vista actual.
-- [ ] Priorizar frame actual sobre frames atrasados.
-- [ ] Separar reloj de video y reloj de analisis.
+- [x] Definir tamano maximo de cola.
+- [x] Descartar frames antiguos si ya no sirven para la vista actual.
+- [x] Priorizar frame actual sobre frames atrasados.
+- [x] Separar reloj de video y reloj de analisis.
 
 ### Tarea 32.2 - Estados de degradacion
 
-- [ ] Mostrar `live` cuando el overlay esta sincronizado.
-- [ ] Mostrar `delayed` cuando el overlay llega tarde.
-- [ ] Mostrar `replaying_cache` cuando se usan datos precomputados.
-- [ ] Mostrar `analysis_paused` cuando el motor se detiene.
+- [x] Mostrar `live` cuando el overlay esta sincronizado.
+- [x] Mostrar `delayed` cuando el overlay llega tarde.
+- [x] Mostrar `replaying_cache` cuando se usan datos precomputados.
+- [x] Mostrar `analysis_paused` cuando el motor se detiene.
 
 ### Tarea 32.3 - Politica de fallback
 
-- [ ] Usar ultimo overlay disponible si falta el frame actual.
-- [ ] Saltar inferencia pesada si se acumula latencia.
-- [ ] Reducir capas visuales si la UI baja rendimiento.
-- [ ] Cambiar a modo precomputado si online no cumple presupuesto.
+- [x] Usar ultimo overlay disponible si falta el frame actual.
+- [x] Saltar inferencia pesada si se acumula latencia.
+- [x] Reducir capas visuales si la UI baja rendimiento.
+- [x] Cambiar a modo precomputado si online no cumple presupuesto.
 
 ### Criterio de aceptacion
 
-- [ ] La reproduccion del video sigue fluida aunque el analisis llegue con retraso.
+- [x] La reproduccion del video sigue fluida aunque el analisis llegue con retraso.
 
 ## Actividad 33 - Validacion Tecnica
 
