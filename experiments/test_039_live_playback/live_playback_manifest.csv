@@ -14,4 +14,5 @@ stream_latency_metrics,csv,stream_latency_metrics.csv,live_playback_stream,true,
 stream_summary,json,stream_summary.json,live_playback_stream,true,stream,"SSE transport decision, message counts and warning summary."
 frame_loop_summary,json,frame_loop_summary.json,online_frame_loop,true,engine,"Online frame loop controls, state and performance summary."
 frame_loop_metrics,csv,frame_loop_metrics.csv,online_frame_loop,true,engine,61 per-frame stage metric rows.
+inference_modes,json,inference_modes.json,live_playback_inference,true,inference,Selected inference mode: precomputed.
 source_video,video,/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov,local video path,false,local_input,Heavy/local input; never versioned.

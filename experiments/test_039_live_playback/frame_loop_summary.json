@@ -1,6 +1,10 @@
 {
   "mode": "precomputed_online_loop",
-  "inference_mode": "precomputed_lookup",
+  "inference_mode": "precomputed",
+  "inference_profile": "Precomputed SAM 3 detections",
+  "inference_status": "recommended_for_demo",
+  "inference_stride": 1,
+  "detection_source": "experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv",
   "inference_enabled": false,
   "tracker_mode": "incremental_precomputed_snapshot",
   "event_window_frames": 30,

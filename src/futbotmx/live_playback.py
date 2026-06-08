@@ -48,6 +48,8 @@ DEFAULT_HIGHLIGHTS_CANDIDATES = (
 )
 MANIFEST_FIELDS = ["asset_id", "asset_type", "path", "source_artifact", "is_versioned", "role", "notes"]
 DEFAULT_TRAIL_LENGTH = 16
+DEFAULT_INFERENCE_MODE = "precomputed"
+INFERENCE_MODE_IDS = ("precomputed", "sam3_sampling", "lightweight_detector")
 STREAM_MESSAGE_TYPES = ("session_status", "frame_result", "event_update", "latency_metrics", "warning")
 STREAM_LATENCY_FIELDS = [
     "sequence",
@@ -76,8 +78,12 @@ STREAM_LATENCY_FIELDS = [
     "backpressure",
     "source",
     "inference_mode",
+    "inference_status",
+    "inference_stride",
     "tracker_mode",
     "event_window_frames",
+    "gpu_memory_mb",
+    "gpu_memory_metric",
     "overlay_ready",
 ]
 
@@ -108,6 +114,11 @@ class LivePlaybackConfig:
     highlights_csv: str
     output_dir: str
     trail_length: int = DEFAULT_TRAIL_LENGTH
+    inference_mode: str = DEFAULT_INFERENCE_MODE
+    sam3_stride: int = 8
+    lightweight_stride: int = 2
+    allow_gpu: bool = False
+    gpu_profile: str = "cpu_safe"
 
 
 @dataclass(frozen=True)
@@ -136,11 +147,39 @@ class VideoMetadata:
 
 
 @dataclass(frozen=True)
+class InferenceModeProfile:
+    mode_id: str
+    label: str
+    status: str
+    recommended: bool
+    selected: bool
+    detection_source: str
+    fallback_mode: str
+    stride_frames: int
+    frame_resolution_policy: str
+    reuse_policy: str
+    interpolation_policy: str
+    gpu_required: bool
+    hardware_profile: str
+    online_inference: bool
+    tracker_compatible: bool
+    expected_latency_ms: float
+    latency_budget_ms: float
+    gpu_memory_metric: str
+    quality_note: str
+    limitation: str
+
+
+@dataclass(frozen=True)
 class OnlineFrameLoopConfig:
     mode: str
     target_fps: float
     inference_enabled: bool
     inference_mode: str
+    inference_profile: str
+    inference_status: str
+    inference_stride: int
+    detection_source: str
     tracker_mode: str
     event_window_frames: int
     processing_budget_ms: float
@@ -196,8 +235,15 @@ def live_playback_config_from_project(
     tracks_csv: str | None = None,
     events_json: str | None = None,
     highlights_csv: str | None = None,
+    inference_mode: str | None = None,
+    sam3_stride: int | None = None,
+    lightweight_stride: int | None = None,
+    allow_gpu: bool | None = None,
+    gpu_profile: str | None = None,
 ) -> LivePlaybackConfig:
     clip = selected_playback_clip(playback_clips_from_config(config), clip_id)
+    live_config = config.get("live_playback", {}) if isinstance(config.get("live_playback", {}), dict) else {}
+    configured_inference = live_config.get("inference", {}) if isinstance(live_config.get("inference", {}), dict) else {}
     return LivePlaybackConfig(
         clip_id=clip.clip_id,
         video_path=video_path if video_path is not None else clip.video_path,
@@ -210,6 +256,11 @@ def live_playback_config_from_project(
         events_json=events_json or _first_existing(root, DEFAULT_EVENTS_CANDIDATES).as_posix(),
         highlights_csv=highlights_csv or _first_existing(root, DEFAULT_HIGHLIGHTS_CANDIDATES).as_posix(),
         output_dir=output_dir.as_posix(),
+        inference_mode=_normalize_inference_mode(inference_mode or str(configured_inference.get("mode", DEFAULT_INFERENCE_MODE))),
+        sam3_stride=max(1, sam3_stride if sam3_stride is not None else _coerce_int(configured_inference.get("sam3_stride"), 8)),
+        lightweight_stride=max(1, lightweight_stride if lightweight_stride is not None else _coerce_int(configured_inference.get("lightweight_stride"), 2)),
+        allow_gpu=allow_gpu if allow_gpu is not None else _coerce_bool(configured_inference.get("allow_gpu"), False),
+        gpu_profile=gpu_profile or str(configured_inference.get("gpu_profile", "cpu_safe")),
     )
 
 
@@ -310,18 +361,123 @@ def sync_summary_from_frames(playback_config: LivePlaybackConfig, frames: list[i
     }
 
 
+def inference_mode_profiles(playback_config: LivePlaybackConfig) -> list[InferenceModeProfile]:
+    fps = playback_config.fps or 30.0
+    latency_budget = round(1000.0 / fps, 6)
+    selected_mode = _normalize_inference_mode(playback_config.inference_mode)
+    sam3_status = "gpu_sampling_ready" if playback_config.allow_gpu and playback_config.gpu_profile == "msi_gpu" else "configured_gpu_required"
+    return [
+        InferenceModeProfile(
+            mode_id="precomputed",
+            label="Precomputed SAM 3 detections",
+            status="recommended_for_demo",
+            recommended=True,
+            selected=selected_mode == "precomputed",
+            detection_source=playback_config.tracks_csv,
+            fallback_mode="precomputed",
+            stride_frames=1,
+            frame_resolution_policy="exact_or_nearest_available_frame",
+            reuse_policy="load_cached_tracks_by_frame",
+            interpolation_policy="disabled; use exact frame or previous/future nearest frame",
+            gpu_required=False,
+            hardware_profile="any_local_machine",
+            online_inference=False,
+            tracker_compatible=True,
+            expected_latency_ms=0.65,
+            latency_budget_ms=latency_budget,
+            gpu_memory_metric="not_applicable",
+            quality_note="Usa artefactos SAM 3/Level 3 ya generados; recomendado para demo fluida.",
+            limitation="No mejora ni corrige detecciones durante playback; depende de la calidad offline.",
+        ),
+        InferenceModeProfile(
+            mode_id="sam3_sampling",
+            label="SAM 3 sampling",
+            status=sam3_status,
+            recommended=False,
+            selected=selected_mode == "sam3_sampling",
+            detection_source="sam3_runtime_sampling_with_precomputed_fallback",
+            fallback_mode="precomputed",
+            stride_frames=max(1, playback_config.sam3_stride),
+            frame_resolution_policy="sampled_frame_or_nearest_cached_frame",
+            reuse_policy="reuse_last_sampled_detection_until_next_sampling_frame",
+            interpolation_policy="reuse detections between sampled frames; interpolation remains disabled until validated",
+            gpu_required=True,
+            hardware_profile="msi_gpu_only",
+            online_inference=True,
+            tracker_compatible=True,
+            expected_latency_ms=95.0,
+            latency_budget_ms=latency_budget,
+            gpu_memory_metric="unavailable_without_gpu_probe",
+            quality_note="Mantiene calidad SAM 3 en frames muestreados y conserva fallback precomputado.",
+            limitation="No debe ejecutarse cada frame; requiere laptop MSI con GPU y medicion real de VRAM.",
+        ),
+        InferenceModeProfile(
+            mode_id="lightweight_detector",
+            label="Lightweight robot/ball detector",
+            status="experimental_stub",
+            recommended=False,
+            selected=selected_mode == "lightweight_detector",
+            detection_source="lightweight_detector_stub_with_precomputed_fallback",
+            fallback_mode="precomputed",
+            stride_frames=max(1, playback_config.lightweight_stride),
+            frame_resolution_policy="fast_detector_frame_or_nearest_cached_frame",
+            reuse_policy="run lightweight detector on stride and reuse cached tracks for gaps",
+            interpolation_policy="reuse nearest detections; SAM 3 offline remains source of high-quality masks",
+            gpu_required=False,
+            hardware_profile="cpu_or_gpu",
+            online_inference=True,
+            tracker_compatible=True,
+            expected_latency_ms=8.0,
+            latency_budget_ms=latency_budget,
+            gpu_memory_metric="optional",
+            quality_note="Prioriza fluidez y deteccion de robots/balon; calidad inferior a SAM 3 offline.",
+            limitation="No genera mascaras SAM 3 de alta calidad y puede degradar precision de eventos.",
+        ),
+    ]
+
+
+def selected_inference_profile(playback_config: LivePlaybackConfig) -> InferenceModeProfile:
+    selected_mode = _normalize_inference_mode(playback_config.inference_mode)
+    for profile in inference_mode_profiles(playback_config):
+        if profile.mode_id == selected_mode:
+            return profile
+    return inference_mode_profiles(playback_config)[0]
+
+
+def inference_mode_catalog(context: dict[str, Any]) -> dict[str, Any]:
+    playback_config: LivePlaybackConfig = context["config"]
+    profiles = inference_mode_profiles(playback_config)
+    selected = selected_inference_profile(playback_config)
+    return {
+        "selected_mode": selected.mode_id,
+        "recommended_mode": "precomputed",
+        "available_modes": [profile.mode_id for profile in profiles],
+        "modes": [asdict(profile) for profile in profiles],
+        "selection_source": "CLI override or live_playback.inference.mode; default is precomputed.",
+        "sam3_boundary": "SAM 3 online sampling is documented but guarded for MSI GPU usage; this desktop run keeps deterministic fallback.",
+        "lightweight_detector_boundary": "Detector ligero remains an experimental hook compatible with the incremental tracker.",
+        "limitations": [profile.limitation for profile in profiles],
+        "selected_profile": asdict(selected),
+    }
+
+
 def online_frame_loop_config_from_playback(
     playback_config: LivePlaybackConfig,
     inference_enabled: bool = False,
     processing_budget_ms: float | None = None,
 ) -> OnlineFrameLoopConfig:
     target_fps = playback_config.fps or 30.0
+    profile = selected_inference_profile(playback_config)
     budget = processing_budget_ms if processing_budget_ms is not None else 1000.0 / target_fps
     return OnlineFrameLoopConfig(
         mode="precomputed_online_loop",
         target_fps=target_fps,
-        inference_enabled=inference_enabled,
-        inference_mode="online_detector_stub" if inference_enabled else "precomputed_lookup",
+        inference_enabled=inference_enabled or profile.online_inference,
+        inference_mode=profile.mode_id,
+        inference_profile=profile.label,
+        inference_status=profile.status,
+        inference_stride=profile.stride_frames,
+        detection_source=profile.detection_source,
         tracker_mode="incremental_precomputed_snapshot",
         event_window_frames=max(6, int(round(target_fps / 2))),
         processing_budget_ms=round(budget, 6),
@@ -380,6 +536,10 @@ def build_online_frame_loop(
             "engine_state": "created",
             "inference_enabled": loop_config.inference_enabled,
             "inference_mode": loop_config.inference_mode,
+            "inference_profile": loop_config.inference_profile,
+            "inference_status": loop_config.inference_status,
+            "inference_stride": loop_config.inference_stride,
+            "detection_source": loop_config.detection_source,
             "tracker_mode": loop_config.tracker_mode,
             "event_window_frames": loop_config.event_window_frames,
             "processing_budget_ms": loop_config.processing_budget_ms,
@@ -410,9 +570,13 @@ def build_online_frame_loop(
         add(
             "warning",
             {
-                "severity": "info",
-                "warning_code": "online_inference_stub",
-                "message": "El hook online esta habilitado, pero esta actividad usa detecciones precomputadas como fallback determinista.",
+                "severity": "info" if loop_config.inference_mode != "sam3_sampling" else "warn",
+                "warning_code": f"{loop_config.inference_mode}_fallback",
+                "message": "El modo online esta seleccionado, pero esta actividad mantiene fallback precomputado determinista para evitar dependencias/GPU no disponibles.",
+                "inference_mode": loop_config.inference_mode,
+                "inference_status": loop_config.inference_status,
+                "inference_stride": loop_config.inference_stride,
+                "detection_source": loop_config.detection_source,
             },
         )
 
@@ -459,8 +623,11 @@ def build_online_frame_loop(
                 "active_highlight_ids": [str(highlight.get("highlight_id", "")) for highlight in highlights[:24]],
                 "engine_mode": loop_config.mode,
                 "frame_source": "requested_frame" if requested_frame != frame else "available_frame_sequence",
-                "detection_source": "online_stub_precomputed_fallback" if loop_config.inference_enabled else "precomputed_tracks",
+                "detection_source": loop_config.detection_source,
                 "inference_mode": loop_config.inference_mode,
+                "inference_profile": loop_config.inference_profile,
+                "inference_status": loop_config.inference_status,
+                "inference_stride": loop_config.inference_stride,
                 "tracker_mode": loop_config.tracker_mode,
                 "tracker_state": "updated_incremental_snapshot",
                 "event_window_frames": loop_config.event_window_frames,
@@ -611,6 +778,7 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
         _endpoint_row("/stream-latency.csv", "text/csv", "stream_metrics", "Latency metrics emitted by the SSE channel."),
         _endpoint_row("/frame-loop-summary.json", "application/json", "frame_loop", "Online frame loop status, controls and performance summary."),
         _endpoint_row("/frame-loop-metrics.csv", "text/csv", "frame_loop_metrics", "Per-frame stage timings from the online frame loop."),
+        _endpoint_row("/inference-modes.json", "application/json", "inference_modes", "Configurable inference mode catalog and selected profile."),
         _endpoint_row("/tracks.csv", "text/csv", "tracks", "Normalized live tracks."),
         _endpoint_row("/events.json", "application/json", "events", "Normalized live events."),
         _endpoint_row("/highlights.csv", "text/csv", "highlights", "Normalized live highlights."),
@@ -631,6 +799,7 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
             "reason": "Playback local solo requiere flujo backend->frontend; WebSocket queda reservado para comandos online bidireccionales.",
             "message_types": list(STREAM_MESSAGE_TYPES),
             "producer": "online_frame_loop",
+            "inference_mode": context["inference_modes"]["selected_mode"],
         },
         "video": {
             "path": config.video_path,
@@ -650,6 +819,7 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
             "stream_summary": "stream_summary.json",
             "frame_loop_summary": "frame_loop_summary.json",
             "frame_loop_metrics": "frame_loop_metrics.csv",
+            "inference_modes": "inference_modes.json",
             "config": "config.yaml",
             "summary": "summary.md",
         },
@@ -752,6 +922,10 @@ def build_live_playback_package(root: Path, config_path: Path, playback_config: 
         frame_loop_metrics_csv(context["frame_loop"]),
         encoding="utf-8",
     )
+    (output_dir / "inference_modes.json").write_text(
+        json.dumps(context["inference_modes"], indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
     (output_dir / "playback.html").write_text(render_playback_html(context), encoding="utf-8")
     write_live_playback_config(root, config_path, playback_config, context)
     write_live_playback_manifest(root, playback_config, context)
@@ -822,6 +996,7 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
             "validation_errors": sum(len(row["errors"]) for row in validation),
         },
     }
+    context["inference_modes"] = inference_mode_catalog(context)
     frame_loop = build_online_frame_loop(context)
     stream_messages = frame_loop["messages"]
     context["frame_loop"] = frame_loop
@@ -833,6 +1008,8 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
     context["summary"]["frame_loop_processed_count"] = frame_loop["summary"]["processed_frame_count"]
     context["summary"]["frame_loop_skipped_count"] = frame_loop["summary"]["skipped_frame_count"]
     context["summary"]["frame_loop_avg_overlay_ms"] = frame_loop["summary"]["average_total_to_overlay_ms"]
+    context["summary"]["inference_mode"] = context["inference_modes"]["selected_mode"]
+    context["summary"]["recommended_inference_mode"] = context["inference_modes"]["recommended_mode"]
     return context
 
 
@@ -903,6 +1080,7 @@ def render_playback_html(context: dict[str, Any]) -> str:
             '<span>Velocidad <strong id="rateReadout">1.00x</strong></span>',
             '<span>Datos <strong id="dataReadout">sin datos</strong></span>',
             '<span>Motor <strong id="engineReadout">loop pendiente</strong></span>',
+            '<span>Inferencia <strong id="inferenceReadout">precomputed</strong></span>',
             '<span>Canal <strong id="streamReadout">sse pendiente</strong></span>',
             '<span>Mensajes <strong id="streamMessageReadout">0</strong></span>',
             '<span>Latencia <strong id="latencyReadout">n/a</strong></span>',
@@ -949,6 +1127,7 @@ def client_payload(context: dict[str, Any]) -> dict[str, Any]:
         "video_metadata": asdict(context["video_metadata"]),
         "stream_summary": context["stream_summary"],
         "frame_loop": context["frame_loop"]["summary"],
+        "inference_modes": context["inference_modes"],
         "endpoints": {
             "manifest": "/manifest.json",
             "stream": "/stream",
@@ -957,6 +1136,7 @@ def client_payload(context: dict[str, Any]) -> dict[str, Any]:
             "stream_latency": "/stream-latency.csv",
             "frame_loop_summary": "/frame-loop-summary.json",
             "frame_loop_metrics": "/frame-loop-metrics.csv",
+            "inference_modes": "/inference-modes.json",
             "tracks": "/tracks.csv",
             "events": "/events.json",
             "highlights": "/highlights.csv",
@@ -980,6 +1160,7 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
         "clock_source": "video_currentTime",
         "contract": "live_playback_data_contract_v0.1",
         "config": asdict(playback_config),
+        "inference": context["inference_modes"],
         "summary": context["summary"],
         "video_metadata": asdict(context["video_metadata"]),
         "sync": context["sync"],
@@ -998,6 +1179,7 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
             "stream_summary.json",
             "frame_loop_summary.json",
             "frame_loop_metrics.csv",
+            "inference_modes.json",
             "live_playback_manifest.csv",
             "summary.md",
         ],
@@ -1022,6 +1204,7 @@ def write_live_playback_manifest(root: Path, playback_config: LivePlaybackConfig
         _manifest_row("stream_summary", "json", "stream_summary.json", "live_playback_stream", True, "stream", "SSE transport decision, message counts and warning summary."),
         _manifest_row("frame_loop_summary", "json", "frame_loop_summary.json", "online_frame_loop", True, "engine", "Online frame loop controls, state and performance summary."),
         _manifest_row("frame_loop_metrics", "csv", "frame_loop_metrics.csv", "online_frame_loop", True, "engine", f"{context['frame_loop']['summary']['processed_frame_count']} per-frame stage metric rows."),
+        _manifest_row("inference_modes", "json", "inference_modes.json", "live_playback_inference", True, "inference", f"Selected inference mode: {context['inference_modes']['selected_mode']}."),
         _manifest_row("source_video", "video", playback_config.video_path, "local video path", False, "local_input", "Heavy/local input; never versioned."),
     ]
     output = root / playback_config.output_dir / "live_playback_manifest.csv"
@@ -1060,6 +1243,8 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         f"- Frames procesados por loop online: `{summary['frame_loop_processed_count']}`.",
         f"- Frames saltados por backpressure: `{summary['frame_loop_skipped_count']}`.",
         f"- Latencia promedio loop hasta overlay: `{summary['frame_loop_avg_overlay_ms']}` ms.",
+        f"- Modo de inferencia seleccionado: `{summary['inference_mode']}`.",
+        f"- Modo recomendado para demo: `{summary['recommended_inference_mode']}`.",
         f"- Errores de validacion: `{summary['validation_errors']}`.",
         "",
         "## Capas",
@@ -1080,12 +1265,13 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "- `stream_summary.json`.",
         "- `frame_loop_summary.json`.",
         "- `frame_loop_metrics.csv`.",
+        "- `inference_modes.json`.",
         "- `config.yaml`.",
         "- `live_playback_manifest.csv`.",
         "",
         "## Backend Local",
         "",
-        "- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/frame-loop-summary.json`, `/frame-loop-metrics.csv`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
+        "- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/frame-loop-summary.json`, `/frame-loop-metrics.csv`, `/inference-modes.json`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
         "- Politica de video: solo se sirve el `clip_id` configurado; no se aceptan rutas arbitrarias por query.",
         "- Video pesado: permanece fuera de Git y queda marcado como `is_versioned=false`.",
         "- Si el video no existe en otro equipo, el reproductor muestra aviso local y conserva datos/overlays versionados.",
@@ -1107,6 +1293,14 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "- Inferencia online real: diferida; el hook existe y usa fallback precomputado determinista para esta actividad.",
         "- Metricas por etapa: lectura de frame, deteccion, tracking, eventos, overlay y total hasta overlay.",
         "- Evidencia: `frame_loop_summary.json` y `frame_loop_metrics.csv`.",
+        "",
+        "## Modos De Inferencia",
+        "",
+        "- Modo seleccionado por configuracion: `precomputed`, `sam3_sampling` o `lightweight_detector`.",
+        "- Recomendado para demo fluida: `precomputed`, porque carga detecciones SAM 3/Level 3 ya generadas y sincroniza por frame o frame cercano.",
+        "- `sam3_sampling`: ejecuta SAM 3 solo cada N frames cuando exista GPU MSI autorizada; entre muestras reusa detecciones y registra latencia/VRAM cuando este disponible.",
+        "- `lightweight_detector`: hook experimental mas rapido para robots y balon; mantiene compatibilidad con tracker incremental pero documenta degradacion frente a SAM 3 offline.",
+        "- Evidencia: `inference_modes.json` y endpoint `/inference-modes.json`.",
         "",
         "## Sincronizacion",
         "",
@@ -1137,9 +1331,25 @@ def run_smoke_test(
     output_dir: Path,
     clip_id: str | None = None,
     video_path: str | None = None,
+    inference_mode: str | None = None,
+    sam3_stride: int | None = None,
+    lightweight_stride: int | None = None,
+    allow_gpu: bool | None = None,
+    gpu_profile: str | None = None,
 ) -> dict[str, Any]:
     project_config = load_config(root / config_path)
-    playback_config = live_playback_config_from_project(root, project_config, output_dir, clip_id=clip_id, video_path=video_path)
+    playback_config = live_playback_config_from_project(
+        root,
+        project_config,
+        output_dir,
+        clip_id=clip_id,
+        video_path=video_path,
+        inference_mode=inference_mode,
+        sam3_stride=sam3_stride,
+        lightweight_stride=lightweight_stride,
+        allow_gpu=allow_gpu,
+        gpu_profile=gpu_profile,
+    )
     return build_live_playback_package(root, config_path, playback_config)
 
 
@@ -1151,8 +1361,24 @@ def serve_live_playback_app(
     port: int,
     clip_id: str | None = None,
     video_path: str | None = None,
+    inference_mode: str | None = None,
+    sam3_stride: int | None = None,
+    lightweight_stride: int | None = None,
+    allow_gpu: bool | None = None,
+    gpu_profile: str | None = None,
 ) -> None:
-    context = run_smoke_test(root, config_path, output_dir, clip_id=clip_id, video_path=video_path)
+    context = run_smoke_test(
+        root,
+        config_path,
+        output_dir,
+        clip_id=clip_id,
+        video_path=video_path,
+        inference_mode=inference_mode,
+        sam3_stride=sam3_stride,
+        lightweight_stride=lightweight_stride,
+        allow_gpu=allow_gpu,
+        gpu_profile=gpu_profile,
+    )
     handler = make_handler(root, context)
     server = ThreadingHTTPServer((host, port), handler)
     actual_host, actual_port = server.server_address
@@ -1198,6 +1424,9 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
                 return
             if parsed.path == "/frame-loop-metrics.csv":
                 self._send_text(frame_loop_metrics_csv(context["frame_loop"]), "text/csv; charset=utf-8")
+                return
+            if parsed.path == "/inference-modes.json":
+                self._send_json(context["inference_modes"])
                 return
             if parsed.path == "/tracks.csv":
                 self._send_text(csv_response_text(context["tracks"], LIVE_TRACK_FIELDS), "text/csv; charset=utf-8")
@@ -1407,6 +1636,7 @@ const durationReadout=document.getElementById('durationReadout');
 const rateReadout=document.getElementById('rateReadout');
 const dataReadout=document.getElementById('dataReadout');
 const engineReadout=document.getElementById('engineReadout');
+const inferenceReadout=document.getElementById('inferenceReadout');
 const streamReadout=document.getElementById('streamReadout');
 const streamMessageReadout=document.getElementById('streamMessageReadout');
 const latencyReadout=document.getElementById('latencyReadout');
@@ -1421,6 +1651,7 @@ let eventSource=null;
 let streamComplete=false;
 let streamMessageCount=0;
 let streamOpenCount=0;
+inferenceReadout.textContent=data.inference_modes?.selected_mode||data.frame_loop?.inference_mode||'precomputed';
 function enabled(id){return document.getElementById(id)?.checked;}
 function frameFromVideoTime(timeSec){const fps=Number(data.config.fps)||30;const raw=Math.round(Math.max(0,timeSec||0)*fps);const end=Number(data.config.end_frame)||raw;return Math.min(raw,end);}
 function frameNow(){return frameFromVideoTime(video.currentTime||0);}
@@ -1443,7 +1674,7 @@ function label(text,x,y,color){ctx.font='12px system-ui';ctx.fillStyle='rgba(5,6
 function badge(text,x,y,color){ctx.font='13px system-ui';const width=Math.min(canvas.width-24,ctx.measureText(text).width+18);ctx.fillStyle='rgba(5,6,5,.82)';ctx.fillRect(x,y,width,24);ctx.strokeStyle=color;ctx.strokeRect(x,y,width,24);ctx.fillStyle='#edf2e9';ctx.fillText(text,x+8,y+16);}
 function renderEventList(events,highlights){const list=document.getElementById('eventList');list.innerHTML='';for(const item of [...events,...highlights].slice(0,6)){const div=document.createElement('div');div.className='event';div.innerHTML='<strong>'+escapeHtml(item.label||item.highlight_id)+'</strong><br>frames '+(item.start_frame||item.start_frame)+'-'+(item.end_frame||item.end_frame)+' | '+(item.status||'provisional');list.appendChild(div);}}
 function connectEventStream(){if(!data.endpoints?.stream||!window.EventSource){streamReadout.textContent='sse no disponible';appendStreamMessage({type:'warning',warning_code:'eventsource_unavailable',message:'EventSource no disponible en este navegador'});return;}streamOpenCount+=1;streamReadout.textContent=streamOpenCount===1?'sse conectando':'sse reconectando '+streamOpenCount;eventSource=new EventSource(data.endpoints.stream);eventSource.onopen=()=>{streamReadout.textContent='sse activo';};for(const type of ['session_status','frame_result','event_update','latency_metrics','warning']){eventSource.addEventListener(type,event=>handleStreamMessage(type,event.data));}eventSource.onerror=()=>{if(streamComplete){eventSource.close();return;}streamReadout.textContent='sse reconexion pendiente';};}
-function handleStreamMessage(type,raw){let message;try{message=JSON.parse(raw);}catch(error){message={type:'warning',warning_code:'bad_stream_payload',message:String(error)};}streamMessageCount+=1;streamMessageReadout.textContent=String(streamMessageCount);if(message.engine_mode||message.mode)engineReadout.textContent=message.engine_mode||message.mode;if(type==='latency_metrics'){latencyReadout.textContent=Number(message.total_to_overlay_ms||message.emit_latency_ms||0).toFixed(1)+'ms';}if(type==='frame_result'){streamReadout.textContent='frame '+message.frame;}if(type==='warning'){streamReadout.textContent='warning '+(message.warning_code||'stream');}if(type==='session_status'&&(message.status==='complete'||message.status==='stopped')){streamComplete=true;streamReadout.textContent='sse '+message.status;if(eventSource)eventSource.close();}appendStreamMessage(message);}
+function handleStreamMessage(type,raw){let message;try{message=JSON.parse(raw);}catch(error){message={type:'warning',warning_code:'bad_stream_payload',message:String(error)};}streamMessageCount+=1;streamMessageReadout.textContent=String(streamMessageCount);if(message.engine_mode||message.mode)engineReadout.textContent=message.engine_mode||message.mode;if(message.inference_mode)inferenceReadout.textContent=message.inference_mode;if(type==='latency_metrics'){latencyReadout.textContent=Number(message.total_to_overlay_ms||message.emit_latency_ms||0).toFixed(1)+'ms';}if(type==='frame_result'){streamReadout.textContent='frame '+message.frame;}if(type==='warning'){streamReadout.textContent='warning '+(message.warning_code||'stream');}if(type==='session_status'&&(message.status==='complete'||message.status==='stopped')){streamComplete=true;streamReadout.textContent='sse '+message.status;if(eventSource)eventSource.close();}appendStreamMessage(message);}
 function appendStreamMessage(message){if(!streamList)return;const div=document.createElement('div');div.className='event stream-event';const type=message.type||'message';const frame=message.frame!==undefined?'frame '+message.frame:'seq '+(message.sequence||'-');const detail=message.status||message.warning_code||message.label||message.resolution_status||message.source||'';div.innerHTML='<strong>'+escapeHtml(type)+'</strong><br>'+escapeHtml(frame)+' | '+escapeHtml(detail);streamList.prepend(div);while(streamList.children.length>8)streamList.removeChild(streamList.lastElementChild);}
 function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));}
 function markTemporalJump(){suppressTrails=2;resizeCanvas();}
@@ -1560,7 +1791,12 @@ def _frame_loop_stage_metrics(
     event_count = len(events)
     highlight_count = len(highlights)
     frame_read_ms = 0.18
-    detection_ms = (4.5 + track_count * 0.12) if loop_config.inference_enabled else (0.22 + track_count * 0.02)
+    if loop_config.inference_mode == "sam3_sampling":
+        detection_ms = 92.0 + track_count * 0.4
+    elif loop_config.inference_mode == "lightweight_detector":
+        detection_ms = 5.5 + track_count * 0.18
+    else:
+        detection_ms = 0.22 + track_count * 0.02
     tracking_ms = 0.12 + track_count * 0.04
     events_ms = 0.08 + (event_count + highlight_count) * 0.03
     overlay_ms = 0.16 + track_count * 0.02
@@ -1581,8 +1817,12 @@ def _frame_loop_stage_metrics(
         "backpressure": total > loop_config.processing_budget_ms,
         "source": "precomputed_online_frame_loop",
         "inference_mode": loop_config.inference_mode,
+        "inference_status": loop_config.inference_status,
+        "inference_stride": loop_config.inference_stride,
         "tracker_mode": loop_config.tracker_mode,
         "event_window_frames": loop_config.event_window_frames,
+        "gpu_memory_mb": "",
+        "gpu_memory_metric": "not_available" if loop_config.inference_mode == "sam3_sampling" else "not_applicable",
         "overlay_ready": resolution.resolved_frame is not None,
         "requested_frame": requested_frame,
     }
@@ -1614,6 +1854,10 @@ def _frame_loop_summary(
     return {
         "mode": loop_config.mode,
         "inference_mode": loop_config.inference_mode,
+        "inference_profile": loop_config.inference_profile,
+        "inference_status": loop_config.inference_status,
+        "inference_stride": loop_config.inference_stride,
+        "detection_source": loop_config.detection_source,
         "inference_enabled": loop_config.inference_enabled,
         "tracker_mode": loop_config.tracker_mode,
         "event_window_frames": loop_config.event_window_frames,
@@ -1698,6 +1942,35 @@ def _optional_int(value: Any) -> int | None:
     if value in {"", None}:
         return None
     return _coerce_int(value, 0)
+
+
+def _coerce_bool(value: Any, default: bool = False) -> bool:
+    if value in {"", None}:
+        return default
+    if isinstance(value, bool):
+        return value
+    return str(value).strip().lower() in {"1", "true", "yes", "y", "on"}
+
+
+def _normalize_inference_mode(value: Any) -> str:
+    mode = str(value or DEFAULT_INFERENCE_MODE).strip().lower().replace("-", "_")
+    aliases = {
+        "precomputed_lookup": "precomputed",
+        "precompute": "precomputed",
+        "offline": "precomputed",
+        "sam3": "sam3_sampling",
+        "sam_3": "sam3_sampling",
+        "sam3_stride": "sam3_sampling",
+        "sam3_sampling_gpu": "sam3_sampling",
+        "light": "lightweight_detector",
+        "lightweight": "lightweight_detector",
+        "fast_detector": "lightweight_detector",
+        "detector_ligero": "lightweight_detector",
+    }
+    normalized = aliases.get(mode, mode)
+    if normalized not in INFERENCE_MODE_IDS:
+        return DEFAULT_INFERENCE_MODE
+    return normalized
 
 
 def _first(params: dict[str, list[str]], key: str, default: str) -> str:

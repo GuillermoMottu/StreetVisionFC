@@ -271,28 +271,28 @@ Resolver el cuello de botella de SAM 3 mediante modos configurables.
 
 ### Tarea 28.1 - Modo precomputado
 
-- [ ] Cargar detecciones SAM 3 ya generadas.
-- [ ] Sincronizar detecciones por frame.
-- [ ] Permitir stride y frame mas cercano.
-- [ ] Marcar el modo como recomendado para demo fluida.
+- [x] Cargar detecciones SAM 3 ya generadas.
+- [x] Sincronizar detecciones por frame.
+- [x] Permitir stride y frame mas cercano.
+- [x] Marcar el modo como recomendado para demo fluida.
 
 ### Tarea 28.2 - Modo SAM 3 con sampling
 
-- [ ] Ejecutar SAM 3 solo cada N frames.
-- [ ] Reusar o interpolar resultados entre frames.
-- [ ] Ejecutar solo en laptop MSI con GPU cuando aplique.
-- [ ] Registrar latencia y memoria GPU si esta disponible.
+- [x] Ejecutar SAM 3 solo cada N frames.
+- [x] Reusar o interpolar resultados entre frames.
+- [x] Ejecutar solo en laptop MSI con GPU cuando aplique.
+- [x] Registrar latencia y memoria GPU si esta disponible.
 
 ### Tarea 28.3 - Modo detector ligero
 
-- [ ] Evaluar detector mas rapido para robots y balon.
-- [ ] Usar SAM 3 offline para resultados de alta calidad.
-- [ ] Documentar degradacion de calidad.
-- [ ] Mantener compatibilidad con tracker incremental.
+- [x] Evaluar detector mas rapido para robots y balon.
+- [x] Usar SAM 3 offline para resultados de alta calidad.
+- [x] Documentar degradacion de calidad.
+- [x] Mantener compatibilidad con tracker incremental.
 
 ### Criterio de aceptacion
 
-- [ ] La app puede elegir modo por configuracion y documenta sus limitaciones.
+- [x] La app puede elegir modo por configuracion y documenta sus limitaciones.
 
 ## Actividad 29 - Tracker Incremental
 

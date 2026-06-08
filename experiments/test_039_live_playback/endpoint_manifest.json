@@ -15,7 +15,8 @@
       "latency_metrics",
       "warning"
     ],
-    "producer": "online_frame_loop"
+    "producer": "online_frame_loop",
+    "inference_mode": "precomputed"
   },
   "video": {
     "path": "/home/guillermo/V\u00eddeos/CopaFutMX/17 Abril/video-595_singular_display.mov",
@@ -35,6 +36,7 @@
     "stream_summary": "stream_summary.json",
     "frame_loop_summary": "frame_loop_summary.json",
     "frame_loop_metrics": "frame_loop_metrics.csv",
+    "inference_modes": "inference_modes.json",
     "config": "config.yaml",
     "summary": "summary.md"
   },
@@ -108,6 +110,13 @@
       "content_type": "text/csv",
       "role": "frame_loop_metrics",
       "notes": "Per-frame stage timings from the online frame loop."
+    },
+    {
+      "method": "GET",
+      "path": "/inference-modes.json",
+      "content_type": "application/json",
+      "role": "inference_modes",
+      "notes": "Configurable inference mode catalog and selected profile."
     },
     {
       "method": "GET",

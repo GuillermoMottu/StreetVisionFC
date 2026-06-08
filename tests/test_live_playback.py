@@ -25,6 +25,8 @@ from futbotmx.live_playback import (
     csv_response_text,
     frame_loop_metrics_csv,
     frame_from_timestamp,
+    inference_mode_catalog,
+    inference_mode_profiles,
     live_playback_config_from_project,
     online_frame_loop_config_from_playback,
     minimap_payload_for_frame,
@@ -91,6 +93,13 @@ class LivePlaybackTests(unittest.TestCase):
             root = Path(tmpdir)
             create_source_artifacts(root)
             config = project_config("video_fixture", "video.mov")
+            config["live_playback"] = {
+                "inference": {
+                    "mode": "lightweight_detector",
+                    "sam3_stride": 7,
+                    "lightweight_stride": 3,
+                }
+            }
 
             playback_config = live_playback_config_from_project(root, config, Path("experiments/out"), clip_id="video_fixture")
 
@@ -98,6 +107,9 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertEqual(playback_config.tracks_csv, "experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv")
             self.assertEqual(playback_config.events_json, "experiments/test_034_full_analysis/level3_events/level3_events.json")
             self.assertEqual(playback_config.highlights_csv, "experiments/test_034_full_analysis/level3_events/level3_highlights.csv")
+            self.assertEqual(playback_config.inference_mode, "lightweight_detector")
+            self.assertEqual(playback_config.sam3_stride, 7)
+            self.assertEqual(playback_config.lightweight_stride, 3)
 
     def test_context_normalizes_tracks_events_highlights_and_minimap(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -139,6 +151,7 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("ratechange", html)
             self.assertIn("streamReadout", html)
             self.assertIn("engineReadout", html)
+            self.assertIn("inferenceReadout", html)
             self.assertIn("EventSource", html)
             self.assertIn("connectEventStream", html)
 
@@ -167,11 +180,13 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue((output_dir / "stream_summary.json").exists())
             self.assertTrue((output_dir / "frame_loop_summary.json").exists())
             self.assertTrue((output_dir / "frame_loop_metrics.csv").exists())
+            self.assertTrue((output_dir / "inference_modes.json").exists())
             summary = (output_dir / "summary.md").read_text(encoding="utf-8")
             self.assertIn("Playback Vivo Con Overlays Precomputados", summary)
             self.assertIn("Tracks normalizados: `2`", summary)
             self.assertIn("Conversion: `frame = round(currentTime * fps)`", summary)
             self.assertIn("Canal SSE", summary)
+            self.assertIn("Modos De Inferencia", summary)
             endpoint_manifest = json.loads((output_dir / "endpoint_manifest.json").read_text(encoding="utf-8"))
             self.assertTrue(any(endpoint["path"] == "/tracks.csv" for endpoint in endpoint_manifest["endpoints"]))
             stream_summary = json.loads((output_dir / "stream_summary.json").read_text(encoding="utf-8"))
@@ -180,6 +195,9 @@ class LivePlaybackTests(unittest.TestCase):
             frame_loop_summary = json.loads((output_dir / "frame_loop_summary.json").read_text(encoding="utf-8"))
             self.assertEqual(frame_loop_summary["mode"], "precomputed_online_loop")
             self.assertEqual(frame_loop_summary["processed_frame_count"], 1)
+            inference_modes = json.loads((output_dir / "inference_modes.json").read_text(encoding="utf-8"))
+            self.assertEqual(inference_modes["selected_mode"], "precomputed")
+            self.assertEqual(inference_modes["recommended_mode"], "precomputed")
             self.assertIn("frame_result", (output_dir / "stream_messages.jsonl").read_text(encoding="utf-8"))
 
     def test_client_payload_is_small_frontend_contract(self) -> None:
@@ -200,8 +218,10 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertEqual(payload["endpoints"]["manifest"], "/manifest.json")
             self.assertEqual(payload["endpoints"]["stream"], "/stream")
             self.assertEqual(payload["endpoints"]["frame_loop_summary"], "/frame-loop-summary.json")
+            self.assertEqual(payload["endpoints"]["inference_modes"], "/inference-modes.json")
             self.assertEqual(payload["stream_summary"]["transport"], "sse")
             self.assertEqual(payload["frame_loop"]["mode"], "precomputed_online_loop")
+            self.assertEqual(payload["inference_modes"]["selected_mode"], "precomputed")
 
     def test_frame_timestamp_conversion_and_resolution_prefers_previous_frame(self) -> None:
         self.assertEqual(frame_from_timestamp(2.01, 60.0), 121)
@@ -240,6 +260,42 @@ class LivePlaybackTests(unittest.TestCase):
 
         self.assertEqual(frames, [120, 123])
 
+    def test_inference_mode_catalog_selects_configured_mode_and_documents_limits(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            playback_config = fixture_playback_config(root)
+            sam3_config = LivePlaybackConfig(
+                clip_id=playback_config.clip_id,
+                video_path=playback_config.video_path,
+                fps=playback_config.fps,
+                width=playback_config.width,
+                height=playback_config.height,
+                start_frame=playback_config.start_frame,
+                end_frame=playback_config.end_frame,
+                tracks_csv=playback_config.tracks_csv,
+                events_json=playback_config.events_json,
+                highlights_csv=playback_config.highlights_csv,
+                output_dir=playback_config.output_dir,
+                inference_mode="sam3_sampling",
+                sam3_stride=5,
+                allow_gpu=False,
+            )
+            context = {"config": sam3_config}
+
+            profiles = inference_mode_profiles(sam3_config)
+            catalog = inference_mode_catalog(context)
+            selected = catalog["selected_profile"]
+            precomputed = next(profile for profile in profiles if profile.mode_id == "precomputed")
+            lightweight = next(profile for profile in profiles if profile.mode_id == "lightweight_detector")
+
+            self.assertEqual({profile.mode_id for profile in profiles}, {"precomputed", "sam3_sampling", "lightweight_detector"})
+            self.assertTrue(precomputed.recommended)
+            self.assertEqual(catalog["selected_mode"], "sam3_sampling")
+            self.assertEqual(selected["stride_frames"], 5)
+            self.assertEqual(selected["hardware_profile"], "msi_gpu_only")
+            self.assertEqual(selected["gpu_memory_metric"], "unavailable_without_gpu_probe")
+            self.assertIn("calidad inferior", lightweight.quality_note)
+
     def test_backend_endpoint_manifest_documents_fixed_routes_and_video_policy(self) -> None:
         with TemporaryDirectory() as tmpdir:
             root = Path(tmpdir)
@@ -256,6 +312,7 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("/stream-latency.csv", endpoint_paths)
             self.assertIn("/frame-loop-summary.json", endpoint_paths)
             self.assertIn("/frame-loop-metrics.csv", endpoint_paths)
+            self.assertIn("/inference-modes.json", endpoint_paths)
             self.assertIn("/tracks.csv", endpoint_paths)
             self.assertIn("/events.json", endpoint_paths)
             self.assertIn("/highlights.csv", endpoint_paths)
@@ -265,6 +322,7 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("/video?clip_id=video_fixture", endpoint_paths)
             self.assertEqual(manifest["channel"]["selected"], "sse")
             self.assertEqual(manifest["channel"]["producer"], "online_frame_loop")
+            self.assertEqual(manifest["channel"]["inference_mode"], "precomputed")
             self.assertEqual(manifest["channel"]["websocket_status"], "deferred_until_bidirectional_commands")
             self.assertEqual(manifest["path_policy"]["artifacts"], "fixed endpoint names only; no arbitrary filesystem path endpoint")
             self.assertFalse(manifest["video"]["is_versioned"])
@@ -326,7 +384,8 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue(loop["summary"]["emits_partial_results"])
             self.assertFalse(loop["summary"]["requires_final_csv"])
             self.assertEqual(loop["summary"]["processed_frame_count"], 1)
-            self.assertEqual(frame_results[0]["detection_source"], "precomputed_tracks")
+            self.assertEqual(frame_results[0]["detection_source"], playback_config.tracks_csv)
+            self.assertEqual(frame_results[0]["inference_mode"], "precomputed")
             self.assertEqual(frame_results[0]["tracker_state"], "updated_incremental_snapshot")
             self.assertTrue(frame_results[0]["overlay_ready"])
             self.assertIn("frame_read_ms", metrics_csv)
@@ -362,7 +421,11 @@ class LivePlaybackTests(unittest.TestCase):
                 mode="precomputed_online_loop",
                 target_fps=60.0,
                 inference_enabled=False,
-                inference_mode="precomputed_lookup",
+                inference_mode="precomputed",
+                inference_profile="Precomputed SAM 3 detections",
+                inference_status="recommended_for_demo",
+                inference_stride=1,
+                detection_source="experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv",
                 tracker_mode="incremental_precomputed_snapshot",
                 event_window_frames=12,
                 processing_budget_ms=0.2,
