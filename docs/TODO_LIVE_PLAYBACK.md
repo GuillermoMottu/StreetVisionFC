@@ -365,21 +365,21 @@ Mostrar lectura tactica aproximada durante playback.
 
 ### Tarea 31.1 - Mini-mapa sincronizado
 
-- [ ] Reusar calibracion manual cuando exista.
-- [ ] Reusar homografia aproximada o fallback.
-- [ ] Dibujar robots y balon por frame.
-- [ ] Dibujar trails cortos en coordenadas de cancha.
+- [x] Reusar calibracion manual cuando exista.
+- [x] Reusar homografia aproximada o fallback.
+- [x] Dibujar robots y balon por frame.
+- [x] Dibujar trails cortos en coordenadas de cancha.
 
 ### Tarea 31.2 - Metricas vivas
 
-- [ ] Actualizar posesion candidata por equipo cuando exista asignacion.
-- [ ] Actualizar zona de actividad.
-- [ ] Actualizar velocidad aproximada del balon.
-- [ ] Mostrar confianza de calibracion y tracking.
+- [x] Actualizar posesion candidata por equipo cuando exista asignacion.
+- [x] Actualizar zona de actividad.
+- [x] Actualizar velocidad aproximada del balon.
+- [x] Mostrar confianza de calibracion y tracking.
 
 ### Criterio de aceptacion
 
-- [ ] El mini-mapa se actualiza junto con el video y oculta datos no confiables cuando falte calibracion.
+- [x] El mini-mapa se actualiza junto con el video y oculta datos no confiables cuando falte calibracion.
 
 ## Actividad 32 - Backpressure Y Degradacion
 
