@@ -302,27 +302,27 @@ Usar ByteTrack/tracking como proceso vivo que mantiene estado en memoria.
 
 ### Tarea 29.1 - Wrapper de tracker vivo
 
-- [ ] Crear inicializador de tracker por sesion.
-- [ ] Recibir detecciones frame a frame.
-- [ ] Emitir tracks activos por frame.
-- [ ] Mantener tracks perdidos durante una ventana configurable.
+- [x] Crear inicializador de tracker por sesion.
+- [x] Recibir detecciones frame a frame.
+- [x] Emitir tracks activos por frame.
+- [x] Mantener tracks perdidos durante una ventana configurable.
 
 ### Tarea 29.2 - Estado y reset
 
-- [ ] Reiniciar tracker cuando se hace seek hacia atras.
-- [ ] Permitir reconstruir estado desde frame inicial hasta frame actual si es necesario.
-- [ ] Exportar snapshots parciales para depuracion.
-- [ ] Comparar contra tracks batch cuando existan.
+- [x] Reiniciar tracker cuando se hace seek hacia atras.
+- [x] Permitir reconstruir estado desde frame inicial hasta frame actual si es necesario.
+- [x] Exportar snapshots parciales para depuracion.
+- [x] Comparar contra tracks batch cuando existan.
 
 ### Tarea 29.3 - Salida incremental
 
-- [ ] Emitir `live_tracks.jsonl`.
-- [ ] Exportar CSV parcial al terminar sesion.
-- [ ] Incluir confianza y estado del track.
+- [x] Emitir `live_tracks.jsonl`.
+- [x] Exportar CSV parcial al terminar sesion.
+- [x] Incluir confianza y estado del track.
 
 ### Criterio de aceptacion
 
-- [ ] El tracker produce IDs continuos sin esperar al archivo `tracks.csv` final.
+- [x] El tracker produce IDs continuos sin esperar al archivo `tracks.csv` final.
 
 ## Actividad 30 - Detector De Eventos En Streaming
 
