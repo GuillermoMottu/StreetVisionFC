@@ -23,10 +23,12 @@ from futbotmx.live_playback import (
     calibration_payload,
     client_payload,
     csv_response_text,
+    debug_panel_summary,
     frame_loop_metrics_csv,
     frame_from_timestamp,
     inference_mode_catalog,
     inference_mode_profiles,
+    live_tracks_jsonl,
     live_playback_config_from_project,
     online_frame_loop_config_from_playback,
     minimap_payload_for_frame,
@@ -39,6 +41,7 @@ from futbotmx.live_playback import (
     sse_format_message,
     sse_stream_text,
     stream_latency_metrics_csv,
+    stream_events_jsonl,
     stream_messages_jsonl,
     sync_summary_from_frames,
     timestamp_from_frame,
@@ -152,8 +155,15 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("streamReadout", html)
             self.assertIn("engineReadout", html)
             self.assertIn("inferenceReadout", html)
+            self.assertIn("debugPanel", html)
+            self.assertIn("debugFrameReadout", html)
+            self.assertIn("debugQueueReadout", html)
+            self.assertIn("downloadSessionLog", html)
+            self.assertIn("/live_tracks.jsonl", html)
+            self.assertIn("/stream_events.jsonl", html)
             self.assertIn("EventSource", html)
             self.assertIn("connectEventStream", html)
+            self.assertIn("updateDebugPanel", html)
 
     def test_build_live_playback_package_writes_activity_23_artifacts(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -173,20 +183,24 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue((output_dir / "live_tracks.csv").exists())
             self.assertTrue((output_dir / "live_events.json").exists())
             self.assertTrue((output_dir / "live_highlights.csv").exists())
+            self.assertTrue((output_dir / "live_tracks.jsonl").exists())
             self.assertTrue((output_dir / "video_metadata.json").exists())
             self.assertTrue((output_dir / "endpoint_manifest.json").exists())
             self.assertTrue((output_dir / "stream_messages.jsonl").exists())
+            self.assertTrue((output_dir / "stream_events.jsonl").exists())
             self.assertTrue((output_dir / "stream_latency_metrics.csv").exists())
             self.assertTrue((output_dir / "stream_summary.json").exists())
             self.assertTrue((output_dir / "frame_loop_summary.json").exists())
             self.assertTrue((output_dir / "frame_loop_metrics.csv").exists())
             self.assertTrue((output_dir / "inference_modes.json").exists())
+            self.assertTrue((output_dir / "debug_panel_summary.json").exists())
             summary = (output_dir / "summary.md").read_text(encoding="utf-8")
             self.assertIn("Playback Vivo Con Overlays Precomputados", summary)
             self.assertIn("Tracks normalizados: `2`", summary)
             self.assertIn("Conversion: `frame = round(currentTime * fps)`", summary)
             self.assertIn("Canal SSE", summary)
             self.assertIn("Modos De Inferencia", summary)
+            self.assertIn("Panel De Depuracion", summary)
             endpoint_manifest = json.loads((output_dir / "endpoint_manifest.json").read_text(encoding="utf-8"))
             self.assertTrue(any(endpoint["path"] == "/tracks.csv" for endpoint in endpoint_manifest["endpoints"]))
             stream_summary = json.loads((output_dir / "stream_summary.json").read_text(encoding="utf-8"))
@@ -198,7 +212,12 @@ class LivePlaybackTests(unittest.TestCase):
             inference_modes = json.loads((output_dir / "inference_modes.json").read_text(encoding="utf-8"))
             self.assertEqual(inference_modes["selected_mode"], "precomputed")
             self.assertEqual(inference_modes["recommended_mode"], "precomputed")
+            debug_summary = json.loads((output_dir / "debug_panel_summary.json").read_text(encoding="utf-8"))
+            self.assertTrue(debug_summary["diagnostic_coverage"]["latency"])
+            self.assertEqual(debug_summary["download_artifacts"]["live_tracks_jsonl"], "live_tracks.jsonl")
             self.assertIn("frame_result", (output_dir / "stream_messages.jsonl").read_text(encoding="utf-8"))
+            self.assertIn("live_track", (output_dir / "live_tracks.jsonl").read_text(encoding="utf-8"))
+            self.assertIn("event_update", (output_dir / "stream_events.jsonl").read_text(encoding="utf-8"))
 
     def test_client_payload_is_small_frontend_contract(self) -> None:
         with TemporaryDirectory() as tmpdir:
@@ -217,11 +236,16 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertEqual(payload["video_metadata"]["configured_frame_count"], 4)
             self.assertEqual(payload["endpoints"]["manifest"], "/manifest.json")
             self.assertEqual(payload["endpoints"]["stream"], "/stream")
+            self.assertEqual(payload["endpoints"]["session_log"], "/stream-messages.jsonl")
+            self.assertEqual(payload["endpoints"]["live_tracks_jsonl"], "/live_tracks.jsonl")
+            self.assertEqual(payload["endpoints"]["stream_events_jsonl"], "/stream_events.jsonl")
             self.assertEqual(payload["endpoints"]["frame_loop_summary"], "/frame-loop-summary.json")
             self.assertEqual(payload["endpoints"]["inference_modes"], "/inference-modes.json")
+            self.assertEqual(payload["endpoints"]["debug_panel"], "/debug-panel.json")
             self.assertEqual(payload["stream_summary"]["transport"], "sse")
             self.assertEqual(payload["frame_loop"]["mode"], "precomputed_online_loop")
             self.assertEqual(payload["inference_modes"]["selected_mode"], "precomputed")
+            self.assertIn("active_event", payload["debug_panel"]["visible_indicators"])
 
     def test_frame_timestamp_conversion_and_resolution_prefers_previous_frame(self) -> None:
         self.assertEqual(frame_from_timestamp(2.01, 60.0), 121)
@@ -309,10 +333,13 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("/stream", endpoint_paths)
             self.assertIn("/stream-summary.json", endpoint_paths)
             self.assertIn("/stream-messages.jsonl", endpoint_paths)
+            self.assertIn("/live_tracks.jsonl", endpoint_paths)
+            self.assertIn("/stream_events.jsonl", endpoint_paths)
             self.assertIn("/stream-latency.csv", endpoint_paths)
             self.assertIn("/frame-loop-summary.json", endpoint_paths)
             self.assertIn("/frame-loop-metrics.csv", endpoint_paths)
             self.assertIn("/inference-modes.json", endpoint_paths)
+            self.assertIn("/debug-panel.json", endpoint_paths)
             self.assertIn("/tracks.csv", endpoint_paths)
             self.assertIn("/events.json", endpoint_paths)
             self.assertIn("/highlights.csv", endpoint_paths)
@@ -367,6 +394,23 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertTrue(sse_stream.startswith("retry: 3000\n\n"))
             self.assertIn('"type":"latency_metrics"', jsonl)
             self.assertTrue(latency_csv.startswith("sequence,message_id,clip_id,frame"))
+
+    def test_debug_panel_exports_downloadable_logs_and_coverage(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            create_source_artifacts(root)
+            context = build_live_playback_context(root, fixture_playback_config(root))
+
+            tracks_jsonl = live_tracks_jsonl(context["tracks"])
+            events_jsonl = stream_events_jsonl(context["stream_messages"])
+            summary = debug_panel_summary(context)
+
+            self.assertIn('"record_type":"live_track"', tracks_jsonl)
+            self.assertIn('"type":"event_update"', events_jsonl)
+            self.assertEqual(summary["panel_id"], "debugPanel")
+            self.assertIn("queue_depth", summary["visible_indicators"])
+            self.assertEqual(summary["download_endpoints"]["session_log"], "/stream-messages.jsonl")
+            self.assertTrue(summary["diagnostic_coverage"]["downloads"])
 
     def test_online_frame_loop_emits_partial_results_and_stage_metrics(self) -> None:
         with TemporaryDirectory() as tmpdir:

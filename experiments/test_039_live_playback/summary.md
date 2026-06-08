@@ -34,23 +34,26 @@
 
 - `playback.html`.
 - `live_tracks.csv`.
+- `live_tracks.jsonl`.
 - `live_events.json`.
 - `live_highlights.csv`.
 - `minimap_frame_sample.json`.
 - `video_metadata.json`.
 - `endpoint_manifest.json`.
 - `stream_messages.jsonl`.
+- `stream_events.jsonl`.
 - `stream_latency_metrics.csv`.
 - `stream_summary.json`.
 - `frame_loop_summary.json`.
 - `frame_loop_metrics.csv`.
 - `inference_modes.json`.
+- `debug_panel_summary.json`.
 - `config.yaml`.
 - `live_playback_manifest.csv`.
 
 ## Backend Local
 
-- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/frame-loop-summary.json`, `/frame-loop-metrics.csv`, `/inference-modes.json`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.
+- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/live_tracks.jsonl`, `/stream_events.jsonl`, `/stream-latency.csv`, `/frame-loop-summary.json`, `/frame-loop-metrics.csv`, `/inference-modes.json`, `/debug-panel.json`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.
 - Politica de video: solo se sirve el `clip_id` configurado; no se aceptan rutas arbitrarias por query.
 - Video pesado: permanece fuera de Git y queda marcado como `is_versioned=false`.
 - Si el video no existe en otro equipo, el reproductor muestra aviso local y conserva datos/overlays versionados.
@@ -80,6 +83,13 @@
 - `sam3_sampling`: ejecuta SAM 3 solo cada N frames cuando exista GPU MSI autorizada; entre muestras reusa detecciones y registra latencia/VRAM cuando este disponible.
 - `lightweight_detector`: hook experimental mas rapido para robots y balon; mantiene compatibilidad con tracker incremental pero documenta degradacion frente a SAM 3 offline.
 - Evidencia: `inference_modes.json` y endpoint `/inference-modes.json`.
+
+## Panel De Depuracion
+
+- Indicadores visibles: frame, timestamp, inferencia, canal, latencia, cola, tracks activos y evento activo.
+- Descargas locales: `stream_messages.jsonl`, `live_tracks.jsonl` y `stream_events.jsonl`.
+- Overlay debug: controlado por `layerDebug` desde el panel local.
+- Evidencia: `debug_panel_summary.json` y endpoint `/debug-panel.json`.
 
 ## Sincronizacion
 

@@ -461,25 +461,25 @@ Facilitar el ajuste de sincronizacion, reglas de eventos y rendimiento.
 
 ### Tarea 34.1 - Indicadores visibles
 
-- [ ] Mostrar frame actual.
-- [ ] Mostrar timestamp actual.
-- [ ] Mostrar modo de inferencia.
-- [ ] Mostrar estado del canal.
-- [ ] Mostrar latencia actual.
-- [ ] Mostrar tamano de cola.
-- [ ] Mostrar numero de tracks activos.
-- [ ] Mostrar evento activo.
+- [x] Mostrar frame actual.
+- [x] Mostrar timestamp actual.
+- [x] Mostrar modo de inferencia.
+- [x] Mostrar estado del canal.
+- [x] Mostrar latencia actual.
+- [x] Mostrar tamano de cola.
+- [x] Mostrar numero de tracks activos.
+- [x] Mostrar evento activo.
 
 ### Tarea 34.2 - Herramientas de revision
 
-- [ ] Permitir descargar logs de sesion.
-- [ ] Permitir descargar `live_tracks.jsonl`.
-- [ ] Permitir descargar `stream_events.jsonl`.
-- [ ] Permitir activar/desactivar overlay debug.
+- [x] Permitir descargar logs de sesion.
+- [x] Permitir descargar `live_tracks.jsonl`.
+- [x] Permitir descargar `stream_events.jsonl`.
+- [x] Permitir activar/desactivar overlay debug.
 
 ### Criterio de aceptacion
 
-- [ ] Una falla de sincronizacion o latencia puede diagnosticarse desde el panel local.
+- [x] Una falla de sincronizacion o latencia puede diagnosticarse desde el panel local.
 
 ## Actividad 35 - Documentacion Y Cierre Experimental
 

@@ -32,11 +32,14 @@
     "minimap_sample": "minimap_frame_sample.json",
     "video_metadata": "video_metadata.json",
     "stream_messages": "stream_messages.jsonl",
+    "live_tracks_jsonl": "live_tracks.jsonl",
+    "stream_events_jsonl": "stream_events.jsonl",
     "stream_latency_metrics": "stream_latency_metrics.csv",
     "stream_summary": "stream_summary.json",
     "frame_loop_summary": "frame_loop_summary.json",
     "frame_loop_metrics": "frame_loop_metrics.csv",
     "inference_modes": "inference_modes.json",
+    "debug_panel_summary": "debug_panel_summary.json",
     "config": "config.yaml",
     "summary": "summary.md"
   },
@@ -92,6 +95,20 @@
     },
     {
       "method": "GET",
+      "path": "/live_tracks.jsonl",
+      "content_type": "application/x-ndjson",
+      "role": "live_tracks_log",
+      "notes": "Downloadable live track snapshots for debug review."
+    },
+    {
+      "method": "GET",
+      "path": "/stream_events.jsonl",
+      "content_type": "application/x-ndjson",
+      "role": "stream_events_log",
+      "notes": "Downloadable streaming event updates for debug review."
+    },
+    {
+      "method": "GET",
       "path": "/stream-latency.csv",
       "content_type": "text/csv",
       "role": "stream_metrics",
@@ -117,6 +134,13 @@
       "content_type": "application/json",
       "role": "inference_modes",
       "notes": "Configurable inference mode catalog and selected profile."
+    },
+    {
+      "method": "GET",
+      "path": "/debug-panel.json",
+      "content_type": "application/json",
+      "role": "debug_panel",
+      "notes": "Debug panel coverage, indicators and downloadable artifacts."
     },
     {
       "method": "GET",

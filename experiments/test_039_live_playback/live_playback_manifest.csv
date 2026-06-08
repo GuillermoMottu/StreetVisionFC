@@ -4,15 +4,18 @@ config,yaml,config.yaml,configs/default.yaml,true,config,Live playback configura
 summary,md,summary.md,live_playback,true,summary,Live playback summary.
 manifest,csv,live_playback_manifest.csv,live_playback,true,manifest,Live playback artifact manifest.
 live_tracks,csv,live_tracks.csv,experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv,true,data,206 normalized track rows.
+live_tracks_jsonl,jsonl,live_tracks.jsonl,experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv,true,debug,206 track snapshots for debug downloads.
 live_events,json,live_events.json,experiments/test_034_full_analysis/level3_events/level3_events.json,true,data,83 normalized events.
 live_highlights,csv,live_highlights.csv,experiments/test_034_full_analysis/level3_events/level3_highlights.csv,true,data,82 normalized highlights.
 minimap_sample,json,minimap_frame_sample.json,live_tracks.csv,true,data,Sample minimap payload for first frame with rectified points.
 video_metadata,json,video_metadata.json,configs/default.yaml,true,sync,"FPS, dimensions, configured duration and approximate frame count."
 endpoint_manifest,json,endpoint_manifest.json,live_playback_backend,true,backend,Local backend endpoints and path policy.
 stream_messages,jsonl,stream_messages.jsonl,live_playback_stream,true,stream,289 emitted SSE messages.
+stream_events_jsonl,jsonl,stream_events.jsonl,live_playback_stream,true,debug,165 event updates for debug downloads.
 stream_latency_metrics,csv,stream_latency_metrics.csv,live_playback_stream,true,stream,61 latency metric rows.
 stream_summary,json,stream_summary.json,live_playback_stream,true,stream,"SSE transport decision, message counts and warning summary."
 frame_loop_summary,json,frame_loop_summary.json,online_frame_loop,true,engine,"Online frame loop controls, state and performance summary."
 frame_loop_metrics,csv,frame_loop_metrics.csv,online_frame_loop,true,engine,61 per-frame stage metric rows.
 inference_modes,json,inference_modes.json,live_playback_inference,true,inference,Selected inference mode: precomputed.
+debug_panel_summary,json,debug_panel_summary.json,live_playback_debug,true,debug,"Debug panel indicators, downloads and diagnostic coverage."
 source_video,video,/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov,local video path,false,local_input,Heavy/local input; never versioned.

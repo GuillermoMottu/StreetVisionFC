@@ -461,6 +461,47 @@ def inference_mode_catalog(context: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def debug_panel_summary(context: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "panel_id": "debugPanel",
+        "purpose": "Diagnosticar sincronizacion, reglas de eventos y rendimiento desde la app local.",
+        "visible_indicators": [
+            "current_frame",
+            "current_timestamp",
+            "inference_mode",
+            "channel_status",
+            "current_latency_ms",
+            "queue_depth",
+            "active_track_count",
+            "active_event",
+        ],
+        "download_artifacts": {
+            "session_log": "stream_messages.jsonl",
+            "live_tracks_jsonl": "live_tracks.jsonl",
+            "stream_events_jsonl": "stream_events.jsonl",
+        },
+        "download_endpoints": {
+            "session_log": "/stream-messages.jsonl",
+            "live_tracks_jsonl": "/live_tracks.jsonl",
+            "stream_events_jsonl": "/stream_events.jsonl",
+        },
+        "debug_overlay_toggle": "layerDebug",
+        "diagnostic_coverage": {
+            "sync": True,
+            "latency": True,
+            "queue": True,
+            "tracks": True,
+            "events": True,
+            "downloads": True,
+        },
+        "active_frame_count": len(context.get("available_frames", [])),
+        "session_message_count": len(context.get("stream_messages", [])),
+        "stream_event_count": len([message for message in context.get("stream_messages", []) if message.get("type") == "event_update"]),
+        "live_track_count": len(context.get("tracks", [])),
+        "criterion": "Una falla de sincronizacion o latencia puede diagnosticarse desde el panel local.",
+    }
+
+
 def online_frame_loop_config_from_playback(
     playback_config: LivePlaybackConfig,
     inference_enabled: bool = False,
@@ -736,6 +777,18 @@ def stream_messages_jsonl(messages: list[dict[str, Any]]) -> str:
     return "\n".join(json.dumps(message, ensure_ascii=True, separators=(",", ":")) for message in messages) + "\n"
 
 
+def live_tracks_jsonl(tracks: list[dict[str, Any]]) -> str:
+    return "\n".join(
+        json.dumps({"record_type": "live_track", **row}, ensure_ascii=True, separators=(",", ":"))
+        for row in tracks
+    ) + "\n"
+
+
+def stream_events_jsonl(messages: list[dict[str, Any]]) -> str:
+    event_messages = [message for message in messages if message.get("type") == "event_update"]
+    return "\n".join(json.dumps(message, ensure_ascii=True, separators=(",", ":")) for message in event_messages) + "\n"
+
+
 def stream_latency_metrics_csv(messages: list[dict[str, Any]]) -> str:
     handle = io.StringIO()
     writer = csv.DictWriter(handle, fieldnames=STREAM_LATENCY_FIELDS, lineterminator="\n")
@@ -775,10 +828,13 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
         _endpoint_row("/stream", "text/event-stream", "stream", "SSE channel for session_status, frame_result, event_update, latency_metrics and warning messages."),
         _endpoint_row("/stream-summary.json", "application/json", "stream_summary", "SSE message counts, latency summary and transport decision."),
         _endpoint_row("/stream-messages.jsonl", "application/x-ndjson", "stream_log", "Lightweight log of emitted SSE messages."),
+        _endpoint_row("/live_tracks.jsonl", "application/x-ndjson", "live_tracks_log", "Downloadable live track snapshots for debug review."),
+        _endpoint_row("/stream_events.jsonl", "application/x-ndjson", "stream_events_log", "Downloadable streaming event updates for debug review."),
         _endpoint_row("/stream-latency.csv", "text/csv", "stream_metrics", "Latency metrics emitted by the SSE channel."),
         _endpoint_row("/frame-loop-summary.json", "application/json", "frame_loop", "Online frame loop status, controls and performance summary."),
         _endpoint_row("/frame-loop-metrics.csv", "text/csv", "frame_loop_metrics", "Per-frame stage timings from the online frame loop."),
         _endpoint_row("/inference-modes.json", "application/json", "inference_modes", "Configurable inference mode catalog and selected profile."),
+        _endpoint_row("/debug-panel.json", "application/json", "debug_panel", "Debug panel coverage, indicators and downloadable artifacts."),
         _endpoint_row("/tracks.csv", "text/csv", "tracks", "Normalized live tracks."),
         _endpoint_row("/events.json", "application/json", "events", "Normalized live events."),
         _endpoint_row("/highlights.csv", "text/csv", "highlights", "Normalized live highlights."),
@@ -815,11 +871,14 @@ def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
             "minimap_sample": "minimap_frame_sample.json",
             "video_metadata": "video_metadata.json",
             "stream_messages": "stream_messages.jsonl",
+            "live_tracks_jsonl": "live_tracks.jsonl",
+            "stream_events_jsonl": "stream_events.jsonl",
             "stream_latency_metrics": "stream_latency_metrics.csv",
             "stream_summary": "stream_summary.json",
             "frame_loop_summary": "frame_loop_summary.json",
             "frame_loop_metrics": "frame_loop_metrics.csv",
             "inference_modes": "inference_modes.json",
+            "debug_panel_summary": "debug_panel_summary.json",
             "config": "config.yaml",
             "summary": "summary.md",
         },
@@ -906,6 +965,14 @@ def build_live_playback_package(root: Path, config_path: Path, playback_config: 
         stream_messages_jsonl(context["stream_messages"]),
         encoding="utf-8",
     )
+    (output_dir / "live_tracks.jsonl").write_text(
+        live_tracks_jsonl(context["tracks"]),
+        encoding="utf-8",
+    )
+    (output_dir / "stream_events.jsonl").write_text(
+        stream_events_jsonl(context["stream_messages"]),
+        encoding="utf-8",
+    )
     (output_dir / "stream_latency_metrics.csv").write_text(
         stream_latency_metrics_csv(context["stream_messages"]),
         encoding="utf-8",
@@ -924,6 +991,10 @@ def build_live_playback_package(root: Path, config_path: Path, playback_config: 
     )
     (output_dir / "inference_modes.json").write_text(
         json.dumps(context["inference_modes"], indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    (output_dir / "debug_panel_summary.json").write_text(
+        json.dumps(context["debug_panel"], indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
     (output_dir / "playback.html").write_text(render_playback_html(context), encoding="utf-8")
@@ -1002,6 +1073,7 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
     context["frame_loop"] = frame_loop
     context["stream_messages"] = stream_messages
     context["stream_summary"] = stream_summary_from_messages(context, stream_messages)
+    context["debug_panel"] = debug_panel_summary(context)
     context["summary"]["stream_message_count"] = context["stream_summary"]["message_count"]
     context["summary"]["stream_warning_count"] = context["stream_summary"]["warning_count"]
     context["summary"]["stream_frame_result_count"] = context["stream_summary"]["frame_result_count"]
@@ -1096,6 +1168,24 @@ def render_playback_html(context: dict[str, Any]) -> str:
             _toggle("layerHighlights", "Highlights", True),
             _toggle("layerDebug", "Debug", False),
             "</div>",
+            '<section class="debug-panel" id="debugPanel">',
+            "<h2>Depuracion</h2>",
+            '<div class="stats debug-stats">',
+            '<span>Frame <strong id="debugFrameReadout">0</strong></span>',
+            '<span>Timestamp <strong id="debugTimestampReadout">0.000s</strong></span>',
+            '<span>Inferencia <strong id="debugInferenceReadout">precomputed</strong></span>',
+            '<span>Canal <strong id="debugChannelReadout">sse pendiente</strong></span>',
+            '<span>Latencia <strong id="debugLatencyReadout">n/a</strong></span>',
+            '<span>Cola <strong id="debugQueueReadout">0</strong></span>',
+            '<span>Tracks activos <strong id="debugTracksReadout">0</strong></span>',
+            '<span>Evento activo <strong id="debugEventReadout">sin evento</strong></span>',
+            "</div>",
+            '<div class="downloads">',
+            '<a id="downloadSessionLog" href="/stream-messages.jsonl" download>Sesion</a>',
+            '<a id="downloadLiveTracks" href="/live_tracks.jsonl" download>Tracks JSONL</a>',
+            '<a id="downloadStreamEvents" href="/stream_events.jsonl" download>Eventos JSONL</a>',
+            "</div>",
+            "</section>",
             '<div class="timeline" id="eventList"></div>',
             '<div class="timeline stream" id="streamList"></div>',
             "</aside>",
@@ -1128,15 +1218,20 @@ def client_payload(context: dict[str, Any]) -> dict[str, Any]:
         "stream_summary": context["stream_summary"],
         "frame_loop": context["frame_loop"]["summary"],
         "inference_modes": context["inference_modes"],
+        "debug_panel": context["debug_panel"],
         "endpoints": {
             "manifest": "/manifest.json",
             "stream": "/stream",
             "stream_summary": "/stream-summary.json",
             "stream_messages": "/stream-messages.jsonl",
+            "session_log": "/stream-messages.jsonl",
+            "live_tracks_jsonl": "/live_tracks.jsonl",
+            "stream_events_jsonl": "/stream_events.jsonl",
             "stream_latency": "/stream-latency.csv",
             "frame_loop_summary": "/frame-loop-summary.json",
             "frame_loop_metrics": "/frame-loop-metrics.csv",
             "inference_modes": "/inference-modes.json",
+            "debug_panel": "/debug-panel.json",
             "tracks": "/tracks.csv",
             "events": "/events.json",
             "highlights": "/highlights.csv",
@@ -1166,20 +1261,24 @@ def write_live_playback_config(root: Path, config_path: Path, playback_config: L
         "sync": context["sync"],
         "stream": context["stream_summary"],
         "frame_loop": context["frame_loop"]["summary"],
+        "debug_panel": context["debug_panel"],
         "outputs": [
             "playback.html",
             "live_tracks.csv",
+            "live_tracks.jsonl",
             "live_events.json",
             "live_highlights.csv",
             "minimap_frame_sample.json",
             "video_metadata.json",
             "endpoint_manifest.json",
             "stream_messages.jsonl",
+            "stream_events.jsonl",
             "stream_latency_metrics.csv",
             "stream_summary.json",
             "frame_loop_summary.json",
             "frame_loop_metrics.csv",
             "inference_modes.json",
+            "debug_panel_summary.json",
             "live_playback_manifest.csv",
             "summary.md",
         ],
@@ -1194,17 +1293,20 @@ def write_live_playback_manifest(root: Path, playback_config: LivePlaybackConfig
         _manifest_row("summary", "md", "summary.md", "live_playback", True, "summary", "Live playback summary."),
         _manifest_row("manifest", "csv", "live_playback_manifest.csv", "live_playback", True, "manifest", "Live playback artifact manifest."),
         _manifest_row("live_tracks", "csv", "live_tracks.csv", playback_config.tracks_csv, True, "data", f"{len(context['tracks'])} normalized track rows."),
+        _manifest_row("live_tracks_jsonl", "jsonl", "live_tracks.jsonl", playback_config.tracks_csv, True, "debug", f"{len(context['tracks'])} track snapshots for debug downloads."),
         _manifest_row("live_events", "json", "live_events.json", playback_config.events_json, True, "data", f"{len(context['events'])} normalized events."),
         _manifest_row("live_highlights", "csv", "live_highlights.csv", playback_config.highlights_csv, True, "data", f"{len(context['highlights'])} normalized highlights."),
         _manifest_row("minimap_sample", "json", "minimap_frame_sample.json", "live_tracks.csv", True, "data", "Sample minimap payload for first frame with rectified points."),
         _manifest_row("video_metadata", "json", "video_metadata.json", "configs/default.yaml", True, "sync", "FPS, dimensions, configured duration and approximate frame count."),
         _manifest_row("endpoint_manifest", "json", "endpoint_manifest.json", "live_playback_backend", True, "backend", "Local backend endpoints and path policy."),
         _manifest_row("stream_messages", "jsonl", "stream_messages.jsonl", "live_playback_stream", True, "stream", f"{context['stream_summary']['message_count']} emitted SSE messages."),
+        _manifest_row("stream_events_jsonl", "jsonl", "stream_events.jsonl", "live_playback_stream", True, "debug", f"{context['debug_panel']['stream_event_count']} event updates for debug downloads."),
         _manifest_row("stream_latency_metrics", "csv", "stream_latency_metrics.csv", "live_playback_stream", True, "stream", f"{context['stream_summary']['latency_metric_count']} latency metric rows."),
         _manifest_row("stream_summary", "json", "stream_summary.json", "live_playback_stream", True, "stream", "SSE transport decision, message counts and warning summary."),
         _manifest_row("frame_loop_summary", "json", "frame_loop_summary.json", "online_frame_loop", True, "engine", "Online frame loop controls, state and performance summary."),
         _manifest_row("frame_loop_metrics", "csv", "frame_loop_metrics.csv", "online_frame_loop", True, "engine", f"{context['frame_loop']['summary']['processed_frame_count']} per-frame stage metric rows."),
         _manifest_row("inference_modes", "json", "inference_modes.json", "live_playback_inference", True, "inference", f"Selected inference mode: {context['inference_modes']['selected_mode']}."),
+        _manifest_row("debug_panel_summary", "json", "debug_panel_summary.json", "live_playback_debug", True, "debug", "Debug panel indicators, downloads and diagnostic coverage."),
         _manifest_row("source_video", "video", playback_config.video_path, "local video path", False, "local_input", "Heavy/local input; never versioned."),
     ]
     output = root / playback_config.output_dir / "live_playback_manifest.csv"
@@ -1255,23 +1357,26 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "",
         "- `playback.html`.",
         "- `live_tracks.csv`.",
+        "- `live_tracks.jsonl`.",
         "- `live_events.json`.",
         "- `live_highlights.csv`.",
         "- `minimap_frame_sample.json`.",
         "- `video_metadata.json`.",
         "- `endpoint_manifest.json`.",
         "- `stream_messages.jsonl`.",
+        "- `stream_events.jsonl`.",
         "- `stream_latency_metrics.csv`.",
         "- `stream_summary.json`.",
         "- `frame_loop_summary.json`.",
         "- `frame_loop_metrics.csv`.",
         "- `inference_modes.json`.",
+        "- `debug_panel_summary.json`.",
         "- `config.yaml`.",
         "- `live_playback_manifest.csv`.",
         "",
         "## Backend Local",
         "",
-        "- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/stream-latency.csv`, `/frame-loop-summary.json`, `/frame-loop-metrics.csv`, `/inference-modes.json`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
+        "- Endpoints fijos: `/manifest.json`, `/stream`, `/stream-summary.json`, `/stream-messages.jsonl`, `/live_tracks.jsonl`, `/stream_events.jsonl`, `/stream-latency.csv`, `/frame-loop-summary.json`, `/frame-loop-metrics.csv`, `/inference-modes.json`, `/debug-panel.json`, `/tracks.csv`, `/events.json`, `/highlights.csv`, `/minimap.json`, `/calibration.json`, `/video-metadata.json` y `/video?clip_id=...`.",
         "- Politica de video: solo se sirve el `clip_id` configurado; no se aceptan rutas arbitrarias por query.",
         "- Video pesado: permanece fuera de Git y queda marcado como `is_versioned=false`.",
         "- Si el video no existe en otro equipo, el reproductor muestra aviso local y conserva datos/overlays versionados.",
@@ -1301,6 +1406,13 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "- `sam3_sampling`: ejecuta SAM 3 solo cada N frames cuando exista GPU MSI autorizada; entre muestras reusa detecciones y registra latencia/VRAM cuando este disponible.",
         "- `lightweight_detector`: hook experimental mas rapido para robots y balon; mantiene compatibilidad con tracker incremental pero documenta degradacion frente a SAM 3 offline.",
         "- Evidencia: `inference_modes.json` y endpoint `/inference-modes.json`.",
+        "",
+        "## Panel De Depuracion",
+        "",
+        "- Indicadores visibles: frame, timestamp, inferencia, canal, latencia, cola, tracks activos y evento activo.",
+        "- Descargas locales: `stream_messages.jsonl`, `live_tracks.jsonl` y `stream_events.jsonl`.",
+        "- Overlay debug: controlado por `layerDebug` desde el panel local.",
+        "- Evidencia: `debug_panel_summary.json` y endpoint `/debug-panel.json`.",
         "",
         "## Sincronizacion",
         "",
@@ -1416,6 +1528,12 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
             if parsed.path == "/stream-messages.jsonl":
                 self._send_text(stream_messages_jsonl(context["stream_messages"]), "application/x-ndjson; charset=utf-8")
                 return
+            if parsed.path == "/live_tracks.jsonl":
+                self._send_text(live_tracks_jsonl(context["tracks"]), "application/x-ndjson; charset=utf-8")
+                return
+            if parsed.path == "/stream_events.jsonl":
+                self._send_text(stream_events_jsonl(context["stream_messages"]), "application/x-ndjson; charset=utf-8")
+                return
             if parsed.path == "/stream-latency.csv":
                 self._send_text(stream_latency_metrics_csv(context["stream_messages"]), "text/csv; charset=utf-8")
                 return
@@ -1427,6 +1545,9 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
                 return
             if parsed.path == "/inference-modes.json":
                 self._send_json(context["inference_modes"])
+                return
+            if parsed.path == "/debug-panel.json":
+                self._send_json(context["debug_panel"])
                 return
             if parsed.path == "/tracks.csv":
                 self._send_text(csv_response_text(context["tracks"], LIVE_TRACK_FIELDS), "text/csv; charset=utf-8")
@@ -1617,6 +1738,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .field{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px}select{width:100%;background:#0d100d;color:var(--text);border:1px solid var(--line);padding:8px}
 .stats{display:grid;grid-template-columns:1fr;gap:7px;font-size:13px}.stats span{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px}
 .toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}.toggles label{font-size:13px;color:var(--text)}
+.debug-panel{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:9px}.debug-panel h2{margin:0;color:var(--muted);font-size:13px;font-weight:600}.debug-stats{font-size:12px}.downloads{display:grid;grid-template-columns:1fr;gap:7px}.downloads a{display:block;text-align:center;text-decoration:none;background:#0d100d;color:var(--text);border:1px solid var(--line);padding:8px;font-size:12px}.downloads a:hover{border-color:var(--accent);color:var(--accent)}
 .timeline{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}.stream{max-height:180px}.event{border-left:3px solid var(--accent);background:#111611;padding:8px;font-size:12px;color:var(--muted)}.event strong{color:var(--text)}.stream-event{border-left-color:var(--blue)}
 @media(max-width:900px){.shell{padding:10px}.workbench{grid-template-columns:1fr}.panel{order:-1}.stage{min-height:280px}h1{font-size:20px}}
 """
@@ -1641,6 +1763,14 @@ const streamReadout=document.getElementById('streamReadout');
 const streamMessageReadout=document.getElementById('streamMessageReadout');
 const latencyReadout=document.getElementById('latencyReadout');
 const streamList=document.getElementById('streamList');
+const debugFrameReadout=document.getElementById('debugFrameReadout');
+const debugTimestampReadout=document.getElementById('debugTimestampReadout');
+const debugInferenceReadout=document.getElementById('debugInferenceReadout');
+const debugChannelReadout=document.getElementById('debugChannelReadout');
+const debugLatencyReadout=document.getElementById('debugLatencyReadout');
+const debugQueueReadout=document.getElementById('debugQueueReadout');
+const debugTracksReadout=document.getElementById('debugTracksReadout');
+const debugEventReadout=document.getElementById('debugEventReadout');
 const syncState=document.getElementById('syncState');
 const byFrame=new Map();
 for(const row of data.tracks){const f=Number(row.frame);if(!byFrame.has(f))byFrame.set(f,[]);byFrame.get(f).push(row);}
@@ -1651,7 +1781,10 @@ let eventSource=null;
 let streamComplete=false;
 let streamMessageCount=0;
 let streamOpenCount=0;
+let latestLatencyMessage=null;
+let latestFrameMessage=null;
 inferenceReadout.textContent=data.inference_modes?.selected_mode||data.frame_loop?.inference_mode||'precomputed';
+debugInferenceReadout.textContent=inferenceReadout.textContent;
 function enabled(id){return document.getElementById(id)?.checked;}
 function frameFromVideoTime(timeSec){const fps=Number(data.config.fps)||30;const raw=Math.round(Math.max(0,timeSec||0)*fps);const end=Number(data.config.end_frame)||raw;return Math.min(raw,end);}
 function frameNow(){return frameFromVideoTime(video.currentTime||0);}
@@ -1661,7 +1794,7 @@ function scaleX(x){return Number(x)*(canvas.width/(data.config.width||canvas.wid
 function scaleY(y){return Number(y)*(canvas.height/(data.config.height||canvas.height));}
 function activeEvents(frame){return data.events.filter(e=>Number(e.start_frame)<=frame&&Number(e.end_frame)>=frame);}
 function activeHighlights(frame){return data.highlights.filter(e=>Number(e.start_frame)<=frame&&Number(e.end_frame)>=frame);}
-function draw(){resizeCanvas();ctx.clearRect(0,0,canvas.width,canvas.height);const target=frameNow();const resolved=resolveOverlayFrame(target);const frame=resolved.resolved_frame;const rows=frame===null?[]:(byFrame.get(frame)||[]);const events=activeEvents(target);const highlights=activeHighlights(target);if(lastTargetFrame!==null&&Math.abs(target-lastTargetFrame)>Number(data.sync?.jump_reset_threshold_frames||32))suppressTrails=2;lastTargetFrame=target;frameReadout.textContent=String(target);resolvedFrameReadout.textContent=frame===null?'sin datos':String(frame)+' ('+resolved.status+')';timeReadout.textContent=(video.currentTime||0).toFixed(3)+'s';durationReadout.textContent=Number.isFinite(video.duration)?video.duration.toFixed(3)+'s':Number(data.video_metadata?.configured_duration_sec||0).toFixed(3)+'s config';rateReadout.textContent=(video.playbackRate||1).toFixed(2)+'x';dataReadout.textContent=rows.length+' tracks | '+events.length+' eventos';syncState.textContent=resolved.status==='missing'?'missing_data':(resolved.status==='exact'?'replaying_cache':'stride_fallback');if(resolved.status==='missing')badge('sin datos para frame '+target,14,14,'#ff6b6b');if(enabled('layerTrails')&&suppressTrails<=0)drawTrails(frame===null?target:frame);else if(suppressTrails>0)suppressTrails-=1;if(enabled('layerTracks'))drawTracks(rows);if(enabled('layerBall'))drawBall(rows);if(enabled('layerEvents'))drawEvents(events);if(enabled('layerPossession'))drawPossession(events);if(enabled('layerHighlights'))drawHighlights(highlights);if(enabled('layerMinimap'))drawMinimap(rows);if(enabled('layerDebug'))drawDebug(target,rows,resolved);renderEventList(events,highlights);requestAnimationFrame(draw);}
+function draw(){resizeCanvas();ctx.clearRect(0,0,canvas.width,canvas.height);const target=frameNow();const resolved=resolveOverlayFrame(target);const frame=resolved.resolved_frame;const rows=frame===null?[]:(byFrame.get(frame)||[]);const events=activeEvents(target);const highlights=activeHighlights(target);if(lastTargetFrame!==null&&Math.abs(target-lastTargetFrame)>Number(data.sync?.jump_reset_threshold_frames||32))suppressTrails=2;lastTargetFrame=target;frameReadout.textContent=String(target);resolvedFrameReadout.textContent=frame===null?'sin datos':String(frame)+' ('+resolved.status+')';timeReadout.textContent=(video.currentTime||0).toFixed(3)+'s';durationReadout.textContent=Number.isFinite(video.duration)?video.duration.toFixed(3)+'s':Number(data.video_metadata?.configured_duration_sec||0).toFixed(3)+'s config';rateReadout.textContent=(video.playbackRate||1).toFixed(2)+'x';dataReadout.textContent=rows.length+' tracks | '+events.length+' eventos';syncState.textContent=resolved.status==='missing'?'missing_data':(resolved.status==='exact'?'replaying_cache':'stride_fallback');updateDebugPanel(target,rows,events,highlights);if(resolved.status==='missing')badge('sin datos para frame '+target,14,14,'#ff6b6b');if(enabled('layerTrails')&&suppressTrails<=0)drawTrails(frame===null?target:frame);else if(suppressTrails>0)suppressTrails-=1;if(enabled('layerTracks'))drawTracks(rows);if(enabled('layerBall'))drawBall(rows);if(enabled('layerEvents'))drawEvents(events);if(enabled('layerPossession'))drawPossession(events);if(enabled('layerHighlights'))drawHighlights(highlights);if(enabled('layerMinimap'))drawMinimap(rows);if(enabled('layerDebug'))drawDebug(target,rows,resolved);renderEventList(events,highlights);requestAnimationFrame(draw);}
 function drawTracks(rows){for(const row of rows){if(row.class==='ball')continue;const x=scaleX(row.x),y=scaleY(row.y),w=scaleX(row.w),h=scaleY(row.h);ctx.strokeStyle=row.team==='blue'?'#48a6ff':(row.team==='red'?'#ff6b6b':'#64d47c');ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(scaleX(row.center_x),scaleY(row.center_y),3,0,Math.PI*2);ctx.fill();if(enabled('layerIds'))label(row.track_id,x,y-6,ctx.strokeStyle);}}
 function drawBall(rows){for(const row of rows.filter(r=>r.class==='ball')){const x=scaleX(row.center_x),y=scaleY(row.center_y);ctx.fillStyle='#f4c430';ctx.strokeStyle='#10130f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fill();ctx.stroke();if(enabled('layerIds'))label(row.track_id,x+10,y,'#f4c430');}}
 function drawTrails(frame){const start=frame-(data.config.trail_length||16);const trails=new Map();for(const row of data.tracks){const f=Number(row.frame);if(f<start||f>frame)continue;if(!trails.has(row.track_id))trails.set(row.track_id,[]);trails.get(row.track_id).push(row);}for(const points of trails.values()){if(points.length<2)continue;ctx.beginPath();points.forEach((p,i)=>{const x=scaleX(p.center_x),y=scaleY(p.center_y);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.strokeStyle='rgba(244,196,48,.42)';ctx.lineWidth=2;ctx.stroke();}}
@@ -1673,8 +1806,9 @@ function drawDebug(frame,rows,resolved){label('fps='+data.config.fps+' rows='+ro
 function label(text,x,y,color){ctx.font='12px system-ui';ctx.fillStyle='rgba(5,6,5,.78)';const width=ctx.measureText(text).width+8;ctx.fillRect(x,y-13,width,17);ctx.fillStyle=color;ctx.fillText(text,x+4,y);}
 function badge(text,x,y,color){ctx.font='13px system-ui';const width=Math.min(canvas.width-24,ctx.measureText(text).width+18);ctx.fillStyle='rgba(5,6,5,.82)';ctx.fillRect(x,y,width,24);ctx.strokeStyle=color;ctx.strokeRect(x,y,width,24);ctx.fillStyle='#edf2e9';ctx.fillText(text,x+8,y+16);}
 function renderEventList(events,highlights){const list=document.getElementById('eventList');list.innerHTML='';for(const item of [...events,...highlights].slice(0,6)){const div=document.createElement('div');div.className='event';div.innerHTML='<strong>'+escapeHtml(item.label||item.highlight_id)+'</strong><br>frames '+(item.start_frame||item.start_frame)+'-'+(item.end_frame||item.end_frame)+' | '+(item.status||'provisional');list.appendChild(div);}}
+function updateDebugPanel(frame,rows,events,highlights){const active=[...events,...highlights][0];debugFrameReadout.textContent=String(frame);debugTimestampReadout.textContent=(video.currentTime||0).toFixed(3)+'s';debugInferenceReadout.textContent=inferenceReadout.textContent;debugChannelReadout.textContent=streamReadout.textContent;debugLatencyReadout.textContent=latencyReadout.textContent;debugQueueReadout.textContent=String(latestLatencyMessage?.queue_depth??0);debugTracksReadout.textContent=String(rows.length);debugEventReadout.textContent=active?(active.label||active.highlight_id||active.event_id||'evento activo'):'sin evento';}
 function connectEventStream(){if(!data.endpoints?.stream||!window.EventSource){streamReadout.textContent='sse no disponible';appendStreamMessage({type:'warning',warning_code:'eventsource_unavailable',message:'EventSource no disponible en este navegador'});return;}streamOpenCount+=1;streamReadout.textContent=streamOpenCount===1?'sse conectando':'sse reconectando '+streamOpenCount;eventSource=new EventSource(data.endpoints.stream);eventSource.onopen=()=>{streamReadout.textContent='sse activo';};for(const type of ['session_status','frame_result','event_update','latency_metrics','warning']){eventSource.addEventListener(type,event=>handleStreamMessage(type,event.data));}eventSource.onerror=()=>{if(streamComplete){eventSource.close();return;}streamReadout.textContent='sse reconexion pendiente';};}
-function handleStreamMessage(type,raw){let message;try{message=JSON.parse(raw);}catch(error){message={type:'warning',warning_code:'bad_stream_payload',message:String(error)};}streamMessageCount+=1;streamMessageReadout.textContent=String(streamMessageCount);if(message.engine_mode||message.mode)engineReadout.textContent=message.engine_mode||message.mode;if(message.inference_mode)inferenceReadout.textContent=message.inference_mode;if(type==='latency_metrics'){latencyReadout.textContent=Number(message.total_to_overlay_ms||message.emit_latency_ms||0).toFixed(1)+'ms';}if(type==='frame_result'){streamReadout.textContent='frame '+message.frame;}if(type==='warning'){streamReadout.textContent='warning '+(message.warning_code||'stream');}if(type==='session_status'&&(message.status==='complete'||message.status==='stopped')){streamComplete=true;streamReadout.textContent='sse '+message.status;if(eventSource)eventSource.close();}appendStreamMessage(message);}
+function handleStreamMessage(type,raw){let message;try{message=JSON.parse(raw);}catch(error){message={type:'warning',warning_code:'bad_stream_payload',message:String(error)};}streamMessageCount+=1;streamMessageReadout.textContent=String(streamMessageCount);if(message.engine_mode||message.mode)engineReadout.textContent=message.engine_mode||message.mode;if(message.inference_mode)inferenceReadout.textContent=message.inference_mode;if(type==='latency_metrics'){latestLatencyMessage=message;latencyReadout.textContent=Number(message.total_to_overlay_ms||message.emit_latency_ms||0).toFixed(1)+'ms';}if(type==='frame_result'){latestFrameMessage=message;streamReadout.textContent='frame '+message.frame;}if(type==='warning'){streamReadout.textContent='warning '+(message.warning_code||'stream');}if(type==='session_status'&&(message.status==='complete'||message.status==='stopped')){streamComplete=true;streamReadout.textContent='sse '+message.status;if(eventSource)eventSource.close();}debugInferenceReadout.textContent=inferenceReadout.textContent;debugChannelReadout.textContent=streamReadout.textContent;appendStreamMessage(message);}
 function appendStreamMessage(message){if(!streamList)return;const div=document.createElement('div');div.className='event stream-event';const type=message.type||'message';const frame=message.frame!==undefined?'frame '+message.frame:'seq '+(message.sequence||'-');const detail=message.status||message.warning_code||message.label||message.resolution_status||message.source||'';div.innerHTML='<strong>'+escapeHtml(type)+'</strong><br>'+escapeHtml(frame)+' | '+escapeHtml(detail);streamList.prepend(div);while(streamList.children.length>8)streamList.removeChild(streamList.lastElementChild);}
 function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));}
 function markTemporalJump(){suppressTrails=2;resizeCanvas();}
