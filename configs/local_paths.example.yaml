@@ -1,0 +1,28 @@
+# local_paths.example.yaml — Plantilla de rutas locales para FutBotMX
+#
+# Copia este archivo como .env en la raíz del proyecto y ajusta las rutas a tu entorno.
+# Alternativamente, exporta estas variables en tu shell antes de ejecutar el pipeline.
+#
+# Este archivo NO contiene rutas reales. No subas .env ni configs/local_paths.yaml a git.
+#
+# Variables requeridas para el pipeline completo (level2_closure):
+#
+#   FUTBOTMX_VIDEO_595  — Video CopaFutMX 17 Abril, ID 595 (.mov)
+#   FUTBOTMX_VIDEO_667  — Video CopaFutMX 17 Abril, ID 667 (.mov)
+#   FUTBOTMX_VIDEO_480  — Video CopaFutMX 17 Abril, ID 480 (.mov)
+#   FUTBOTMX_VIDEO_836  — Video CopaFutMX 17 Abril, ID 836 (.mov)  [si se añade a la config]
+#   SAM3_CHECKPOINT_PATH — Ruta al checkpoint de SAM 3 (.pt / .pth)
+#
+# Ejemplo (Ubuntu/MSI):
+#
+#   FUTBOTMX_VIDEO_595=/home/USER/Videos/CopaFutMX/17_Abril/video-595_singular_display.mov
+#   FUTBOTMX_VIDEO_667=/home/USER/Videos/CopaFutMX/17_Abril/video-667_singular_display.mov
+#   FUTBOTMX_VIDEO_480=/home/USER/Videos/CopaFutMX/17_Abril/video-480_singular_display.mov
+#   FUTBOTMX_VIDEO_836=/home/USER/Videos/CopaFutMX/17_Abril/video-836_singular_display.mov
+#   SAM3_CHECKPOINT_PATH=/home/USER/checkpoints/sam3_hiera_large.pt
+
+FUTBOTMX_VIDEO_595=/path/to/video-595_singular_display.mov
+FUTBOTMX_VIDEO_667=/path/to/video-667_singular_display.mov
+FUTBOTMX_VIDEO_480=/path/to/video-480_singular_display.mov
+FUTBOTMX_VIDEO_836=/path/to/video-836_singular_display.mov
+SAM3_CHECKPOINT_PATH=/path/to/sam3_checkpoint.pt

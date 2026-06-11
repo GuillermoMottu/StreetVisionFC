@@ -1,6 +1,5 @@
 project:
   name: FutBotMX
-  level: 2
 
 paths:
   data_dir: data
@@ -90,7 +89,7 @@ level2_closure:
   clips:
     - clip_id: video_595
       role: dense_candidate
-      video: "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov"
+      video: "${FUTBOTMX_VIDEO_595}"
       start_frame: 120
       end_frame: 180
       stride: 1
@@ -100,7 +99,7 @@ level2_closure:
       fps: 59.71505265331406
     - clip_id: video_667
       role: dense_candidate
-      video: "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-667_singular_display.mov"
+      video: "${FUTBOTMX_VIDEO_667}"
       start_frame: 120
       end_frame: 180
       stride: 1
@@ -110,7 +109,7 @@ level2_closure:
       fps: 59.70695970695971
     - clip_id: video_480
       role: diagnostic
-      video: "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-480_singular_display.mov"
+      video: "${FUTBOTMX_VIDEO_480}"
       start_frame: 120
       end_frame: 180
       stride: 1

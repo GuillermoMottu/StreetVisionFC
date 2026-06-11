@@ -53,3 +53,7 @@ temp/
 
 # Logs
 *.log
+
+# Local environment and private paths (never commit real paths)
+.env
+configs/local_paths.yaml
