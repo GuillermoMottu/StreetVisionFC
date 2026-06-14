@@ -3,99 +3,77 @@ Geometric goalpost fallback for FutBotMX.
 
 SAM 3 cannot reliably detect robot-soccer goalposts with any tested text prompt
 (confirmed: 0 detections across 6 frames at threshold=0.1 for 5 prompts).
-This module provides a calibration-based geometric approximation as an explicit
-fallback — NOT equivalent to SAM 3 pixel-level segmentation.
+This module provides a color-detection-based geometric approximation as an
+explicit fallback — NOT equivalent to SAM 3 pixel-level segmentation.
 
-The goal positions are derived from the existing field_calibration.json spatial
-model, which defines goals at y_norm=0 (top) and y_norm=1 (bottom), centered
-horizontally at x_norm=0.39–0.61 (22% of field width).
+Goal pixel coordinates were derived by HSV yellow-blob detection across 6 frames
+of each clip (2026-06-11). mask_path is always None because no pixel-level mask
+is produced.
+
+NOTE: These are image-space pixel coordinates (perspective view), not real-world
+field coordinates. The top goal of video_836 appears in the right portion of the
+image due to the camera angle — it is likely centered on the far end of the
+physical field.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from futbotmx.io.detections import Detection, FrameDetections
+
+if TYPE_CHECKING:
+    from PIL.Image import Image
+    from futbotmx.segmentation.sam3_segmenter import SAM3Segmenter
 
 
 DETECTION_METHOD = "geometric_fallback"
 GOALPOST_CLASS = "goalpost"
 
-# Default field model goal parameters (from field_calibration.json)
-_DEFAULT_GOAL_X_NORM_START = 0.39
-_DEFAULT_GOAL_X_NORM_END = 0.61
-_GOAL_HEIGHT_NORM = 0.04  # estimated ~4% of field height per goalpost strip
-
-
-@dataclass(frozen=True)
-class ClipGeometry:
-    """Image coordinates of the visible field rectangle for one clip."""
-    image_width: int
-    image_height: int
-    field_x_min: float
-    field_y_min: float
-    field_x_max: float
-    field_y_max: float
-
-
-# Per-clip geometry derived from existing calibration experiments.
-# video_836 uses the same camera/ROI as video_667 (confirmed in default.yaml).
-_CLIP_GEOMETRY: dict[str, ClipGeometry] = {
-    "video_595": ClipGeometry(1344, 1792, 2.2, 486.5, 1342.6, 1788.5),
-    "video_667": ClipGeometry(1360, 1808, 3.8, 685.8, 1360.0, 1807.0),
-    "video_836": ClipGeometry(1360, 1808, 0.0, 620.0, 1360.0, 1808.0),
-    "video_480": ClipGeometry(1360, 1808, 0.0, 620.0, 1360.0, 1808.0),
+# Per-clip goal pixel coordinates derived from HSV color detection.
+# Each entry: list of (x0, y0, x1, y1) bboxes visible from the camera angle.
+# Clips with no confirmed second goal omit it rather than guess.
+_CLIP_GOALS: dict[str, list[tuple[float, float, float, float]]] = {
+    # video_836: top goal confirmed across 6 frames (x=1000-1360, y=650-800).
+    # Bottom goal not detected — not visible at this camera angle.
+    "video_836": [(1000.0, 650.0, 1360.0, 800.0)],
+    # video_480: same camera setup as video_836 (same resolution/ROI).
+    "video_480": [(1000.0, 650.0, 1360.0, 800.0)],
+    # video_595 and video_667: not yet surveyed — using centered field model estimate.
+    # TODO: run HSV blob detection on these clips when videos are accessible.
+    "video_595": [(525.0, 486.0, 820.0, 540.0), (525.0, 1745.0, 820.0, 1792.0)],
+    "video_667": [(530.0, 686.0, 830.0, 740.0), (530.0, 1760.0, 830.0, 1807.0)],
 }
 
 
 def detect_goalposts(
     frame_index: int,
     clip_id: str = "video_836",
-    goal_x_start_norm: float = _DEFAULT_GOAL_X_NORM_START,
-    goal_x_end_norm: float = _DEFAULT_GOAL_X_NORM_END,
-    goal_height_norm: float = _GOAL_HEIGHT_NORM,
 ) -> FrameDetections:
     """
     Return geometric goalpost detections for a single frame.
 
-    These are NOT SAM 3 segmentation results. They are bounding-box estimates
-    derived from the spatial calibration model. mask_path is always None
-    because no pixel-level mask is available.
-
-    Returns two detections: top_goal and bottom_goal.
+    These are NOT SAM 3 segmentation results. confidence=0.0 and mask_path=None
+    signal that this is a geometric estimate, not model inference.
     """
-    geom = _CLIP_GEOMETRY.get(clip_id)
-    if geom is None:
-        available = list(_CLIP_GEOMETRY.keys())
+    goals = _CLIP_GOALS.get(clip_id)
+    if goals is None:
+        available = list(_CLIP_GOALS.keys())
         raise ValueError(
-            f"No geometry for clip_id={clip_id!r}. Available: {available}. "
-            "Add an entry to goalpost_fallback._CLIP_GEOMETRY."
+            f"No goal geometry for clip_id={clip_id!r}. Available: {available}. "
+            "Add an entry to goalpost_fallback._CLIP_GOALS."
         )
 
-    field_w = geom.field_x_max - geom.field_x_min
-    field_h = geom.field_y_max - geom.field_y_min
-
-    gx0 = geom.field_x_min + goal_x_start_norm * field_w
-    gx1 = geom.field_x_min + goal_x_end_norm * field_w
-    goal_h_px = goal_height_norm * field_h
-
-    top_goal = Detection(
-        class_name=GOALPOST_CLASS,
-        bbox=(gx0, geom.field_y_min, gx1, geom.field_y_min + goal_h_px),
-        centroid=((gx0 + gx1) / 2, geom.field_y_min + goal_h_px / 2),
-        confidence=0.0,  # 0.0 signals "not from model inference"
-        mask_path=None,
+    detections = tuple(
+        Detection(
+            class_name=GOALPOST_CLASS,
+            bbox=bbox,
+            centroid=((bbox[0] + bbox[2]) / 2, (bbox[1] + bbox[3]) / 2),
+            confidence=0.0,
+            mask_path=None,
+        )
+        for bbox in goals
     )
-    bottom_goal = Detection(
-        class_name=GOALPOST_CLASS,
-        bbox=(gx0, geom.field_y_max - goal_h_px, gx1, geom.field_y_max),
-        centroid=((gx0 + gx1) / 2, geom.field_y_max - goal_h_px / 2),
-        confidence=0.0,
-        mask_path=None,
-    )
-
-    return FrameDetections(frame=frame_index, detections=(top_goal, bottom_goal))
+    return FrameDetections(frame=frame_index, detections=detections)
 
 
 def detect_goalposts_multi_frame(
@@ -103,7 +81,46 @@ def detect_goalposts_multi_frame(
     clip_id: str = "video_836",
     **kwargs: Any,
 ) -> list[FrameDetections]:
-    return [
-        detect_goalposts(frame_index, clip_id=clip_id, **kwargs)
-        for frame_index in frame_indices
-    ]
+    return [detect_goalposts(frame_index, clip_id=clip_id) for frame_index in frame_indices]
+
+
+def detect_goalposts_with_mask(
+    image: "Image",
+    frame_index: int,
+    clip_id: str = "video_836",
+    segmenter: "SAM3Segmenter | None" = None,
+    det_idx_start: int = 0,
+) -> FrameDetections:
+    """
+    Detect goalposts using known-color bbox → SAM3 geometric prompt → pixel mask.
+
+    Uses per-clip HSV-confirmed bbox from _CLIP_GOALS as the geometric prompt for
+    SAM3's add_geometric_prompt, producing a real pixel-level mask instead of a
+    plain rectangle.  Falls back to detect_goalposts() (no mask) if segmenter is
+    None or if SAM3 raises an error.
+    """
+    goals = _CLIP_GOALS.get(clip_id)
+    if goals is None:
+        available = list(_CLIP_GOALS.keys())
+        raise ValueError(
+            f"No goal geometry for clip_id={clip_id!r}. Available: {available}. "
+            "Add an entry to goalpost_fallback._CLIP_GOALS."
+        )
+
+    if segmenter is None:
+        return detect_goalposts(frame_index, clip_id=clip_id)
+
+    try:
+        detections = []
+        for i, bbox in enumerate(goals):
+            det = segmenter.segment_with_box_prompt(
+                image=image,
+                class_name=GOALPOST_CLASS,
+                bbox_pixel=bbox,
+                frame_index=frame_index,
+                det_idx=det_idx_start + i,
+            )
+            detections.append(det)
+        return FrameDetections(frame=frame_index, detections=tuple(detections))
+    except Exception:
+        return detect_goalposts(frame_index, clip_id=clip_id)

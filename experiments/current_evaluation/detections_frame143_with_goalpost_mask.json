@@ -1,0 +1,129 @@
+{
+  "frames": [
+    {
+      "frame": 143,
+      "detections": [
+        {
+          "class_name": "small_robot",
+          "bbox": [
+            824.2300415039062,
+            675.4124145507812,
+            1020.93603515625,
+            865.8218383789062
+          ],
+          "centroid": [
+            922.5830383300781,
+            770.6171264648438
+          ],
+          "confidence": 0.71875,
+          "mask_path": "experiments/current_evaluation/masks/frame_000143_small_robot_000.png"
+        },
+        {
+          "class_name": "small_robot",
+          "bbox": [
+            890.3440551757812,
+            684.1948852539062,
+            1020.9180908203125,
+            866.0375366210938
+          ],
+          "centroid": [
+            955.6310729980469,
+            775.1162109375
+          ],
+          "confidence": 0.609375,
+          "mask_path": "experiments/current_evaluation/masks/frame_000143_small_robot_001.png"
+        },
+        {
+          "class_name": "small_robot",
+          "bbox": [
+            824.2782592773438,
+            668.4083862304688,
+            926.2047119140625,
+            815.4291381835938
+          ],
+          "centroid": [
+            875.2414855957031,
+            741.9187622070312
+          ],
+          "confidence": 0.578125,
+          "mask_path": "experiments/current_evaluation/masks/frame_000143_small_robot_002.png"
+        },
+        {
+          "class_name": "small_robot",
+          "bbox": [
+            94.614013671875,
+            1173.526611328125,
+            398.26605224609375,
+            1568.162353515625
+          ],
+          "centroid": [
+            246.44003295898438,
+            1370.844482421875
+          ],
+          "confidence": 0.8515625,
+          "mask_path": "experiments/current_evaluation/masks/frame_000143_small_robot_003.png"
+        },
+        {
+          "class_name": "small_robot",
+          "bbox": [
+            902.2504272460938,
+            415.372314453125,
+            988.4773559570312,
+            527.933837890625
+          ],
+          "centroid": [
+            945.3638916015625,
+            471.653076171875
+          ],
+          "confidence": 0.578125,
+          "mask_path": "experiments/current_evaluation/masks/frame_000143_small_robot_004.png"
+        },
+        {
+          "class_name": "ball",
+          "bbox": [
+            1115.27783203125,
+            715.8922119140625,
+            1142.3785400390625,
+            741.8558349609375
+          ],
+          "centroid": [
+            1128.8281860351562,
+            728.8740234375
+          ],
+          "confidence": 0.71875,
+          "mask_path": "experiments/current_evaluation/masks/frame_000143_ball_005.png"
+        },
+        {
+          "class_name": "green_soccer_field",
+          "bbox": [
+            2.760293483734131,
+            636.162841796875,
+            1358.1138916015625,
+            1807.5093994140625
+          ],
+          "centroid": [
+            680.4370925426483,
+            1221.8361206054688
+          ],
+          "confidence": 0.52734375,
+          "mask_path": "experiments/current_evaluation/masks/frame_000143_green_soccer_field_006.png"
+        },
+        {
+          "class_name": "goalpost",
+          "bbox": [
+            1007.0021362304688,
+            653.0553588867188,
+            1362.1695556640625,
+            800.19775390625
+          ],
+          "centroid": [
+            1184.5858459472656,
+            726.6265563964844
+          ],
+          "confidence": 0.96484375,
+          "mask_path": "experiments/current_evaluation/masks/frame_000143_goalpost_007.png"
+        }
+      ]
+    }
+  ]
+}

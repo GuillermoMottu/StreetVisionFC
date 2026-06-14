@@ -95,6 +95,89 @@ class SAM3Segmenter:
         self._torch = torch
         return self._processor
 
+    def segment_with_box_prompt(
+        self,
+        image: Image.Image,
+        class_name: str,
+        bbox_pixel: tuple[float, float, float, float],
+        frame_index: int = 0,
+        det_idx: int = 0,
+        box_prompt_threshold: float = 0.1,
+    ) -> Detection:
+        """
+        Prompt SAM3 with a known bounding box to produce a pixel-level mask.
+
+        bbox_pixel: (x0, y0, x1, y1) in image pixel coordinates.
+        box_prompt_threshold: lower than text-prompt threshold since location is known.
+        Returns a Detection; mask_path is populated if mask_output_dir was provided.
+        """
+        processor = self._ensure_processor()
+        torch = self._torch
+        assert torch is not None
+
+        img_w, img_h = image.size
+        x0, y0, x1, y1 = bbox_pixel
+        cx_norm = (x0 + x1) / (2 * img_w)
+        cy_norm = (y0 + y1) / (2 * img_h)
+        w_norm = (x1 - x0) / img_w
+        h_norm = (y1 - y0) / img_h
+
+        if self._mask_output_dir is not None:
+            self._mask_output_dir.mkdir(parents=True, exist_ok=True)
+
+        context = (
+            torch.autocast("cuda", dtype=torch.bfloat16)
+            if processor.device == "cuda"
+            else _NullContext()
+        )
+
+        prev_threshold = processor.confidence_threshold
+        processor.confidence_threshold = box_prompt_threshold
+        try:
+            with context:
+                state = processor.set_image(image)
+                output = processor.add_geometric_prompt(
+                    box=[cx_norm, cy_norm, w_norm, h_norm],
+                    label=True,
+                    state=state,
+                )
+        finally:
+            processor.confidence_threshold = prev_threshold
+
+        masks = output.get("masks")
+        boxes_out = output.get("boxes")
+        scores = output.get("scores")
+
+        if masks is not None and masks.shape[0] > 0:
+            best_idx = int(scores.argmax()) if (scores is not None and scores.shape[0] > 0) else 0
+
+            mask_path: str | None = None
+            if self._mask_output_dir is not None:
+                mask_path = _save_mask(masks[best_idx], class_name, frame_index, det_idx, self._mask_output_dir)
+
+            if boxes_out is not None and boxes_out.shape[0] > best_idx:
+                b = boxes_out[best_idx].cpu().tolist()
+                refined_bbox: tuple[float, float, float, float] = (float(b[0]), float(b[1]), float(b[2]), float(b[3]))
+            else:
+                refined_bbox = bbox_pixel
+
+            confidence = float(scores[best_idx]) if (scores is not None and scores.shape[0] > 0) else 0.5
+        else:
+            refined_bbox = bbox_pixel
+            confidence = 0.0
+            mask_path = None
+
+        safe_class = class_name.replace(" ", "_")
+        cx = (refined_bbox[0] + refined_bbox[2]) / 2
+        cy = (refined_bbox[1] + refined_bbox[3]) / 2
+        return Detection(
+            class_name=safe_class,
+            bbox=refined_bbox,
+            centroid=(cx, cy),
+            confidence=confidence,
+            mask_path=mask_path,
+        )
+
     def _segment_pil_image(
         self, image: Image.Image, prompts: list[str], frame_index: int = 0
     ) -> list[Detection]:

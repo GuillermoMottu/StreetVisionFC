@@ -1,10 +1,10 @@
 # PHASE_STATUS — FutBotMX / StreetVisionFC
 > Archivo de estado vivo. Actualizar al cerrar cada fase.
-> Última actualización: 2026-06-10
+> Última actualización: 2026-06-13
 
 ## Fase actual
 
-**Fase 2 — Segmentación SAM 3: masks y portería** (completada — pendiente aprobación)
+**Fase 2 — Segmentación SAM 3: masks y portería** (completada con box-prompt portería — pendiente aprobación)
 
 ## Estado por fase
 
@@ -12,8 +12,7 @@
 |---|---|---|---|
 | 0 | Rama, baseline y respaldo | Completada — aprobada | "Aprobado, continúa con la Fase 1." (2026-06-11) |
 | 1 | Reproducibilidad rápida | Completada — aprobada | "Aprobado, continúa con la Fase 2." (2026-06-11) |
-| 2 | Segmentación SAM 3: masks y portería | Completada — pendiente aprobación | — |
-| 2 | Segmentación SAM 3: masks y portería | No iniciada | — |
+| 2 | Segmentación SAM 3: masks y portería | Completada (incl. box-prompt portería) — pendiente aprobación | — |
 | 3 | Overlays, visualización y video demo | No iniciada | — |
 | 4 | Team assignment y análisis semántico | No iniciada | — |
 | 5 | Métricas, benchmark y dependencias | No iniciada | — |
@@ -33,10 +32,11 @@ Ninguna para Fase 0.
 
 ## Bloqueos conocidos
 
-| Bloqueo | Fase afectada | Acción requerida |
+Ninguno activo.
+
+| Bloqueo | Fase afectada | Estado |
 |---|---|---|
-| `ffmpeg` no instalado | Fase 3 | `sudo apt-get install ffmpeg` antes de iniciar Fase 3 |
-| `ffprobe` no instalado | Fase 3 | Incluido en el paquete `ffmpeg` |
+| `ffmpeg` no encontrado en PATH de Claude Code | Fase 3 | **Resuelto** — ffmpeg 8.0.1 instalado en /usr/bin/ (confirmado 2026-06-11) |
 
 ## Rama de trabajo
 
