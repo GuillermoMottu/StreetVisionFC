@@ -45,6 +45,63 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 
 
+def _extract_mask_contours(mask_dir: Path, experiment: Path) -> None:
+    """Extrae contornos poligonales de las máscaras SAM3 y guarda masks_contours.json.
+
+    Formato: {"frame_120": [{"class": "small_robot", "contour": [[x,y],...], "bbox": [x1,y1,x2,y2]}, ...]}
+    Los contornos se simplifican con approxPolyDP para reducir el tamaño del JSON.
+    """
+    import json
+    import re
+
+    out = experiment / "masks_contours.json"
+    if not mask_dir.exists():
+        return
+
+    try:
+        import cv2
+    except ImportError:
+        print("      WARN: cv2 no disponible — contornos de máscara omitidos")
+        return
+
+    frame_pattern = re.compile(r"frame_(\d+)_(.+?)_\d+\.png$")
+    contours_by_frame: dict[str, list[dict]] = {}
+
+    for mask_path in sorted(mask_dir.glob("frame_*.png")):
+        m = frame_pattern.match(mask_path.name)
+        if not m:
+            continue
+        frame_num = int(m.group(1))
+        cls = m.group(2)
+        frame_key = f"frame_{frame_num}"
+
+        mask = cv2.imread(str(mask_path), cv2.IMREAD_GRAYSCALE)
+        if mask is None:
+            continue
+        _, binary = cv2.threshold(mask, 128, 255, cv2.THRESH_BINARY)
+        found, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        if not found:
+            continue
+        largest = max(found, key=cv2.contourArea)
+        area = cv2.contourArea(largest)
+        if area < 50:
+            continue
+        epsilon = max(2.0, 0.015 * cv2.arcLength(largest, True))
+        approx = cv2.approxPolyDP(largest, epsilon, True)
+        pts = [[int(p[0][0]), int(p[0][1])] for p in approx]
+        x_vals = [p[0] for p in pts]
+        y_vals = [p[1] for p in pts]
+        bbox = [min(x_vals), min(y_vals), max(x_vals), max(y_vals)]
+
+        if frame_key not in contours_by_frame:
+            contours_by_frame[frame_key] = []
+        contours_by_frame[frame_key].append({"class": cls, "contour": pts, "bbox": bbox})
+
+    out.write_text(json.dumps(contours_by_frame, separators=(",", ":")))
+    total = sum(len(v) for v in contours_by_frame.values())
+    print(f"      Contornos: {total} objetos en {len(contours_by_frame)} frames → {out.name}")
+
+
 def _get_video_metadata(video_path: str) -> tuple[float, int, int]:
     """Devuelve (fps, width, height) del video."""
     import cv2
@@ -177,6 +234,9 @@ def main() -> int:
             f"· {elapsed:.1f}s ({elapsed/max(1,len(all_frames)):.2f}s/frame)"
         )
         print(f"      Guardado → {detections_json}")
+
+        # ── Extracción de contornos de máscaras ───────────────────────
+        _extract_mask_contours(mask_dir, experiment)
 
     # ── [2/3] Análisis completo (12 etapas) ───────────────────────────
     if args.skip_analysis:
