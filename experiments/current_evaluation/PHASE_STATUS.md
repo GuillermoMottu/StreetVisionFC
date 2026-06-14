@@ -4,7 +4,7 @@
 
 ## Fase actual
 
-**Fase 2 — Segmentación SAM 3: masks y portería** (completada con box-prompt portería — pendiente aprobación)
+**OWLv2 + Grounded-SAM integrado** (completado, pendiente aprobación para continuar a Fase 6)
 
 ## Estado por fase
 
@@ -12,11 +12,12 @@
 |---|---|---|---|
 | 0 | Rama, baseline y respaldo | Completada — aprobada | "Aprobado, continúa con la Fase 1." (2026-06-11) |
 | 1 | Reproducibilidad rápida | Completada — aprobada | "Aprobado, continúa con la Fase 2." (2026-06-11) |
-| 2 | Segmentación SAM 3: masks y portería | Completada | "Apruebo la fase 2 y continua con la fase 3" (2026-06-13) |
-| 3 | Overlays, visualización y video demo | Completada | "Aprobamos la Fase 3 y continuamos con la Fase 4" (2026-06-13) |
-| 4 | Team assignment y análisis semántico | Completada | "Es correcta la asignación de equipos, continua con el desarrollo" (2026-06-13) |
+| 2 | Segmentación SAM 3: masks y portería | Completada — aprobada | "Apruebo la fase 2 y continua con la fase 3" (2026-06-13) |
+| 3 | Overlays, visualización y video demo | Completada — aprobada | "Aprobamos la Fase 3 y continuamos con la Fase 4" (2026-06-13) |
+| 4 | Team assignment y análisis semántico | Completada — aprobada | "Es correcta la asignación de equipos, continua con el desarrollo" (2026-06-13) |
 | 5 | Métricas, benchmark y dependencias | Completada (R1-H pendiente de anotación humana) | — |
-| 6 | Documentación para evaluación | No iniciada | — |
+| 5b | OWLv2 + Grounded-SAM (mejora solicitada) | **Completada** (commit b4a8a82) | Pendiente aprobación |
+| 6 | Documentación para evaluación | **Completada** (commit pendiente) | Pendiente aprobación |
 | 7 | Limpieza de arquitectura y CI | No iniciada | — |
 
 ## Fases aprobadas por el usuario

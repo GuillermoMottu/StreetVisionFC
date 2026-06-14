@@ -1,178 +1,149 @@
-# FutBotMX
+# FutBotMX / StreetVisionFC
 
-Pipeline de vision por computadora para analizar videos de futbol robotico usando SAM 3, tracking, deteccion de eventos y visualizaciones ligeras.
+Computer-vision pipeline for robot soccer video analysis.
+Detects robots, ball, and goalpost; tracks multi-object motion; assigns teams; generates demo video.
 
-Este repositorio esta configurado para trabajo en dos equipos:
+---
 
-- Escritorio Windows: desarrollo, documentacion, eventos, revision de CSV/JSON y entregables.
-- Laptop MSI Ubuntu con RTX 4050: inferencia SAM 3, segmentacion, tracking pesado, overlays y benchmarks.
+## Quick start for evaluators
 
-La documentacion base esta en `FutBotMX_documentacion_markdown/`.
-
-## Estado actual
-
-- Nivel 1 validado con SAM 3 real, ROI, ByteTrack, eventos y evidencia ligera.
-- Nivel 2 cerrado con gate tecnico reproducible.
-- Nivel 3 completado tecnicamente con cierre `11 pass`, `0 fail` en `experiments/test_027_level3_closure/`.
-- Estructura base del repositorio creada y usada en laptop MSI/escritorio.
-- Dependencias de escritorio definidas en `requirements-dev.txt`.
-- Dependencias GPU definidas en `requirements-gpu.txt`.
-- Configuracion Nivel 2/Nivel 3 en `configs/default.yaml`.
-- Python 3.12.10 instalado para este escritorio.
-- Entorno virtual `.venv` creado con dependencias de desarrollo.
-- Ingesta, SAM 3, tracking, eventos, metricas Nivel 2, analisis tactico Nivel 3 y visualizaciones implementadas.
-- Videos completos, checkpoints y demos MP4 permanecen fuera de Git.
-
-## Configuracion del escritorio
-
-Ver `docs/SETUP_DESKTOP_WINDOWS.md`.
-
-## Comandos principales
-
-Activar entorno:
-
-```powershell
-.\.venv\Scripts\Activate.ps1
+```
+outputs/videos/futbotmx_demo_h264.mp4   ← demo video (H.264, 46.6 s, 2.3 MB)
+docs/EVALUATOR_GUIDE.md                 ← evidence map and key metrics
+docs/RESULTS_SUMMARY.md                 ← benchmark, tracking, segmentation results
 ```
 
-Ejecutar pruebas:
+---
+
+## Architecture
+
+```
+Video → OWLv2 (text→bbox) → SAM3 (bbox→mask) → ByteTrack → Team Assignment → Demo Video
+```
+
+- **OWLv2** (`google/owlv2-base-patch16-ensemble`): zero-shot object detection from text prompts
+- **SAM3** (`checkpoints/sam3/sam3.pt`): pixel-level segmentation from bounding boxes
+- **ByteTrack**: multi-object tracking across 61 dense frames
+- **Team assignment**: initial-side heuristic (x-axis), confidence 0.64, human-validated
+
+Full architecture: [docs/TECHNICAL_ARCHITECTURE.md](docs/TECHNICAL_ARCHITECTURE.md)
+Segmentation details: [docs/SAM3_PIPELINE.md](docs/SAM3_PIPELINE.md)
+
+---
+
+## Environment
+
+| Component | Value |
+|---|---|
+| GPU | NVIDIA GeForce RTX 4050 Laptop (6141 MB VRAM) |
+| CUDA | 13.0 |
+| Python | 3.14.4 |
+| PyTorch | 2.12.0+cu130 |
+| OS | Ubuntu 24.04 |
+
+---
+
+## Installation
 
 ```bash
-env MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python -m unittest discover -s tests -q
+# 1. Create virtual environment
+python3.14 -m venv .venv
+source .venv/bin/activate
+
+# 2. Install PyTorch (CUDA 13.0)
+pip install torch==2.12.0 torchvision==0.27.0 \
+  --index-url https://download.pytorch.org/whl/cu130
+
+# 3. Install dependencies
+pip install -r requirements-gpu.txt
+
+# 4. Install SAM3 from source
+mkdir -p .deps
+git clone https://github.com/facebookresearch/sam3 .deps/sam3
+pip install -e .deps/sam3
+
+# 5. Install OWLv2
+python -c "
+from huggingface_hub import snapshot_download
+snapshot_download('google/owlv2-base-patch16-ensemble',
+                  local_dir='checkpoints/owlv2-base')
+"
 ```
 
-Validar gates:
+---
+
+## Environment variables
 
 ```bash
-.venv/bin/python scripts/check_level2_readiness.py
-.venv/bin/python scripts/check_level2_closure.py
-.venv/bin/python scripts/check_level3_readiness.py
-.venv/bin/python scripts/check_level3_closure.py
+cp .env.example .env
+# Edit .env: set FUTBOTMX_VIDEO_836, FUTBOTMX_VIDEO_595, etc.
+# SAM3_CHECKPOINT_PATH=checkpoints/sam3/sam3.pt
+# OWLV2_MODEL_PATH=checkpoints/owlv2-base
+# PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 ```
 
-Generar artefactos Nivel 3 principales:
+Videos are not included in the repository (large binary files). Paths are set via `.env`.
+
+---
+
+## Run
 
 ```bash
-.venv/bin/python scripts/build_level3_data_contract.py
-.venv/bin/python scripts/run_level3_spatial_model.py
-.venv/bin/python scripts/run_level3_tactical_metrics.py
-.venv/bin/python scripts/run_level3_advanced_events.py
-.venv/bin/python scripts/run_level3_visualizations.py
-.venv/bin/python scripts/run_level3_dashboard.py
-.venv/bin/python scripts/run_level3_reel.py
-.venv/bin/python scripts/run_level3_multiclip.py
+source .env
+
+# Validate segmentation pipeline on a single frame
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+python scripts/run_grounded_sam_test.py \
+  --video "$FUTBOTMX_VIDEO_836" --frame 143
+
+# Run test suite (no GPU required)
+python -m unittest discover -s tests -q
+
+# Regenerate demo video
+python scripts/create_phase3_demo.py --video "$FUTBOTMX_VIDEO_836"
+
+# Benchmark
+python scripts/run_phase5_metrics.py
 ```
 
-Inspeccionar un video local:
+Full guide: [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)
 
-```powershell
-python scripts\inspect_video.py --video data\sample\clip_01.mp4
+---
+
+## Key results
+
+| Metric | Value |
+|---|---|
+| Inference speed | 0.447 FPS (single), 0.831 FPS (batched ×5) |
+| VRAM peak | 3878 MB |
+| Robots tracked | 3, frames 120–180 |
+| Goalpost detection | OWLv2 text → SAM3 mask (video\_836 conf=0.108) |
+| Test suite | 425 tests pass |
+| Supervised IoU/F1 | pending human annotation (infrastructure ready) |
+
+Full results: [docs/RESULTS_SUMMARY.md](docs/RESULTS_SUMMARY.md)
+
+---
+
+## Repository layout
+
+```
+src/futbotmx/          Python package (segmentation, tracking, team assignment, metrics)
+scripts/               Runnable scripts (test, demo, benchmark, annotation)
+configs/               YAML configuration (default.yaml)
+data/annotations/      Ground-truth annotation template + exported frames
+checkpoints/           Model weights (not versioned — see ARTIFACTS_INDEX.md)
+experiments/           Experiment outputs and evaluation results
+outputs/videos/        Demo video (not versioned)
+docs/                  Documentation for evaluation
+tests/                 Unit test suite
 ```
 
-Generar artefactos sinteticos de escritorio:
+---
 
-```powershell
-python scripts\create_synthetic_level1_artifacts.py
-```
+## License and notices
 
-Ejecutar tracking desde detecciones normalizadas:
+See [LICENSE](LICENSE) and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-```powershell
-python scripts\run_tracking.py --detections experiments\test_003_tracking\detections.json --output outputs\tracking\tracks.csv
-```
-
-Detectar eventos desde tracks:
-
-```powershell
-python scripts\run_events.py --tracks experiments\test_003_tracking\tracks.csv --output outputs\events\events.json
-```
-
-Generar heatmap:
-
-```powershell
-python scripts\run_visualizations.py --tracks experiments\test_003_tracking\tracks.csv --heatmap outputs\visualizations\heatmap.png
-```
-
-## Estado de experimentos
-
-- `test_000_environment_check`: entorno base documentado.
-- `test_001_video_ingestion`: clips reales inspeccionados.
-- `test_002_sam3_segmentation`: SAM 3 real ejecutado en laptop MSI.
-- `test_003_tracking`: tracking real comparado, ByteTrack recomendado.
-- `test_004_events`: eventos Nivel 1 recalculados con tracks reales.
-- `test_012` a `test_016`: metricas, eventos, visualizaciones, multi-clip y demo Nivel 2.
-- `test_017_level2_closure`: cierre tecnico Nivel 2 y gate hacia Nivel 3.
-- `test_018_level3_readiness`: decision formal, seleccion de clips y readiness Nivel 3.
-- `test_019_level3_data_contract`: auditoria de Nivel 2 y esquemas de artefactos Nivel 3.
-- `test_020_level3_spatial_model`: homografia/fallback, tracks rectificados y mini-mapa.
-- `test_021_level3_tactical_metrics`: control espacial, interacciones, Voronoi aproximado y grafo.
-- `test_022_level3_advanced_events`: highlights, cadenas candidatas, narrativa y overlays.
-- `test_023_level3_visualizations`: Voronoi, grafo, mini-mapas y storyboard.
-- `test_024_level3_dashboard`: dashboard HTML estatico local.
-- `test_025_level3_reel`: paquete de reel/demo local con MP4 fuera de Git.
-- `test_026_level3_multiclip`: validacion multi-clip `video_595` y `video_667`.
-- `test_027_level3_closure`: cierre tecnico Nivel 3 y resumen final.
-
-## Nivel 3 completado
-
-Nivel 3 es una demo avanzada reproducible basada en tracks y eventos ya versionados. El analisis tactico es aproximado: usa homografia/fallback, proximidad y reglas heuristicas; no es arbitraje oficial, medicion reglamentaria ni sistema en tiempo real.
-
-### Evidencia visual
-
-![Storyboard Nivel 3](experiments/test_023_level3_visualizations/highlight_storyboard.png)
-
-![Grafo de interaccion Nivel 3](experiments/test_023_level3_visualizations/interaction_graph.png)
-
-Dashboard local:
-
-```text
-experiments/test_024_level3_dashboard/dashboard.html
-```
-
-Reel/demo local:
-
-```text
-experiments/test_025_level3_reel/reel_demo.html
-```
-
-Overlay corto local:
-
-```text
-experiments/test_037_activity19_video_overlay/summary.md
-```
-
-El MP4 se renderiza localmente con `experiments/test_037_activity19_video_overlay/render_overlay_clip.sh` y queda fuera de Git.
-
-Reporte final imprimible:
-
-```text
-experiments/test_038_final_report/final_report.html
-```
-
-El PDF se exporta solo localmente con `experiments/test_038_final_report/render_final_report_pdf.sh` hacia `local_outputs/activity20/futbotmx_final_report.pdf` y queda fuera de Git.
-
-### Metricas principales
-
-| Clip | Rol | Highlights | Score top | Interacciones | Aristas | Homografia | Revision |
-|---|---|---:|---:|---:|---:|---:|---|
-| `video_595` | principal | 82 | 82.868076 | 57 | 1 | 0.824417 | provisional |
-| `video_667` | secundario | 60 | 74.044923 | 428 | 8 | 0.738172 | provisional |
-
-Fuente: `experiments/test_026_level3_multiclip/level3_multiclip_comparison.csv`.
-
-### Narrativa ejemplo
-
-> Rank `1` `video_595` frames `122-123`: score `82.868076`, confianza `0.893107`, motivo: velocidad_norm=0.272; posesion_candidata; zona=defensive_third; respaldo_level2.
-
-La narrativa completa esta en `experiments/test_022_level3_advanced_events/level3_narrative.md` y conserva lenguaje conservador: no afirma goles, faltas, reglas oficiales ni pases confirmados sin evidencia suficiente.
-
-### Cierre Nivel 3
-
-- Gate tecnico: `experiments/test_027_level3_closure/closure_checks.csv`.
-- Resumen final: `experiments/test_027_level3_closure/LEVEL3_CLOSURE_SUMMARY.md`.
-- Resultado: `11 pass`, `0 fail`.
-- Tests: `54` pruebas con `unittest`.
-
-## Regla principal
-
-No subir a GitHub videos completos, checkpoints, modelos, frames masivos, mascaras masivas, datasets completos ni outputs pesados.
+SAM3: Copyright Meta Platforms, Inc. — Apache 2.0.
+OWLv2: Copyright Google — Apache 2.0.
