@@ -13,22 +13,23 @@ video:
   max_frames: 300
 
 segmentation:
-  provider: sam3
+  # provider: sam3          — text-prompted SAM3 (original pipeline)
+  # provider: grounded_sam  — OWLv2 (text→bbox) + SAM3 (bbox→mask); camera-angle agnostic
+  provider: grounded_sam
   checkpoint_path_env: SAM3_CHECKPOINT_PATH
+  owlv2_model_path: checkpoints/owlv2-base
+  owlv2_confidence_threshold: 0.1
+  sam3_confidence_threshold: 0.05
   classes:
     - green_soccer_field
     - small_robot
     - ball
+    - yellow_goalpost
   confidence_threshold: 0.5
   goalpost:
-    detection_method: geometric_fallback
-    reason: "SAM 3 returned 0 detections for all 5 goalpost prompts at threshold=0.1 (confirmed 2026-06-11)"
-    prompts_tested:
-      - goal
-      - soccer goal
-      - goalpost
-      - small soccer goal
-      - robot soccer goal
+    detection_method: owlv2_grounded_sam
+    fallback: geometric_fallback
+    note: "OWLv2 detects 'yellow goalpost' at conf≈0.11; SAM3 box-prompt produces pixel mask. Fallback to geometric_fallback if OWLv2 not available."
     fallback_params:
       goal_x_start_norm: 0.39
       goal_x_end_norm: 0.61
