@@ -15,7 +15,7 @@
 | 2 | Segmentación SAM 3: masks y portería | Completada | "Apruebo la fase 2 y continua con la fase 3" (2026-06-13) |
 | 3 | Overlays, visualización y video demo | Completada | "Aprobamos la Fase 3 y continuamos con la Fase 4" (2026-06-13) |
 | 4 | Team assignment y análisis semántico | Completada | "Es correcta la asignación de equipos, continua con el desarrollo" (2026-06-13) |
-| 5 | Métricas, benchmark y dependencias | No iniciada | — |
+| 5 | Métricas, benchmark y dependencias | Completada (R1-H pendiente de anotación humana) | — |
 | 6 | Documentación para evaluación | No iniciada | — |
 | 7 | Limpieza de arquitectura y CI | No iniciada | — |
 

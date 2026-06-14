@@ -1,9 +1,36 @@
-numpy
-pandas
-matplotlib
-pyyaml
-opencv-python
-tqdm
-torch
-torchvision
-supervision
+# GPU environment — verified on RTX 4050 Laptop, CUDA 13.0, Python 3.14.4
+# Pinned to versions tested 2026-06-13.
+# Install order: torch first, then the rest.
+
+# Deep learning
+torch==2.12.0
+torchvision==0.27.0
+
+# Core vision
+numpy==1.26.4
+opencv-python==4.13.0.92
+pillow==12.2.0
+
+# Detection / tracking
+supervision==0.28.0
+
+# Model utilities
+timm==1.0.27
+einops==0.8.2
+huggingface-hub==1.17.0
+
+# Data / analysis
+pandas==2.3.0
+matplotlib==3.10.3
+pyyaml==6.0.2
+tqdm==4.67.1
+scipy==1.15.3
+
+# Annotation / evaluation
+pycocotools==2.0.11
+
+# System / profiling
+psutil==7.2.2
+
+# Config / env
+python-dotenv==1.1.0

@@ -1,0 +1,28 @@
+{
+  "benchmark": {
+    "source": "experiments/test_007_msi_benchmarks/video_836_sam3/benchmark.json",
+    "load_time_sec": 15.5693,
+    "gpu": {
+      "name": "NVIDIA GeForce RTX 4050 Laptop GPU",
+      "vram_total_mb": 6141.0,
+      "vram_after_load_mb": 3626.0
+    },
+    "single_frame": {
+      "sec_per_frame": 2.237,
+      "fps_effective": 0.447,
+      "vram_peak_mb": 3877.86
+    },
+    "multi_frame_5": {
+      "sec_per_frame": 1.2031,
+      "fps_effective": 0.8312,
+      "vram_peak_mb": 3878.11
+    }
+  },
+  "supervised_metrics": {
+    "status": "pending_annotation",
+    "message": "No annotations in template yet. Annotate data/annotations/annotation_template.json and re-run."
+  },
+  "annotation_status": "pending_annotation",
+  "annotation_frames": 8,
+  "annotation_classes": 4
+}

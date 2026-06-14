@@ -1,0 +1,28 @@
+{
+  "info": {
+    "description": "FutBotMX ground truth annotations — video_836",
+    "clip_id": "video_836",
+    "annotator": "human",
+    "annotation_date": "YYYY-MM-DD",
+    "status": "pending_annotation",
+    "classes": ["small_robot", "ball", "green_soccer_field", "goalpost"],
+    "notes": "Annotate frames exported to data/annotations/frames/. For each object, provide bbox [x0, y0, x1, y1] in pixel coords (origin top-left). Masks optional but preferred."
+  },
+  "images": [
+    {"id": 120, "file_name": "video_836_frame_000120.png", "width": 1360, "height": 1808},
+    {"id": 130, "file_name": "video_836_frame_000130.png", "width": 1360, "height": 1808},
+    {"id": 140, "file_name": "video_836_frame_000140.png", "width": 1360, "height": 1808},
+    {"id": 143, "file_name": "video_836_frame_000143.png", "width": 1360, "height": 1808},
+    {"id": 150, "file_name": "video_836_frame_000150.png", "width": 1360, "height": 1808},
+    {"id": 160, "file_name": "video_836_frame_000160.png", "width": 1360, "height": 1808},
+    {"id": 170, "file_name": "video_836_frame_000170.png", "width": 1360, "height": 1808},
+    {"id": 180, "file_name": "video_836_frame_000180.png", "width": 1360, "height": 1808}
+  ],
+  "categories": [
+    {"id": 1, "name": "small_robot", "supercategory": "robot"},
+    {"id": 2, "name": "ball",        "supercategory": "object"},
+    {"id": 3, "name": "green_soccer_field", "supercategory": "field"},
+    {"id": 4, "name": "goalpost",    "supercategory": "field"}
+  ],
+  "annotations": []
+}
