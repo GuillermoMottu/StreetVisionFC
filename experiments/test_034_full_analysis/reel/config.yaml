@@ -1,6 +1,5 @@
 project:
   name: FutBotMX
-  level: 2
 paths:
   data_dir: data
   sample_dir: data/sample
@@ -11,13 +10,26 @@ video:
   frame_stride: 1
   max_frames: 300
 segmentation:
-  provider: sam3
+  provider: grounded_sam
   checkpoint_path_env: SAM3_CHECKPOINT_PATH
+  owlv2_model_path: checkpoints/owlv2-base
+  owlv2_confidence_threshold: 0.1
+  sam3_confidence_threshold: 0.05
   classes:
   - green_soccer_field
   - small_robot
   - ball
+  - yellow_goalpost
   confidence_threshold: 0.5
+  goalpost:
+    detection_method: owlv2_grounded_sam
+    fallback: geometric_fallback
+    note: "OWLv2 detects 'yellow goalpost' at conf\u22480.11; SAM3 box-prompt produces\
+      \ pixel mask. Fallback to geometric_fallback if OWLv2 not available."
+    fallback_params:
+      goal_x_start_norm: 0.39
+      goal_x_end_norm: 0.61
+      goal_height_norm: 0.04
 tracking:
   method: bytetrack
   max_lost_frames: 15
@@ -139,16 +151,17 @@ level3_reel:
   rule_version: level3_reel_v0.1
   format: static_demo_plus_local_render_plan
   mp4_policy: local_only_not_versioned
-  highlights_csv: experiments/test_034_full_analysis/level3_events/level3_highlights.csv
-  events_json: experiments/test_034_full_analysis/level3_events/level3_events.json
-  overlay_validation_csv: experiments/test_034_full_analysis/level3_events/overlay_validation.csv
-  advanced_events_dir: experiments/test_034_full_analysis/level3_events
-  visualization_manifest_csv: experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv
-  storyboard_manifest_csv: experiments/test_034_full_analysis/level3_visualizations/highlight_storyboard_manifest.csv
-  visualizations_dir: experiments/test_034_full_analysis/level3_visualizations
+  highlights_csv: experiments/test_022_level3_advanced_events/level3_highlights.csv
+  events_json: experiments/test_022_level3_advanced_events/level3_events.json
+  overlay_validation_csv: experiments/test_022_level3_advanced_events/overlay_validation.csv
+  advanced_events_dir: experiments/test_022_level3_advanced_events
+  visualization_manifest_csv: experiments/test_023_level3_visualizations/visualization_manifest.csv
+  storyboard_manifest_csv: experiments/test_023_level3_visualizations/highlight_storyboard_manifest.csv
+  visualizations_dir: experiments/test_023_level3_visualizations
   dashboard_html: experiments/test_034_full_analysis/dashboard/dashboard.html
+  human_review_csv: ''
   output_dir: experiments/test_034_full_analysis/reel
-  local_reel_path: local_outputs/full_analysis/video_595_120_180_reel.mp4
+  local_reel_path: local_outputs/level3_reel/futbotmx_level3_reel.mp4
   segment_count: 4
   segment_duration_sec: 3.0
   min_confidence: 0.8

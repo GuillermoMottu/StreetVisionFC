@@ -9,6 +9,8 @@
 - Duracion sugerida: `12.0` segundos.
 - Score top: `82.9`.
 - Confianza minima seleccionada: `0.81`.
+- Highlights con revision humana: `0`.
+- Highlights descartados por revision: `0`.
 - Manifest rows: `21`.
 - MP4 final: local y no versionado.
 
@@ -23,6 +25,7 @@
 
 - Cada thumbnail combina overlay de evento, mini-mapa y texto breve.
 - Los overlays muestran IDs/trails cuando existen en la evidencia Nivel 3.
+- Si existe `human_review.csv`, los highlights descartados no entran al reel.
 - El lenguaje queda como highlight/proximidad/posesion candidata; no afirma goles ni decisiones oficiales.
 
 ## Render Local
@@ -32,7 +35,7 @@ cd experiments/test_034_full_analysis/reel
 bash render_reel_local.sh
 ```
 
-- Salida esperada fuera de Git: `local_outputs/full_analysis/video_595_120_180_reel.mp4`.
+- Salida esperada fuera de Git: `local_outputs/level3_reel/futbotmx_level3_reel.mp4`.
 - `*.mp4` esta ignorado por `.gitignore` y no se genera durante esta actividad.
 
 ## Artefactos

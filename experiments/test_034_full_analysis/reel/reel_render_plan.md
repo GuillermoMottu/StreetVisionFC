@@ -7,7 +7,7 @@ cd experiments/test_034_full_analysis/reel
 bash render_reel_local.sh
 ```
 
-Salida local esperada: `local_outputs/full_analysis/video_595_120_180_reel.mp4`.
+Salida local esperada: `local_outputs/level3_reel/futbotmx_level3_reel.mp4`.
 
 ## Segmentos
 

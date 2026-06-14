@@ -1,0 +1,13 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+summary,md,summary.md,local_app,true,local_app,Local app execution summary.
+config,yaml,config.yaml,configs/default.yaml,true,local_app,Configuration snapshot.
+local_app_manifest,csv,local_app_manifest.csv,local_app,true,manifest,Local app artifact manifest.
+app_summary,md,summary.md,experiments/test_034_full_analysis/summary.md,true,local_app,App summary; size=1466
+app_manifest,csv,local_app_manifest.csv,experiments/test_034_full_analysis/local_app_manifest.csv,true,local_app,App manifest; size=1606
+app_config,yaml,config.yaml,experiments/test_034_full_analysis/config.yaml,true,local_app,App config; size=5597
+generated_dashboard,html,dashboard/dashboard.html,experiments/test_034_full_analysis/dashboard/dashboard.html,true,dashboard,Generated dashboard; size=12602
+generated_reel,html,reel/reel_demo.html,experiments/test_034_full_analysis/reel/reel_demo.html,true,reel,Generated reel; size=3560
+generated_reel_manifest,csv,reel/reel_manifest.csv,experiments/test_034_full_analysis/reel/reel_manifest.csv,true,reel,Generated reel manifest; size=3672
+nivel_3_dashboard,html,../test_024_level3_dashboard/dashboard.html,experiments/test_024_level3_dashboard/dashboard.html,true,evidence,Nivel 3 dashboard; size=12280
+nivel_3_reel,html,../test_025_level3_reel/reel_demo.html,experiments/test_025_level3_reel/reel_demo.html,true,evidence,Nivel 3 reel; size=3480
+nivel_3_closure_checks,csv,../test_027_level3_closure/closure_checks.csv,experiments/test_027_level3_closure/closure_checks.csv,true,checks,Nivel 3 closure checks; size=1319

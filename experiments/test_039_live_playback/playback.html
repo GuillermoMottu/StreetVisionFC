@@ -103,14 +103,15 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 </header>
 
 <section class="analyze-bar">
+  <datalist id="videoList"><option value="/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-480_singular_display.mov" label="480"><option value="/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov" label="595"><option value="/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-667_singular_display.mov" label="667"><option value="/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" label="836"></datalist>
   <form id="analyzeForm" action="/analyze" method="post" class="analyze-form">
-    <span class="analyze-label">Analizar nuevo video</span>
-    <input name="video_path" class="inp-path" placeholder="/ruta/al/video.mp4" required>
-    <input name="clip_id" class="inp-short" placeholder="clip_id" value="clip">
-    <input type="number" name="start_frame" class="inp-num" value="0" placeholder="Inicio">
-    <input type="number" name="end_frame" class="inp-num" value="300" placeholder="Fin">
+    <span class="analyze-label">Analizar video</span>
+    <input name="video_path" class="inp-path" value="/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov" placeholder="/ruta/al/video.mp4" list="videoList" required>
+    <input name="clip_id" class="inp-short" placeholder="clip_id" value="video_595">
+    <input type="number" name="start_frame" class="inp-num" value="120" placeholder="Inicio">
+    <input type="number" name="end_frame" class="inp-num" value="180" placeholder="Fin">
     <input type="number" name="stride" class="inp-num" value="1" placeholder="Stride" min="1">
-    <button type="submit" class="btn-analyze">Analizar</button>
+    <button type="submit" class="btn-analyze">▶ Analizar</button>
   </form>
   <div id="analyzeStatus" class="analyze-status hidden"></div>
 </section>
@@ -141,7 +142,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
     </div>
     <div class="panel-section">
       <h3>Capas de overlay</h3>
-      <div class="toggles"><label class="tog"><input type="checkbox" id="layerTracks" checked><span>Tracks</span></label><label class="tog"><input type="checkbox" id="layerIds" checked><span>IDs</span></label><label class="tog"><input type="checkbox" id="layerBall" checked><span>Balón</span></label><label class="tog"><input type="checkbox" id="layerTrails" checked><span>Trails</span></label><label class="tog"><input type="checkbox" id="layerGoalpost" checked><span>Portería</span></label><label class="tog"><input type="checkbox" id="layerField"><span>Campo</span></label><label class="tog"><input type="checkbox" id="layerEvents" checked><span>Eventos</span></label><label class="tog"><input type="checkbox" id="layerMinimap" checked><span>Minimapa</span></label></div>
+      <div class="toggles"><label class="tog"><input type="checkbox" id="layerMasks"><span>Contornos</span></label><label class="tog"><input type="checkbox" id="layerTracks" checked><span>Bboxes</span></label><label class="tog"><input type="checkbox" id="layerIds" checked><span>IDs</span></label><label class="tog"><input type="checkbox" id="layerBall" checked><span>Balón</span></label><label class="tog"><input type="checkbox" id="layerTrails" checked><span>Trails</span></label><label class="tog"><input type="checkbox" id="layerGoalpost" checked><span>Portería</span></label><label class="tog"><input type="checkbox" id="layerField"><span>Campo</span></label><label class="tog"><input type="checkbox" id="layerEvents" checked><span>Eventos</span></label><label class="tog"><input type="checkbox" id="layerMinimap" checked><span>Minimapa</span></label></div>
     </div>
     <div class="panel-section">
       <h3>Leyenda</h3>
@@ -313,6 +314,30 @@ function drawMinimap(rows){
   ctx.font='10px system-ui';ctx.fillStyle='#7a8f78';
   ctx.fillText('minimapa',px+4,py+ph-4);
 }
+function drawMasks(targetFrame){
+  const key='frame_'+targetFrame;
+  const contours=MASK_CONTOURS[key]||[];
+  if(!contours.length)return;
+  for(const c of contours){
+    if(!c.contour||c.contour.length<3)continue;
+    const cls=c.class||'';
+    let color='#4dce78';
+    if(cls.includes('robot'))color='#4ba8ff';
+    else if(cls.includes('ball'))color='#f0c230';
+    else if(cls.includes('goalpost'))color='#ff5f5f';
+    ctx.beginPath();
+    const [x0,y0]=c.contour[0];
+    ctx.moveTo(scaleX(x0),scaleY(y0));
+    for(const [x,y] of c.contour.slice(1))ctx.lineTo(scaleX(x),scaleY(y));
+    ctx.closePath();
+    ctx.strokeStyle=color;
+    ctx.lineWidth=3;
+    ctx.stroke();
+    // subtle fill
+    ctx.fillStyle=color+'22';
+    ctx.fill();
+  }
+}
 function drawEvents(events){
   let top=14;
   for(const e of events.slice(0,4)){
@@ -338,6 +363,7 @@ function draw(){
   syncState.textContent=resolved.status==='missing'?'sin datos':resolved.status==='exact'?'en caché':'interpolado';
   if(enabled('layerTrails')&&suppressTrails<=0)drawTrails(frame??target);
   else if(suppressTrails>0)suppressTrails--;
+  if(enabled('layerMasks'))drawMasks(frame??target);
   if(enabled('layerTracks'))drawTracks(rows);
   if(enabled('layerBall'))drawBall(rows);
   if(enabled('layerEvents'))drawEvents(events);
@@ -392,6 +418,7 @@ if(analyzeForm){
 // ── video events ──
 if(!data.config.video_exists)videoMissing.classList.remove('hidden');
 video.addEventListener('seeking',()=>{suppressTrails=2;resizeCanvas();});
+video.addEventListener('seeked',()=>{suppressTrails=2;resizeCanvas();});
 video.addEventListener('play',()=>{syncState.textContent='reproduciendo';});
 video.addEventListener('pause',()=>{syncState.textContent='pausado';});
 video.addEventListener('ended',()=>{syncState.textContent='fin';});
@@ -403,6 +430,20 @@ if(data.endpoints?.stream&&window.EventSource){
   es.addEventListener('session_status',e=>{const m=JSON.parse(e.data);if(m.status==='complete')es.close();});
 }
 requestAnimationFrame(draw);
+</script>
+<script>
+// ── Carga de contornos SAM3 (si existen) ──────────────────────────
+const HAS_CONTOURS = false;
+let MASK_CONTOURS = {};
+if (HAS_CONTOURS) {
+  fetch('/masks-contours.json').then(r=>r.json()).then(d=>{MASK_CONTOURS=d;}).catch(()=>{});
+}
+// ── showTab inicial ────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded',()=>{
+  // First tab panel is already shown in HTML; activate its button styling
+  const firstBtn = document.querySelector('.tab-btn');
+  if (firstBtn) firstBtn.classList.add('active');
+});
 </script>
 </body>
 </html>

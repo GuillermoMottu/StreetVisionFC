@@ -6,13 +6,15 @@
 - Regla: `level3_dashboard_v0.1`.
 - Formato: `HTML estatico local`.
 - Arquitectura: sin backend, sin login, sin dependencias nuevas.
-- Clips integrados: `video_595`.
-- Highlights enlazados: `82`.
-- Metricas CSV: `10`.
-- Eventos avanzados: `83`.
-- Muestras de interaccion: `57`.
-- Aristas de grafo: `1`.
-- Cadenas de pase conservadoras: `1`.
+- Clips integrados: `video_595, video_667`.
+- Highlights enlazados: `142`.
+- Highlights con revision humana: `0`.
+- Highlights descartados por revision: `0`.
+- Metricas CSV: `25`.
+- Eventos avanzados: `144`.
+- Muestras de interaccion: `485`.
+- Aristas de grafo: `9`.
+- Cadenas de pase conservadoras: `2`.
 
 ## Secciones
 
@@ -20,6 +22,7 @@
 - Metricas por clip y control medio por robot.
 - Visualizaciones: storyboard, grafo, Voronoi en mini-mapa y Voronoi proyectado.
 - Highlights y aristas principales.
+- Revision humana opcional aplicada a highlights sin borrar el ranking original.
 - Evidencia con links relativos a CSV, JSON, Markdown y manifest.
 
 ## Assets Integrados

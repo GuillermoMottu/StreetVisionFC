@@ -1,6 +1,5 @@
 project:
   name: FutBotMX
-  level: 2
 paths:
   data_dir: data
   sample_dir: data/sample
@@ -11,13 +10,26 @@ video:
   frame_stride: 1
   max_frames: 300
 segmentation:
-  provider: sam3
+  provider: grounded_sam
   checkpoint_path_env: SAM3_CHECKPOINT_PATH
+  owlv2_model_path: checkpoints/owlv2-base
+  owlv2_confidence_threshold: 0.1
+  sam3_confidence_threshold: 0.05
   classes:
   - green_soccer_field
   - small_robot
   - ball
+  - yellow_goalpost
   confidence_threshold: 0.5
+  goalpost:
+    detection_method: owlv2_grounded_sam
+    fallback: geometric_fallback
+    note: "OWLv2 detects 'yellow goalpost' at conf\u22480.11; SAM3 box-prompt produces\
+      \ pixel mask. Fallback to geometric_fallback if OWLv2 not available."
+    fallback_params:
+      goal_x_start_norm: 0.39
+      goal_x_end_norm: 0.61
+      goal_height_norm: 0.04
 tracking:
   method: bytetrack
   max_lost_frames: 15
@@ -139,14 +151,15 @@ level3_dashboard:
   rule_version: level3_dashboard_v0.1
   format: static_html
   architecture: local_file_no_backend
-  metrics_csv: experiments/test_034_full_analysis/level3_metrics/level3_metrics.csv
-  metrics_json: experiments/test_034_full_analysis/level3_metrics/level3_metrics.json
-  interaction_edges_csv: experiments/test_034_full_analysis/level3_metrics/interaction_edges.csv
-  highlights_csv: experiments/test_034_full_analysis/level3_events/level3_highlights.csv
-  events_json: experiments/test_034_full_analysis/level3_events/level3_events.json
-  narrative_md: experiments/test_034_full_analysis/level3_events/level3_narrative.md
-  visualizations_dir: experiments/test_034_full_analysis/level3_visualizations
-  visualization_manifest_csv: experiments/test_034_full_analysis/level3_visualizations/visualization_manifest.csv
+  metrics_csv: experiments/test_021_level3_tactical_metrics/level3_metrics.csv
+  metrics_json: experiments/test_021_level3_tactical_metrics/level3_metrics.json
+  interaction_edges_csv: experiments/test_021_level3_tactical_metrics/interaction_edges.csv
+  highlights_csv: experiments/test_022_level3_advanced_events/level3_highlights.csv
+  events_json: experiments/test_022_level3_advanced_events/level3_events.json
+  narrative_md: experiments/test_022_level3_advanced_events/level3_narrative.md
+  visualizations_dir: experiments/test_023_level3_visualizations
+  visualization_manifest_csv: experiments/test_023_level3_visualizations/visualization_manifest.csv
+  human_review_csv: ''
   output_dir: experiments/test_034_full_analysis/dashboard
   top_highlights: 6
   top_edges: 5
