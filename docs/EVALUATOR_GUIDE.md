@@ -25,7 +25,7 @@ H.264, 46.6 s, 2.3 MB. Five sections: raw video, segmentation overlays, tracking
 | Tracking frames validated | 61 frames (120–180) | `tracks_bytetrack_with_teams.csv` |
 | Robots tracked | 3 (robot\_bt\_01, 02, 03) | ByteTrack, video\_836 |
 | Team assignment confidence | 0.64 (initial-side method) | `team_assignment_summary.json` |
-| Supervised IoU/F1 | **pending human annotation** | `supervised_metrics.json` |
+| Supervised IoU/F1 | **micro F1=0.857 · P=0.75 · R=1.00** | `supervised_metrics.json` |
 | Test suite | **425 tests pass** | `python -m unittest discover -s tests` |
 
 ---
@@ -79,10 +79,13 @@ Video frames are decoded with OpenCV. A **Grounded-SAM** pipeline (OWLv2 zero-sh
 
 ---
 
-## 6. Pending (human-in-the-loop)
+## 6. Ground-truth annotation source
 
-| Item | Status | How to complete |
-|---|---|---|
-| IoU/Dice/F1 supervised metrics | **pending annotation** | Annotate `data/annotations/annotation_template.json` in COCO format, then run `python scripts/run_phase5_metrics.py` |
+49 human annotations (Roboflow, 2026-06-14) across 8 frames of video_836.
+Source: `data/annotations/train_COCO/_annotations.coco.json`
+Converted template: `data/annotations/annotation_template.json`
 
-No metrics were fabricated. Infrastructure is fully ready.
+To re-run metrics from scratch:
+```bash
+python scripts/run_phase5_metrics.py
+```
