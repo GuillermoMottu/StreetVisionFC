@@ -4,14 +4,15 @@
 
 ## Fase actual
 
-**Fase 1 — Reproducibilidad rápida** (completada — pendiente aprobación)
+**Fase 2 — Segmentación SAM 3: masks y portería** (completada — pendiente aprobación)
 
 ## Estado por fase
 
 | Fase | Nombre | Estado | Aprobación del usuario |
 |---|---|---|---|
 | 0 | Rama, baseline y respaldo | Completada — aprobada | "Aprobado, continúa con la Fase 1." (2026-06-11) |
-| 1 | Reproducibilidad rápida | Completada — pendiente aprobación | — |
+| 1 | Reproducibilidad rápida | Completada — aprobada | "Aprobado, continúa con la Fase 2." (2026-06-11) |
+| 2 | Segmentación SAM 3: masks y portería | Completada — pendiente aprobación | — |
 | 2 | Segmentación SAM 3: masks y portería | No iniciada | — |
 | 3 | Overlays, visualización y video demo | No iniciada | — |
 | 4 | Team assignment y análisis semántico | No iniciada | — |
@@ -24,6 +25,7 @@
 | Fase | Frase de aprobación | Fecha |
 |---|---|---|
 | 0 | "Aprobado, continúa con la Fase 1." | 2026-06-11 |
+| 1 | "Aprobado, continúa con la Fase 2." | 2026-06-11 |
 
 ## Tareas incompletas
 

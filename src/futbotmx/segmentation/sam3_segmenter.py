@@ -19,18 +19,20 @@ class SAM3Segmenter:
         checkpoint_path: str | None = None,
         confidence_threshold: float = 0.5,
         device: str | None = None,
+        mask_output_dir: str | Path | None = None,
     ) -> None:
         self.checkpoint_path = checkpoint_path or os.environ.get("SAM3_CHECKPOINT_PATH")
         if self.checkpoint_path is None and Path("checkpoints/sam3/sam3.pt").exists():
             self.checkpoint_path = "checkpoints/sam3/sam3.pt"
         self.confidence_threshold = confidence_threshold
         self.device = device
+        self._mask_output_dir = Path(mask_output_dir) if mask_output_dir is not None else None
         self._torch = None
         self._processor = None
 
     def segment_image(self, image_path: str | Path, prompts: list[str]) -> FrameDetections:
         image = Image.open(image_path).convert("RGB")
-        detections = self._segment_pil_image(image, prompts)
+        detections = self._segment_pil_image(image, prompts, frame_index=0)
         return FrameDetections(frame=0, detections=tuple(detections))
 
     def segment_video(
@@ -53,7 +55,7 @@ class SAM3Segmenter:
                     continue
                 frame_rgb = cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB)
                 image = Image.fromarray(frame_rgb)
-                detections = self._segment_pil_image(image, prompts)
+                detections = self._segment_pil_image(image, prompts, frame_index=frame_index)
                 frames.append(FrameDetections(frame=frame_index, detections=tuple(detections)))
         finally:
             capture.release()
@@ -93,10 +95,15 @@ class SAM3Segmenter:
         self._torch = torch
         return self._processor
 
-    def _segment_pil_image(self, image: Image.Image, prompts: list[str]) -> list[Detection]:
+    def _segment_pil_image(
+        self, image: Image.Image, prompts: list[str], frame_index: int = 0
+    ) -> list[Detection]:
         processor = self._ensure_processor()
         torch = self._torch
         assert torch is not None
+
+        if self._mask_output_dir is not None:
+            self._mask_output_dir.mkdir(parents=True, exist_ok=True)
 
         detections: list[Detection] = []
         context = (
@@ -106,9 +113,14 @@ class SAM3Segmenter:
         )
         with context:
             state = processor.set_image(image)
+            det_start = 0
             for prompt in prompts:
                 output = processor.set_text_prompt(state=state, prompt=prompt)
-                detections.extend(_detections_from_output(prompt, output))
+                new_dets = _detections_from_output(
+                    prompt, output, frame_index, det_start, self._mask_output_dir
+                )
+                detections.extend(new_dets)
+                det_start += len(new_dets)
                 processor.reset_all_prompts(state)
         return detections
 
@@ -121,23 +133,62 @@ class _NullContext:
         return False
 
 
-def _detections_from_output(class_name: str, output: dict) -> list[Detection]:
+def _save_mask(
+    mask_tensor,
+    class_name: str,
+    frame_index: int,
+    det_idx: int,
+    mask_output_dir: Path,
+) -> str:
+    """Save a (1, H, W) bool mask tensor as PNG. Returns the file path string."""
+    import numpy as np
+
+    mask_np = mask_tensor.squeeze(0).cpu().numpy().astype("uint8") * 255
+    safe_class = class_name.replace(" ", "_").replace("/", "_")
+    filename = f"frame_{frame_index:06d}_{safe_class}_{det_idx:03d}.png"
+    output_path = mask_output_dir / filename
+    Image.fromarray(mask_np, mode="L").save(str(output_path))
+    return str(output_path)
+
+
+def _detections_from_output(
+    class_name: str,
+    output: dict,
+    frame_index: int = 0,
+    det_start_idx: int = 0,
+    mask_output_dir: Path | None = None,
+) -> list[Detection]:
     boxes = output.get("boxes")
     scores = output.get("scores")
+    masks = output.get("masks")  # (N, 1, H, W) bool tensor, or None / empty
+
     if boxes is None or scores is None:
         return []
 
     boxes_cpu = boxes.detach().float().cpu().tolist()
     scores_cpu = scores.detach().float().cpu().tolist()
+
     detections: list[Detection] = []
-    for bbox, score in zip(boxes_cpu, scores_cpu):
+    for idx, (bbox, score) in enumerate(zip(boxes_cpu, scores_cpu)):
         x0, y0, x1, y1 = (float(value) for value in bbox)
+
+        mask_path: str | None = None
+        if (
+            mask_output_dir is not None
+            and masks is not None
+            and masks.shape[0] > idx
+        ):
+            mask_path = _save_mask(
+                masks[idx], class_name, frame_index, det_start_idx + idx, mask_output_dir
+            )
+
         detections.append(
             Detection(
                 class_name=class_name.replace(" ", "_"),
                 bbox=(x0, y0, x1, y1),
                 centroid=((x0 + x1) / 2, (y0 + y1) / 2),
                 confidence=float(score),
+                mask_path=mask_path,
             )
         )
     return detections
