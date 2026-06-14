@@ -1,0 +1,75 @@
+name: CI
+
+on:
+  push:
+    branches: ["fix/master-audit-corrections", "main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  test:
+    name: Test suite (CPU only)
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install CPU dependencies
+        run: |
+          pip install --upgrade pip
+          # CPU-only torch (no CUDA download)
+          pip install torch==2.1.2+cpu torchvision==0.16.2+cpu \
+            --index-url https://download.pytorch.org/whl/cpu
+          pip install \
+            numpy==1.26.4 \
+            opencv-python-headless==4.10.0.84 \
+            pillow \
+            pyyaml \
+            pandas \
+            tqdm \
+            supervision \
+            python-dotenv \
+            timm \
+            einops \
+            huggingface-hub \
+            psutil \
+            scipy
+
+      - name: Install package
+        run: pip install -e . --no-deps
+
+      - name: Check core imports
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'src')
+          from futbotmx.config import load_config
+          from futbotmx.io.detections import Detection, FrameDetections
+          from futbotmx.segmentation import (
+              SAM3Segmenter, SAM3UnavailableError,
+              OWLv2Detector, OWLv2UnavailableError,
+              GroundedSAMSegmenter,
+              detect_goalposts, detect_goalposts_with_mask,
+          )
+          cfg = load_config('configs/default.yaml')
+          assert cfg['segmentation']['provider'] == 'grounded_sam', cfg
+          print('All imports OK')
+          "
+
+      - name: Run test suite
+        run: python -m unittest discover -s tests -q
+
+      - name: Validate goalpost fallback (no GPU)
+        run: |
+          python -c "
+          import sys; sys.path.insert(0, 'src')
+          from futbotmx.segmentation.goalpost_fallback import detect_goalposts, _CLIP_GOALS
+          assert set(_CLIP_GOALS.keys()) == {'video_836','video_480','video_595','video_667'}
+          fd = detect_goalposts(frame_index=143, clip_id='video_836')
+          assert fd.detections[0].class_name == 'goalpost'
+          print('Goalpost fallback OK')
+          "

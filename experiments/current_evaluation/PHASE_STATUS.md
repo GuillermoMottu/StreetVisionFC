@@ -18,7 +18,7 @@
 | 5 | Métricas, benchmark y dependencias | Completada (R1-H pendiente de anotación humana) | — |
 | 5b | OWLv2 + Grounded-SAM (mejora solicitada) | **Completada** (commit b4a8a82) | Pendiente aprobación |
 | 6 | Documentación para evaluación | **Completada** (commit pendiente) | Pendiente aprobación |
-| 7 | Limpieza de arquitectura y CI | No iniciada | — |
+| 7 | Limpieza de arquitectura y CI | **Completada** (commit pendiente) | Pendiente aprobación |
 
 ## Fases aprobadas por el usuario
 
