@@ -4,7 +4,7 @@
 
 ## Fase actual
 
-**PROYECTO COMPLETO** — todas las fases implementadas y métricas reales calculadas.
+**PROYECTO COMPLETO** — pipeline unificado implementado y listo para evaluación por jueces.
 
 ## Estado por fase
 
@@ -20,6 +20,7 @@
 | 6 | Documentación para evaluación | Completada — aprobada | "Continua" (2026-06-13) |
 | 7 | Limpieza de arquitectura y CI | Completada — aprobada | "Continua" (2026-06-13) |
 | **R1-H** | **Métricas supervisadas (anotaciones humanas)** | **Completada** | Roboflow GT proporcionado por usuario (2026-06-14) |
+| **U1** | **Pipeline unificado (Grounded-SAM → full_analysis → live_playback)** | **Completada** | 2026-06-14 |
 
 ## Fases aprobadas por el usuario
 

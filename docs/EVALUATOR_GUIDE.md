@@ -45,7 +45,35 @@ H.264, 46.6 s, 2.3 MB. Five sections: raw video, segmentation overlays, tracking
 
 ---
 
-## 4. Run the validation scripts
+## 4. Full pipeline — analyze any video (recommended entry point)
+
+```bash
+source .venv/bin/activate
+
+# Single command: Grounded-SAM segmentation → tracking → Level3 analytics → browser UI
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+python scripts/run_unified_analysis.py \
+  --video /path/to/your_video.mp4 \
+  --clip-id my_clip \
+  --start-frame 0 --end-frame 300
+
+# Opens http://127.0.0.1:8766 automatically with:
+#   - Synchronized video + bounding-box overlay
+#   - Voronoi minimap (field zones, team control)
+#   - Interaction graph (robot-robot / robot-ball events)
+#   - Level3 events timeline (possession, proximity, shots)
+#   - Dashboard and storyboard
+```
+
+Flags:
+- `--stride N` — process 1 every N frames (faster, e.g. `--stride 5`)
+- `--detections path/detections.json` — reuse existing detections, skip Grounded-SAM
+- `--skip-analysis` — relaunch the browser app without re-running the pipeline
+- `--allow-gpu` — enable GPU-gated live inference modes in the playback app
+
+---
+
+## 5. Run the validation scripts
 
 ```bash
 # Activate environment
@@ -73,13 +101,13 @@ python scripts/create_phase3_demo.py \
 
 ---
 
-## 5. Architecture in one paragraph
+## 6. Architecture in one paragraph
 
 Video frames are decoded with OpenCV. A **Grounded-SAM** pipeline (OWLv2 zero-shot text→bbox + SAM3 bbox→pixel mask) detects four classes: `small_robot`, `ball`, `green_soccer_field`, `yellow_goalpost`. Detections are fed to **ByteTrack** for multi-object tracking across 61 dense frames. Tracks are labelled by team using an **initial-side heuristic** (x-axis at first observation). The goalpost uses OWLv2 text detection for video\_836/667; clips where OWLv2 fails (video\_595) fall back to HSV-confirmed bounding boxes. Full architecture: `docs/TECHNICAL_ARCHITECTURE.md`. Segmentation details: `docs/SAM3_PIPELINE.md`.
 
 ---
 
-## 6. Ground-truth annotation source
+## 7. Ground-truth annotation source
 
 49 human annotations (Roboflow, 2026-06-14) across 8 frames of video_836.
 Source: `data/annotations/train_COCO/_annotations.coco.json`

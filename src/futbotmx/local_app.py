@@ -458,18 +458,23 @@ def make_handler(
 
         def do_POST(self) -> None:
             parsed = urlparse(self.path)
-            if parsed.path != "/run-analysis":
-                self.send_error(404)
-                return
             length = int(self.headers.get("Content-Length", "0") or "0")
             body = self.rfile.read(length).decode("utf-8")
             form = parse_qs(body)
-            try:
-                request = analysis_request_from_form(form, clips)
-                result = run_light_analysis(root, config_path, experiment_dir, request)
-                self._send_html(render_index(root, config_path, experiment_dir, clips, result=result))
-            except Exception as exc:
-                self._send_html(render_index(root, config_path, experiment_dir, clips, error=str(exc)))
+            if parsed.path == "/run-analysis":
+                try:
+                    request = analysis_request_from_form(form, clips)
+                    result = run_light_analysis(root, config_path, experiment_dir, request)
+                    self._send_html(render_index(root, config_path, experiment_dir, clips, result=result))
+                except Exception as exc:
+                    self._send_html(render_index(root, config_path, experiment_dir, clips, error=str(exc)))
+            elif parsed.path == "/run-pipeline":
+                try:
+                    self._send_html(run_pipeline_page(root, form))
+                except Exception as exc:
+                    self._send_html(render_index(root, config_path, experiment_dir, clips, error=str(exc)))
+            else:
+                self.send_error(404)
 
         def log_message(self, format: str, *args: Any) -> None:
             sys.stderr.write("local_app: " + format % args + "\n")
@@ -669,7 +674,75 @@ def _action_panel(current: AnalysisRequest) -> str:
   <label class="toggle"><input type="checkbox" name="run_dashboard"{dashboard_checked}> Dashboard</label>
   <label class="toggle"><input type="checkbox" name="run_reel"{reel_checked}> Reel demo</label>
   <button type="submit">Ejecutar analisis</button>
+  <hr style="margin:12px 0;border-color:#2a2e2a">
+  <p style="font-size:.85em;color:#8a9688;margin:0 0 8px">Pipeline completo: Grounded-SAM + tracking + Level3 + visualizacion en vivo</p>
+  <button type="submit" formaction="/run-pipeline" style="background:#1a4a2a">Pipeline Completo (Grounded-SAM)</button>
 </section>"""
+
+
+def run_pipeline_page(root: Path, form: dict[str, list[str]]) -> str:
+    video_path = _first(form, "video_path", "").strip()
+    clip_id = _first(form, "clip_id", "clip").strip() or "clip"
+    start_frame = _first(form, "start_frame", "0").strip()
+    end_frame = _first(form, "end_frame", "180").strip()
+    stride = _first(form, "stride", "1").strip()
+
+    if not video_path:
+        return _pipeline_page_html("Error", "Ingresa la ruta al video en el campo 'Ruta local'.", "", [], "")
+
+    script = root / "scripts" / "run_unified_analysis.py"
+    cmd = [
+        sys.executable, str(script),
+        "--video", video_path,
+        "--clip-id", clip_id,
+        "--start-frame", start_frame,
+        "--end-frame", end_frame,
+        "--stride", stride,
+        "--no-browser",
+        "--no-serve",
+    ]
+    t0 = time.monotonic()
+    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(root))
+    elapsed = time.monotonic() - t0
+
+    logs = (proc.stdout or "") + (proc.stderr or "")
+    status = "Completado" if proc.returncode == 0 else f"Terminó con código {proc.returncode}"
+    playback_cmd = (
+        f"python scripts/run_live_playback_app.py "
+        f"--video &quot;{html.escape(video_path)}&quot; "
+        f"--clip-id {html.escape(clip_id)}"
+    )
+    return _pipeline_page_html(status, f"Duración: {elapsed:.1f}s", playback_cmd, logs.splitlines(), video_path)
+
+
+def _pipeline_page_html(status: str, subtitle: str, playback_cmd: str, log_lines: list[str], video_path: str) -> str:
+    log_html = "\n".join(html.escape(line) for line in log_lines[-200:])
+    playback_section = f"""
+<section class="panel span2">
+  <h2>Siguiente paso: Live Playback</h2>
+  <p>Ejecuta en la terminal para ver los resultados:</p>
+  <pre style="background:#0d100d;padding:10px;overflow-x:auto"><code>{playback_cmd}</code></pre>
+  <p>O abre: <a href="http://127.0.0.1:8766" target="_blank">http://127.0.0.1:8766</a> si ya está corriendo.</p>
+</section>""" if playback_cmd else ""
+    return f"""<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><title>FutBotMX — Pipeline</title>
+<style>body{{background:#0d100d;color:#c8d4c4;font-family:monospace;margin:0;padding:16px}}
+.panel{{background:#141914;border:1px solid #2a2e2a;border-radius:4px;padding:16px;margin-bottom:12px}}
+.span2{{grid-column:span 2}}pre{{white-space:pre-wrap;word-break:break-all;font-size:.8em;color:#8a9688}}
+a{{color:#48a6ff}}h1,h2{{color:#c8d4c4;margin-top:0}}
+</style></head><body>
+<h1>FutBotMX — Pipeline Completo</h1>
+<section class="panel">
+  <h2>{html.escape(status)}</h2>
+  <p>{html.escape(subtitle)}</p>
+  <a href="/">Volver al inicio</a>
+</section>
+{playback_section}
+<section class="panel span2">
+  <h2>Log de ejecucion</h2>
+  <pre>{log_html}</pre>
+</section>
+</body></html>"""
 
 
 def _result_panel(result: AnalysisResult | None, artifacts: list[ArtifactRow], checks: list[CheckRow]) -> str:

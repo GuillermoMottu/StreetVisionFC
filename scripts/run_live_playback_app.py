@@ -15,6 +15,12 @@ def main() -> int:
     parser.add_argument("--experiment", default=str(DEFAULT_EXPERIMENT_DIR))
     parser.add_argument("--clip-id", default="video_595")
     parser.add_argument("--video", default=None, help="Override the configured local video path.")
+    parser.add_argument("--tracks-csv", default=None,
+                        help="Ruta explícita al CSV de tracks (level3_tracks.csv o live_tracks.csv).")
+    parser.add_argument("--events-json", default=None,
+                        help="Ruta explícita al JSON de eventos (level3_events.json).")
+    parser.add_argument("--highlights-csv", default=None,
+                        help="Ruta explícita al CSV de highlights (level3_highlights.csv).")
     parser.add_argument(
         "--inference-mode",
         choices=["precomputed", "sam3_sampling", "lightweight_detector"],
@@ -40,6 +46,9 @@ def main() -> int:
             output_dir,
             clip_id=args.clip_id,
             video_path=args.video,
+            tracks_csv=args.tracks_csv,
+            events_json=args.events_json,
+            highlights_csv=args.highlights_csv,
             inference_mode=args.inference_mode,
             sam3_stride=args.sam3_stride,
             lightweight_stride=args.lightweight_stride,
@@ -61,6 +70,9 @@ def main() -> int:
         args.port,
         clip_id=args.clip_id,
         video_path=args.video,
+        tracks_csv=args.tracks_csv,
+        events_json=args.events_json,
+        highlights_csv=args.highlights_csv,
         inference_mode=args.inference_mode,
         sam3_stride=args.sam3_stride,
         lightweight_stride=args.lightweight_stride,

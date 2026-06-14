@@ -29,6 +29,8 @@ def parse_args():
     p.add_argument("--owlv2-path", default="checkpoints/owlv2-base")
     p.add_argument("--sam3-checkpoint", default=None)
     p.add_argument("--output-dir", default="experiments/current_evaluation/masks_grounded_sam")
+    p.add_argument("--save-detections", default=None,
+                   help="Path to save detections JSON (compatible with run_full_analysis.py --detections)")
     return p.parse_args()
 
 
@@ -100,6 +102,11 @@ def main():
         print(f"[WARN] ball detected but no mask (conf={ball_dets[0].confidence:.3f})")
     else:
         print("[WARN] ball not detected (may be occluded or off-frame)")
+
+    if args.save_detections:
+        from futbotmx.io.detections import save_detections
+        save_detections([fd], args.save_detections)
+        print(f"Detections saved to: {args.save_detections}")
 
     if errors:
         for e in errors:
