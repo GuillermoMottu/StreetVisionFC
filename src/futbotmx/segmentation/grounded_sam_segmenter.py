@@ -5,8 +5,14 @@ For each text prompt:
   1. OWLv2 detects bounding boxes (zero-shot, camera-angle agnostic)
   2. Each bbox is fed to SAM3.segment_with_box_prompt → pixel-level mask
 
-This replaces the hardcoded _CLIP_GOALS fallback for the goalpost and makes
-every class get a real pixel mask regardless of camera angle or clip.
+OWLv2 coverage across clips (validated 2026-06-13):
+  video_836: goalpost conf≈0.108 ✓   video_667: conf≈0.089 ✓
+  video_595: fails in frames 120-180 (thin horizontal bars at low contrast)
+
+When clip_id is provided to segment_image(), clips where OWLv2 misses the
+goalpost automatically fall back to _CLIP_GOALS + SAM3 box-prompt
+(detect_goalposts_with_mask). This keeps the pipeline fully automatic for
+known clips while preserving pixel-level masks in all cases.
 """
 from __future__ import annotations
 
@@ -54,21 +60,26 @@ class GroundedSAMSegmenter:
         image: Image.Image,
         prompts: list[str],
         frame_index: int = 0,
+        clip_id: str | None = None,
     ) -> FrameDetections:
         """
         Segment all objects in a PIL image using text prompts.
         Returns FrameDetections with mask_path populated for every detection.
 
+        clip_id: when provided, activates goalpost fallback to _CLIP_GOALS + SAM3
+                 box-prompt for clips where OWLv2 cannot detect the goalpost
+                 (e.g. video_595 in frames 120-180).
+
         OWLv2 and SAM3 each consume ~1.5 GB and ~3.8 GB VRAM respectively.
         On GPUs with <6 GB VRAM they cannot coexist: OWLv2 is offloaded to CPU
         after detection and VRAM is freed before SAM3 runs.
         """
+        # Ensure OWLv2 is on GPU before detection (may have been offloaded by prior call)
+        self._reload_owlv2()
+
         # Step 1: OWLv2 → bboxes for all prompts at once
         all_texts = [p.replace("_", " ") for p in prompts]
         raw_detections = self._detector.detect(image, all_texts, frame_index=frame_index)
-
-        if not raw_detections:
-            return FrameDetections(frame=frame_index, detections=())
 
         # Offload OWLv2 to CPU so SAM3 can use VRAM without OOM
         self._offload_owlv2()
@@ -114,7 +125,42 @@ class GroundedSAMSegmenter:
                 # SAM3 failed for this det — keep OWLv2 bbox, no mask
                 final.append(det)
 
+        # Step 3 (optional): goalpost fallback for clips where OWLv2 misses it
+        if clip_id is not None:
+            has_goalpost = any("goalpost" in d.class_name for d in final)
+            if not has_goalpost:
+                final.extend(self._goalpost_fallback(image, frame_index, clip_id, len(final)))
+
         return FrameDetections(frame=frame_index, detections=tuple(final))
+
+    def _goalpost_fallback(
+        self,
+        image: Image.Image,
+        frame_index: int,
+        clip_id: str,
+        det_idx_start: int,
+    ) -> list[Detection]:
+        """
+        Use _CLIP_GOALS + SAM3 box-prompt when OWLv2 didn't detect any goalpost.
+        Returns an empty list if clip_id has no entry in _CLIP_GOALS.
+        """
+        from futbotmx.segmentation.goalpost_fallback import (
+            detect_goalposts_with_mask,
+            _CLIP_GOALS,
+        )
+        if clip_id not in _CLIP_GOALS:
+            return []
+        try:
+            fd = detect_goalposts_with_mask(
+                image=image,
+                frame_index=frame_index,
+                clip_id=clip_id,
+                segmenter=self._sam3,
+                det_idx_start=det_idx_start,
+            )
+            return list(fd.detections)
+        except Exception:
+            return []
 
     def _offload_owlv2(self) -> None:
         """Move OWLv2 model to CPU and free CUDA cache (needed before SAM3 on <6 GB GPUs)."""
@@ -143,8 +189,9 @@ class GroundedSAMSegmenter:
         video_path: str | Path,
         frame_indices: list[int],
         prompts: list[str] | None = None,
+        clip_id: str | None = None,
     ) -> list[FrameDetections]:
-        """Same interface as SAM3Segmenter.segment_video()."""
+        """Same interface as SAM3Segmenter.segment_video(). clip_id enables goalpost fallback."""
         prompts = prompts or ["ball", "small robot", "green soccer field", "yellow goalpost"]
 
         capture = cv2.VideoCapture(str(video_path))
@@ -161,7 +208,7 @@ class GroundedSAMSegmenter:
                 import cv2 as _cv2
                 rgb = _cv2.cvtColor(bgr, _cv2.COLOR_BGR2RGB)
                 image = Image.fromarray(rgb)
-                fd = self.segment_image(image, prompts, frame_index=frame_index)
+                fd = self.segment_image(image, prompts, frame_index=frame_index, clip_id=clip_id)
                 frames.append(fd)
         finally:
             capture.release()

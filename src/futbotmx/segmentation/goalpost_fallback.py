@@ -1,19 +1,19 @@
 """
-Geometric goalpost fallback for FutBotMX.
+Goalpost fallback for clips where OWLv2 cannot detect the goalpost.
 
-SAM 3 cannot reliably detect robot-soccer goalposts with any tested text prompt
-(confirmed: 0 detections across 6 frames at threshold=0.1 for 5 prompts).
-This module provides a color-detection-based geometric approximation as an
-explicit fallback — NOT equivalent to SAM 3 pixel-level segmentation.
+Primary pipeline (GroundedSAMSegmenter): OWLv2 text→bbox "yellow goalpost" +
+SAM3 box-prompt → pixel mask. Validated on video_836 (conf≈0.108) and
+video_667 (conf≈0.089). No per-clip configuration needed.
 
-Goal pixel coordinates were derived by HSV yellow-blob detection across 6 frames
-of each clip (2026-06-11). mask_path is always None because no pixel-level mask
-is produced.
+Fallback (this module): used when OWLv2 fails — notably video_595 frames 120-180
+where the horizontal goalpost bar has low visual contrast for the model.
+_CLIP_GOALS coordinates were derived by HSV yellow-blob detection (2026-06-11).
 
-NOTE: These are image-space pixel coordinates (perspective view), not real-world
-field coordinates. The top goal of video_836 appears in the right portion of the
-image due to the camera angle — it is likely centered on the far end of the
-physical field.
+detect_goalposts_with_mask() uses _CLIP_GOALS bbox as a SAM3 geometric prompt,
+producing a real pixel mask even without OWLv2 detection. detect_goalposts()
+returns a pure-geometry estimate (no mask) as last resort.
+
+NOTE: Pixel coordinates are image-space (perspective), not real-world field space.
 """
 from __future__ import annotations
 
