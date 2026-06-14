@@ -1,6 +1,5 @@
 project:
   name: FutBotMX
-  level: 2
 paths:
   data_dir: data
   sample_dir: data/sample
@@ -11,13 +10,26 @@ video:
   frame_stride: 1
   max_frames: 300
 segmentation:
-  provider: sam3
+  provider: grounded_sam
   checkpoint_path_env: SAM3_CHECKPOINT_PATH
+  owlv2_model_path: checkpoints/owlv2-base
+  owlv2_confidence_threshold: 0.1
+  sam3_confidence_threshold: 0.05
   classes:
   - green_soccer_field
   - small_robot
   - ball
+  - yellow_goalpost
   confidence_threshold: 0.5
+  goalpost:
+    detection_method: owlv2_grounded_sam
+    fallback: geometric_fallback
+    note: "OWLv2 detects 'yellow goalpost' at conf\u22480.11; SAM3 box-prompt produces\
+      \ pixel mask. Fallback to geometric_fallback if OWLv2 not available."
+    fallback_params:
+      goal_x_start_norm: 0.39
+      goal_x_end_norm: 0.61
+      goal_height_norm: 0.04
 tracking:
   method: bytetrack
   max_lost_frames: 15

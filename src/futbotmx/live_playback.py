@@ -5,7 +5,9 @@ import html
 import io
 import json
 import mimetypes
+import subprocess
 import sys
+import threading
 from dataclasses import asdict, dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -944,6 +946,7 @@ def resolve_requested_video(playback_config: LivePlaybackConfig, params: dict[st
 
 def build_live_playback_package(root: Path, config_path: Path, playback_config: LivePlaybackConfig) -> dict[str, Any]:
     context = build_live_playback_context(root, playback_config)
+    context["config_path"] = config_path
     output_dir = root / playback_config.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     write_live_tracks_csv(output_dir / "live_tracks.csv", context["tracks"])
@@ -1082,6 +1085,9 @@ def build_live_playback_context(root: Path, playback_config: LivePlaybackConfig)
     context["summary"]["frame_loop_avg_overlay_ms"] = frame_loop["summary"]["average_total_to_overlay_ms"]
     context["summary"]["inference_mode"] = context["inference_modes"]["selected_mode"]
     context["summary"]["recommended_inference_mode"] = context["inference_modes"]["recommended_mode"]
+    context["root"] = root
+    context["config_path"] = None  # will be set by build_live_playback_package
+    context["visualizations"] = _find_experiment_visualizations(root, playback_config.tracks_csv)
     return context
 
 
@@ -1110,92 +1116,323 @@ def validate_playback_payload(
     return rows
 
 
+_ANALYSIS_STATE: dict[str, Any] = {
+    "running": False,
+    "done": False,
+    "state": "idle",
+    "log": [],
+    "error": None,
+}
+_ANALYSIS_LOCK = threading.Lock()
+
+
+def _find_experiment_visualizations(root: Path, tracks_csv: str) -> dict[str, Any]:
+    """Discover visualization PNGs from the experiment that produced tracks_csv.
+
+    Expects tracks_csv = .../experiment/level3_spatial/level3_tracks.csv
+    Returns paths relative to root (for /artifact?path=... endpoint).
+    """
+    root_abs = root.resolve()
+    p = Path(tracks_csv)
+    if not p.is_absolute():
+        p = (root_abs / p).resolve()
+    parts = p.parts
+    if len(parts) >= 2 and parts[-2] == "level3_spatial":
+        exp = p.parents[1]
+    elif len(parts) >= 3 and parts[-3] == "level3_spatial":
+        exp = p.parents[2]
+    else:
+        exp = p.parent
+    viz = exp / "level3_visualizations"
+    spatial = exp / "level3_spatial"
+    events_dir = exp / "level3_events"
+
+    def rel(path: Path) -> str | None:
+        try:
+            resolved = path.resolve()
+            return resolved.relative_to(root_abs).as_posix() if resolved.exists() else None
+        except ValueError:
+            return None
+
+    return {
+        "voronoi_frames": [r for q in sorted(viz.glob("voronoi_frame_*.png")) if (r := rel(q))],
+        "voronoi_orig_frames": [r for q in sorted(viz.glob("voronoi_original_frame_*.png")) if (r := rel(q))],
+        "interaction_graph": rel(viz / "interaction_graph.png"),
+        "storyboard": rel(viz / "highlight_storyboard.png"),
+        "minimap_base": rel(spatial / "minimap_base.png"),
+        "minimap_tracks": rel(spatial / "minimap_tracks.png"),
+        "highlights": [r for q in sorted(events_dir.glob("overlay_highlight_*.png")) if (r := rel(q))],
+        "dashboard": rel(exp / "dashboard" / "dashboard.html"),
+    }
+
+
+def _run_analysis_async(
+    root: Path,
+    context: dict[str, Any],
+    config_path: Path,
+    video_path: str,
+    clip_id: str,
+    start_frame: int,
+    end_frame: int,
+    stride: int,
+) -> None:
+    global _ANALYSIS_STATE
+    cmd = [
+        sys.executable,
+        str(root / "scripts" / "run_unified_analysis.py"),
+        "--video", video_path,
+        "--clip-id", clip_id,
+        "--start-frame", str(start_frame),
+        "--end-frame", str(end_frame),
+        "--stride", str(stride),
+        "--no-browser",
+        "--no-serve",
+    ]
+    log_lines: list[str] = []
+    try:
+        proc = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, cwd=str(root),
+        )
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            log_lines.append(line.rstrip())
+            with _ANALYSIS_LOCK:
+                _ANALYSIS_STATE["log"] = log_lines[-80:]
+        proc.wait()
+        if proc.returncode == 0:
+            # Hot-reload: rebuild context in place from the new experiment data.
+            # The experiment dir is auto-named; find it from the log output.
+            exp_dir = None
+            for line in reversed(log_lines):
+                if "Experimento:" in line:
+                    exp_dir = line.split("Experimento:")[-1].strip()
+                    break
+            if exp_dir:
+                new_tracks = str(Path(exp_dir) / "level3_spatial" / "level3_tracks.csv")
+                new_events = str(Path(exp_dir) / "level3_events" / "level3_events.json")
+                new_highlights = str(Path(exp_dir) / "level3_events" / "level3_highlights.csv")
+                new_output = str(Path(exp_dir) / "live_playback")
+                from futbotmx.live_playback import LivePlaybackConfig, build_live_playback_package
+                import cv2
+                cap = cv2.VideoCapture(video_path)
+                fps = cap.get(cv2.CAP_PROP_FPS) or 30.0
+                width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                cap.release()
+                new_config = LivePlaybackConfig(
+                    clip_id=clip_id,
+                    video_path=video_path,
+                    fps=fps,
+                    width=width,
+                    height=height,
+                    start_frame=start_frame,
+                    end_frame=end_frame,
+                    tracks_csv=new_tracks,
+                    events_json=new_events,
+                    highlights_csv=new_highlights,
+                    output_dir=new_output,
+                )
+                new_ctx = build_live_playback_package(root, config_path, new_config)
+                context.clear()
+                context.update(new_ctx)
+            with _ANALYSIS_LOCK:
+                _ANALYSIS_STATE.update({"running": False, "done": True, "state": "done", "error": None})
+        else:
+            with _ANALYSIS_LOCK:
+                _ANALYSIS_STATE.update({
+                    "running": False, "done": True, "state": "error",
+                    "error": f"Proceso terminó con código {proc.returncode}",
+                })
+    except Exception as exc:
+        with _ANALYSIS_LOCK:
+            _ANALYSIS_STATE.update({
+                "running": False, "done": True, "state": "error", "error": str(exc),
+            })
+
+
 def render_playback_html(context: dict[str, Any]) -> str:
     config: LivePlaybackConfig = context["config"]
     payload = client_payload(context)
     payload_json = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
-    return "\n".join(
-        [
-            "<!doctype html>",
-            '<html lang="es">',
-            "<head>",
-            '<meta charset="utf-8">',
-            '<meta name="viewport" content="width=device-width, initial-scale=1">',
-            "<title>FutBotMX Playback Vivo</title>",
-            f"<style>{_css()}</style>",
-            "</head>",
-            "<body>",
-            '<main class="shell">',
-            "<header>",
-            "<div>",
-            "<p>FutBotMX</p>",
-            "<h1>Playback vivo</h1>",
-            "</div>",
-            f'<span id="syncState" class="state">{_esc("replaying_cache")}</span>',
-            "</header>",
-            '<section class="workbench">',
-            '<div class="stage">',
-            '<video id="video" controls preload="metadata" playsinline data-clip-id="' + _esc(config.clip_id) + '">',
-            '<source src="/video?clip_id=' + _esc(config.clip_id) + '" type="video/mp4">',
-            "</video>",
-            '<canvas id="overlay"></canvas>',
-            '<div id="videoMissing" class="missing" hidden>Video local no disponible en esta maquina.</div>',
-            "</div>",
-            '<aside class="panel">',
-            '<label class="field">Clip<select id="clipSelect"><option value="' + _esc(config.clip_id) + '">' + _esc(config.clip_id) + "</option></select></label>",
-            '<label class="field">Experimento<select id="experimentSelect"><option value="' + _esc(config.output_dir) + '">' + _esc(config.output_dir) + "</option></select></label>",
-            '<div class="stats">',
-            '<span>Frame objetivo <strong id="frameReadout">0</strong></span>',
-            '<span>Frame overlay <strong id="resolvedFrameReadout">sin datos</strong></span>',
-            '<span>Tiempo <strong id="timeReadout">0.000s</strong></span>',
-            '<span>Duracion <strong id="durationReadout">config</strong></span>',
-            '<span>Velocidad <strong id="rateReadout">1.00x</strong></span>',
-            '<span>Datos <strong id="dataReadout">sin datos</strong></span>',
-            '<span>Motor <strong id="engineReadout">loop pendiente</strong></span>',
-            '<span>Inferencia <strong id="inferenceReadout">precomputed</strong></span>',
-            '<span>Canal <strong id="streamReadout">sse pendiente</strong></span>',
-            '<span>Mensajes <strong id="streamMessageReadout">0</strong></span>',
-            '<span>Latencia <strong id="latencyReadout">n/a</strong></span>',
-            "</div>",
-            '<div class="toggles">',
-            _toggle("layerTracks", "Tracks", True),
-            _toggle("layerIds", "IDs", True),
-            _toggle("layerBall", "Balon", True),
-            _toggle("layerTrails", "Trails", True),
-            _toggle("layerEvents", "Eventos", True),
-            _toggle("layerPossession", "Posesion", True),
-            _toggle("layerMinimap", "Mini-mapa", True),
-            _toggle("layerHighlights", "Highlights", True),
-            _toggle("layerDebug", "Debug", False),
-            "</div>",
-            '<section class="debug-panel" id="debugPanel">',
-            "<h2>Depuracion</h2>",
-            '<div class="stats debug-stats">',
-            '<span>Frame <strong id="debugFrameReadout">0</strong></span>',
-            '<span>Timestamp <strong id="debugTimestampReadout">0.000s</strong></span>',
-            '<span>Inferencia <strong id="debugInferenceReadout">precomputed</strong></span>',
-            '<span>Canal <strong id="debugChannelReadout">sse pendiente</strong></span>',
-            '<span>Latencia <strong id="debugLatencyReadout">n/a</strong></span>',
-            '<span>Cola <strong id="debugQueueReadout">0</strong></span>',
-            '<span>Tracks activos <strong id="debugTracksReadout">0</strong></span>',
-            '<span>Evento activo <strong id="debugEventReadout">sin evento</strong></span>',
-            "</div>",
-            '<div class="downloads">',
-            '<a id="downloadSessionLog" href="/stream-messages.jsonl" download>Sesion</a>',
-            '<a id="downloadLiveTracks" href="/live_tracks.jsonl" download>Tracks JSONL</a>',
-            '<a id="downloadStreamEvents" href="/stream_events.jsonl" download>Eventos JSONL</a>',
-            "</div>",
-            "</section>",
-            '<div class="timeline" id="eventList"></div>',
-            '<div class="timeline stream" id="streamList"></div>',
-            "</aside>",
-            "</section>",
-            "</main>",
-            f"<script>window.FUTBOT_PLAYBACK_DATA={payload_json};{_js()}</script>",
-            "</body>",
-            "</html>",
-        ]
-    ) + "\n"
+    summary = context["summary"]
+    viz = context.get("visualizations", {})
+
+    # ── stat cards ──────────────────────────────────────────────────────────
+    classes = {r["class"] for r in context["tracks"]}
+    n_robots = len({r["track_id"] for r in context["tracks"] if "robot" in r.get("class", "")})
+    n_ball = 1 if any(r.get("class") == "ball" for r in context["tracks"]) else 0
+    n_events = summary["event_count"]
+    n_frames = summary.get("available_frame_count", 0)
+    teams = {r.get("team", "") for r in context["tracks"] if r.get("team") not in ("", "unknown", "neutral")}
+
+    def stat_card(label: str, value: str, color: str = "") -> str:
+        style = f'style="border-top:3px solid {color}"' if color else ""
+        return f'<div class="stat-card" {style}><div class="stat-val">{_esc(value)}</div><div class="stat-lbl">{_esc(label)}</div></div>'
+
+    stat_row = "".join([
+        stat_card("Robots", str(n_robots), "#48a6ff"),
+        stat_card("Balón", str(n_ball), "#f4c430"),
+        stat_card("Eventos", str(n_events), "#64d47c"),
+        stat_card("Frames", str(n_frames), "#aab6a4"),
+        stat_card("Equipos", str(len(teams)) if teams else "—"),
+        stat_card("Clip", config.clip_id),
+    ])
+
+    # ── layer toggles ───────────────────────────────────────────────────────
+    toggles_html = "".join([
+        _toggle("layerTracks", "Tracks", True),
+        _toggle("layerIds", "IDs", True),
+        _toggle("layerBall", "Balón", True),
+        _toggle("layerTrails", "Trails", True),
+        _toggle("layerGoalpost", "Portería", True),
+        _toggle("layerField", "Campo", False),
+        _toggle("layerEvents", "Eventos", True),
+        _toggle("layerMinimap", "Minimapa", True),
+    ])
+
+    # ── analytics tabs: Voronoi ─────────────────────────────────────────────
+    def img_gallery(paths: list[str], cls: str = "") -> str:
+        if not paths:
+            return '<p class="empty">Sin imágenes disponibles. Ejecuta el pipeline primero.</p>'
+        imgs = "".join(f'<img src="/artifact?path={_esc(p)}" alt="{_esc(p.split("/")[-1])}" loading="lazy">' for p in paths)
+        return f'<div class="gallery {cls}">{imgs}</div>'
+
+    voronoi_tab = img_gallery(viz.get("voronoi_frames", []))
+    voronoi_orig_tab = img_gallery(viz.get("voronoi_orig_frames", []))
+    graph_tab = (
+        f'<img src="/artifact?path={_esc(viz["interaction_graph"])}" class="full-img" alt="Grafo de interacciones">'
+        if viz.get("interaction_graph") else
+        '<p class="empty">Grafo no disponible. Ejecuta el pipeline.</p>'
+    )
+    storyboard_tab = (
+        f'<img src="/artifact?path={_esc(viz["storyboard"])}" class="full-img" alt="Storyboard">'
+        if viz.get("storyboard") else ""
+    )
+    highlights_tab = img_gallery(viz.get("highlights", []), "highlights-gallery")
+    minimap_tab = "".join([
+        f'<img src="/artifact?path={_esc(p)}" class="full-img" alt="{label}">'
+        for p, label in [
+            (viz.get("minimap_tracks", ""), "Tracks en campo"),
+            (viz.get("minimap_base", ""), "Campo base"),
+        ] if p
+    ]) or '<p class="empty">Minimapa no disponible.</p>'
+
+    dashboard_link = (
+        f'<a href="/artifact?path={_esc(viz["dashboard"])}" target="_blank" class="btn-link">Abrir dashboard completo</a>'
+        if viz.get("dashboard") else ""
+    )
+
+    video_src = f"/video?clip_id={_esc(config.clip_id)}"
+
+    return f"""<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FutBotMX — {_esc(config.clip_id)}</title>
+<style>{_css()}</style>
+</head>
+<body>
+<header>
+  <div class="header-brand">
+    <span class="brand-dot"></span>
+    <span class="brand-name">FutBotMX</span>
+    <span class="brand-sub">Análisis de fútbol robótico</span>
+  </div>
+  <div class="header-center">
+    <span class="clip-badge">{_esc(config.clip_id)}</span>
+    <span class="frames-badge">frames {config.start_frame}–{config.end_frame}</span>
+  </div>
+  <span id="syncState" class="sync-badge">cargando</span>
+</header>
+
+<section class="analyze-bar">
+  <form id="analyzeForm" action="/analyze" method="post" class="analyze-form">
+    <span class="analyze-label">Analizar nuevo video</span>
+    <input name="video_path" class="inp-path" placeholder="/ruta/al/video.mp4" required>
+    <input name="clip_id" class="inp-short" placeholder="clip_id" value="clip">
+    <input type="number" name="start_frame" class="inp-num" value="0" placeholder="Inicio">
+    <input type="number" name="end_frame" class="inp-num" value="300" placeholder="Fin">
+    <input type="number" name="stride" class="inp-num" value="1" placeholder="Stride" min="1">
+    <button type="submit" class="btn-analyze">Analizar</button>
+  </form>
+  <div id="analyzeStatus" class="analyze-status hidden"></div>
+</section>
+
+<div class="stats-row">{stat_row}</div>
+
+<section class="workbench">
+  <div class="stage">
+    <video id="video" controls preload="metadata" playsinline>
+      <source src="{video_src}" type="video/mp4">
+    </video>
+    <canvas id="overlay"></canvas>
+    <div id="videoMissing" class="video-missing hidden">
+      Video local no disponible — los overlays usan datos precalculados.
+    </div>
+  </div>
+
+  <aside class="side-panel">
+    <div class="panel-section">
+      <h3>Reproducción</h3>
+      <div class="readout-grid">
+        <span>Frame</span><strong id="frameReadout">—</strong>
+        <span>Tiempo</span><strong id="timeReadout">—</strong>
+        <span>Velocidad</span><strong id="rateReadout">1×</strong>
+        <span>Overlay</span><strong id="resolvedFrameReadout">—</strong>
+        <span>Tracks</span><strong id="dataReadout">—</strong>
+      </div>
+    </div>
+    <div class="panel-section">
+      <h3>Capas de overlay</h3>
+      <div class="toggles">{toggles_html}</div>
+    </div>
+    <div class="panel-section">
+      <h3>Leyenda</h3>
+      <div class="legend">
+        <span class="leg-dot blue"></span>Equipo A (robots)
+        <span class="leg-dot red"></span>Equipo B (robots)
+        <span class="leg-dot yellow"></span>Balón
+        <span class="leg-dot green"></span>Portería / campo
+      </div>
+    </div>
+    <div class="panel-section downloads">
+      <h3>Descargas</h3>
+      {dashboard_link}
+      <a href="/tracks.csv" download class="dl-link">tracks.csv</a>
+      <a href="/events.json" download class="dl-link">events.json</a>
+      <a href="/highlights.csv" download class="dl-link">highlights.csv</a>
+    </div>
+  </aside>
+</section>
+
+<section class="analytics">
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="showTab('voronoi',this)">Voronoi (campo)</button>
+    <button class="tab-btn" onclick="showTab('voronoi-orig',this)">Voronoi (video)</button>
+    <button class="tab-btn" onclick="showTab('graph',this)">Grafo interacciones</button>
+    <button class="tab-btn" onclick="showTab('minimap',this)">Minimapa</button>
+    <button class="tab-btn" onclick="showTab('highlights',this)">Highlights</button>
+    <button class="tab-btn" onclick="showTab('storyboard',this)">Storyboard</button>
+  </nav>
+  <div id="tab-voronoi" class="tab-panel active">{voronoi_tab}</div>
+  <div id="tab-voronoi-orig" class="tab-panel hidden">{voronoi_orig_tab}</div>
+  <div id="tab-graph" class="tab-panel hidden">{graph_tab}</div>
+  <div id="tab-minimap" class="tab-panel hidden">{minimap_tab}</div>
+  <div id="tab-highlights" class="tab-panel hidden">{highlights_tab}</div>
+  <div id="tab-storyboard" class="tab-panel hidden">{storyboard_tab}</div>
+</section>
+
+<section class="events-section">
+  <h3>Eventos activos</h3>
+  <div id="eventList" class="event-list"></div>
+</section>
+
+<script>window.FUTBOT_PLAYBACK_DATA={payload_json};{_js()}</script>
+</body>
+</html>
+"""
 
 
 def client_payload(context: dict[str, Any]) -> dict[str, Any]:
@@ -1587,6 +1824,50 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
             if parsed.path in {"/", "/playback.html"}:
                 self._send_text(render_playback_html(context), "text/html; charset=utf-8")
                 return
+            if parsed.path == "/artifact":
+                self._send_artifact(parsed.query)
+                return
+            if parsed.path == "/analyze-status":
+                with _ANALYSIS_LOCK:
+                    state_copy = dict(_ANALYSIS_STATE)
+                self._send_json(state_copy)
+                return
+            self.send_error(404)
+
+        def do_POST(self) -> None:
+            parsed = urlparse(self.path)
+            if parsed.path == "/analyze":
+                length = int(self.headers.get("Content-Length", 0))
+                body = self.rfile.read(length).decode("utf-8")
+                params = parse_qs(body)
+                def _first_param(key: str, default: str = "") -> str:
+                    vals = params.get(key, [])
+                    return vals[0].strip() if vals else default
+                video_path = _first_param("video_path")
+                clip_id = _first_param("clip_id") or "clip_001"
+                start_frame = _first_param("start_frame", "0")
+                end_frame = _first_param("end_frame", "300")
+                stride = _first_param("stride", "1")
+                with _ANALYSIS_LOCK:
+                    if _ANALYSIS_STATE["running"]:
+                        self._send_json({"error": "ya hay un análisis en curso"})
+                        return
+                    _ANALYSIS_STATE.update({"running": True, "done": False, "state": "starting", "log": [], "error": None})
+                config_path = context.get("config_path")
+                t = threading.Thread(
+                    target=_run_analysis_async,
+                    args=(
+                        root, context, config_path,
+                        video_path, clip_id,
+                        int(start_frame or 0),
+                        int(end_frame or 300),
+                        int(stride or 1),
+                    ),
+                    daemon=True,
+                )
+                t.start()
+                self._send_json({"status": "started"})
+                return
             self.send_error(404)
 
         def log_message(self, format: str, *args: Any) -> None:
@@ -1625,6 +1906,23 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
                 self.send_error(404, str(exc))
                 return
             self._send_file_with_range(video)
+
+        def _send_artifact(self, query: str) -> None:
+            params = parse_qs(query)
+            rel_path = params.get("path", [""])[0].lstrip("/")
+            if not rel_path:
+                self.send_error(400, "missing path")
+                return
+            artifact = (root / rel_path).resolve()
+            try:
+                artifact.relative_to(root.resolve())
+            except ValueError:
+                self.send_error(403, "path outside root")
+                return
+            if not artifact.exists():
+                self.send_error(404, f"not found: {rel_path}")
+                return
+            self._send_file_with_range(artifact)
 
         def _send_file_with_range(self, path: Path) -> None:
             content_type = mimetypes.guess_type(path.as_posix())[0] or "application/octet-stream"
@@ -1730,29 +2028,92 @@ def _endpoint_row(path: str, content_type: str, role: str, notes: str) -> dict[s
 
 def _toggle(element_id: str, label: str, checked: bool) -> str:
     state = " checked" if checked else ""
-    return f'<label><input type="checkbox" id="{element_id}"{state}> {_esc(label)}</label>'
+    return f'<label class="tog"><input type="checkbox" id="{element_id}"{state}><span>{_esc(label)}</span></label>'
 
 
 def _css() -> str:
     return """
-:root{color-scheme:dark;--bg:#10130f;--panel:#171d18;--line:#2e3b31;--text:#edf2e9;--muted:#aab6a4;--accent:#f4c430;--blue:#48a6ff;--red:#ff6b6b;--green:#64d47c}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:0}
-.shell{min-height:100vh;padding:18px;display:flex;flex-direction:column;gap:14px}
-header{display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid var(--line);padding-bottom:12px}
-header p{margin:0 0 3px;color:var(--muted);font-size:13px}h1{margin:0;font-size:24px;font-weight:700}
-.state{border:1px solid var(--line);border-radius:999px;padding:7px 10px;color:var(--accent);font-size:12px}
-.workbench{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:14px;align-items:start}
-.stage{position:relative;min-height:360px;background:#050605;border:1px solid var(--line);overflow:hidden}
-video{display:block;width:100%;max-height:calc(100vh - 130px);background:#050605}
+:root{--bg:#0a0d0a;--bg2:#111511;--panel:#161c16;--line:#1e271e;--line2:#2a362a;--text:#dce8d8;--muted:#7a8f78;--accent:#f0c230;--blue:#4ba8ff;--red:#ff5f5f;--green:#4dce78;--teal:#2ec4b6;font-size:15px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column;gap:0}
+/* ── header ── */
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--bg2);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:100}
+.header-brand{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.brand-dot{width:10px;height:10px;background:var(--green);border-radius:50%;box-shadow:0 0 8px var(--green)}
+.brand-name{font-weight:700;font-size:17px;letter-spacing:-.3px}
+.brand-sub{font-size:11px;color:var(--muted);display:none}
+@media(min-width:800px){.brand-sub{display:inline}}
+.header-center{display:flex;gap:8px;flex:1;justify-content:center;flex-wrap:wrap}
+.clip-badge{background:#1a2e1a;border:1px solid var(--line2);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--green);font-weight:600}
+.frames-badge{background:#1a1a2e;border:1px solid #2a2a4e;border-radius:6px;padding:4px 10px;font-size:12px;color:#8888ff}
+.sync-badge{border:1px solid var(--line2);border-radius:6px;padding:4px 10px;font-size:11px;color:var(--accent);white-space:nowrap}
+/* ── analyze bar ── */
+.analyze-bar{background:var(--bg2);border-bottom:1px solid var(--line);padding:10px 20px;display:flex;flex-direction:column;gap:8px}
+.analyze-form{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.analyze-label{font-size:12px;color:var(--muted);white-space:nowrap;font-weight:600}
+input[type=text],.inp-path,.inp-short,.inp-num{background:#0d120d;border:1px solid var(--line2);color:var(--text);padding:7px 10px;border-radius:5px;font-size:13px;outline:none}
+.inp-path{flex:1;min-width:220px}
+.inp-short{width:110px}
+.inp-num{width:80px}
+input:focus{border-color:var(--green)}
+.btn-analyze{background:var(--green);color:#0a0d0a;border:none;border-radius:5px;padding:7px 18px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap}
+.btn-analyze:hover{filter:brightness(1.1)}
+.analyze-status{font-size:12px;color:var(--accent);padding:4px 0}
+.analyze-status.hidden{display:none}
+/* ── stat cards ── */
+.stats-row{display:flex;gap:10px;padding:10px 20px;background:var(--bg);overflow-x:auto;border-bottom:1px solid var(--line)}
+.stat-card{background:var(--panel);border:1px solid var(--line2);border-radius:8px;padding:10px 16px;min-width:90px;text-align:center;flex-shrink:0}
+.stat-val{font-size:22px;font-weight:700;line-height:1.1}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
+/* ── workbench ── */
+.workbench{display:grid;grid-template-columns:1fr 280px;gap:0;background:var(--bg)}
+@media(max-width:900px){.workbench{grid-template-columns:1fr}}
+.stage{position:relative;background:#050805;overflow:hidden;min-height:300px}
+video{display:block;width:100%;max-height:60vh;object-fit:contain;background:#050805}
 canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-.missing{position:absolute;left:16px;bottom:16px;background:rgba(16,19,15,.86);border:1px solid var(--line);padding:10px 12px;color:var(--muted);font-size:13px}
-.panel{border:1px solid var(--line);background:var(--panel);padding:12px;display:flex;flex-direction:column;gap:12px}
-.field{display:flex;flex-direction:column;gap:5px;color:var(--muted);font-size:12px}select{width:100%;background:#0d100d;color:var(--text);border:1px solid var(--line);padding:8px}
-.stats{display:grid;grid-template-columns:1fr;gap:7px;font-size:13px}.stats span{display:flex;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:6px}
-.toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}.toggles label{font-size:13px;color:var(--text)}
-.debug-panel{border-top:1px solid var(--line);padding-top:10px;display:flex;flex-direction:column;gap:9px}.debug-panel h2{margin:0;color:var(--muted);font-size:13px;font-weight:600}.debug-stats{font-size:12px}.downloads{display:grid;grid-template-columns:1fr;gap:7px}.downloads a{display:block;text-align:center;text-decoration:none;background:#0d100d;color:var(--text);border:1px solid var(--line);padding:8px;font-size:12px}.downloads a:hover{border-color:var(--accent);color:var(--accent)}
-.timeline{display:flex;flex-direction:column;gap:8px;max-height:260px;overflow:auto}.stream{max-height:180px}.event{border-left:3px solid var(--accent);background:#111611;padding:8px;font-size:12px;color:var(--muted)}.event strong{color:var(--text)}.stream-event{border-left-color:var(--blue)}
-@media(max-width:900px){.shell{padding:10px}.workbench{grid-template-columns:1fr}.panel{order:-1}.stage{min-height:280px}h1{font-size:20px}}
+.video-missing{position:absolute;bottom:10px;left:10px;background:rgba(10,13,10,.9);border:1px solid var(--line2);border-radius:6px;padding:8px 12px;font-size:12px;color:var(--muted)}
+.video-missing.hidden{display:none}
+/* ── side panel ── */
+.side-panel{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;max-height:60vh}
+.panel-section{padding:14px;border-bottom:1px solid var(--line)}
+.panel-section h3{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;font-weight:600;margin-bottom:10px}
+.readout-grid{display:grid;grid-template-columns:auto 1fr;gap:5px 12px;font-size:13px}
+.readout-grid span{color:var(--muted)}
+.readout-grid strong{color:var(--text);text-align:right}
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.tog{display:flex;align-items:center;gap:6px;font-size:12px;cursor:pointer;color:var(--text);padding:4px 6px;border-radius:4px;border:1px solid var(--line)}
+.tog:hover{border-color:var(--line2);background:rgba(255,255,255,.03)}
+.tog input{accent-color:var(--green)}
+.legend{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--muted)}
+.leg-dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px}
+.leg-dot.blue{background:var(--blue)}.leg-dot.red{background:var(--red)}.leg-dot.yellow{background:var(--accent)}.leg-dot.green{background:var(--green)}
+.downloads{display:flex;flex-direction:column;gap:6px}
+.dl-link,.btn-link{display:block;font-size:12px;color:var(--blue);text-decoration:none;padding:5px 8px;border:1px solid var(--line);border-radius:4px;text-align:center}
+.dl-link:hover,.btn-link:hover{border-color:var(--blue);background:rgba(75,168,255,.08)}
+/* ── analytics tabs ── */
+.analytics{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.tab-nav{display:flex;gap:0;border-bottom:1px solid var(--line);overflow-x:auto;background:var(--bg)}
+.tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);padding:10px 16px;font-size:13px;cursor:pointer;white-space:nowrap;font-family:inherit}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--green);border-bottom-color:var(--green);font-weight:600}
+.tab-panel{padding:16px;display:flex;flex-direction:column;gap:12px;min-height:200px}
+.tab-panel.hidden{display:none}
+.gallery{display:flex;gap:12px;flex-wrap:wrap;justify-content:center}
+.gallery img,.full-img{max-width:100%;border-radius:8px;border:1px solid var(--line2)}
+.gallery img{max-height:300px;object-fit:contain}
+.full-img{max-height:400px;object-fit:contain;display:block;margin:0 auto}
+.highlights-gallery{gap:8px}
+.highlights-gallery img{max-height:220px}
+.empty{color:var(--muted);font-size:13px;padding:24px;text-align:center;background:var(--panel);border-radius:8px;border:1px dashed var(--line2)}
+/* ── events section ── */
+.events-section{padding:14px 20px;background:var(--bg)}
+.events-section h3{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
+.event-list{display:flex;flex-direction:column;gap:6px;max-height:200px;overflow-y:auto}
+.ev-card{background:var(--panel);border:1px solid var(--line2);border-left:3px solid var(--accent);border-radius:6px;padding:8px 12px;font-size:12px}
+.ev-card .ev-label{font-weight:600;color:var(--text)}
+.ev-card .ev-meta{color:var(--muted);margin-top:2px}
+.ev-card.highlight{border-left-color:var(--red)}
+.ev-empty{color:var(--muted);font-size:13px;font-style:italic}
 """
 
 
@@ -1762,79 +2123,220 @@ const data=window.FUTBOT_PLAYBACK_DATA;
 const video=document.getElementById('video');
 const canvas=document.getElementById('overlay');
 const ctx=canvas.getContext('2d');
-const missing=document.getElementById('videoMissing');
-const frameReadout=document.getElementById('frameReadout');
-const resolvedFrameReadout=document.getElementById('resolvedFrameReadout');
-const timeReadout=document.getElementById('timeReadout');
-const durationReadout=document.getElementById('durationReadout');
-const rateReadout=document.getElementById('rateReadout');
-const dataReadout=document.getElementById('dataReadout');
-const engineReadout=document.getElementById('engineReadout');
-const inferenceReadout=document.getElementById('inferenceReadout');
-const streamReadout=document.getElementById('streamReadout');
-const streamMessageReadout=document.getElementById('streamMessageReadout');
-const latencyReadout=document.getElementById('latencyReadout');
-const streamList=document.getElementById('streamList');
-const debugFrameReadout=document.getElementById('debugFrameReadout');
-const debugTimestampReadout=document.getElementById('debugTimestampReadout');
-const debugInferenceReadout=document.getElementById('debugInferenceReadout');
-const debugChannelReadout=document.getElementById('debugChannelReadout');
-const debugLatencyReadout=document.getElementById('debugLatencyReadout');
-const debugQueueReadout=document.getElementById('debugQueueReadout');
-const debugTracksReadout=document.getElementById('debugTracksReadout');
-const debugEventReadout=document.getElementById('debugEventReadout');
 const syncState=document.getElementById('syncState');
+const frameReadout=document.getElementById('frameReadout');
+const timeReadout=document.getElementById('timeReadout');
+const rateReadout=document.getElementById('rateReadout');
+const resolvedFrameReadout=document.getElementById('resolvedFrameReadout');
+const dataReadout=document.getElementById('dataReadout');
+const videoMissing=document.getElementById('videoMissing');
 const byFrame=new Map();
 for(const row of data.tracks){const f=Number(row.frame);if(!byFrame.has(f))byFrame.set(f,[]);byFrame.get(f).push(row);}
 const availableFrames=(data.available_frames||[]).map(Number).sort((a,b)=>a-b);
-let lastTargetFrame=null;
-let suppressTrails=0;
-let eventSource=null;
-let streamComplete=false;
-let streamMessageCount=0;
-let streamOpenCount=0;
-let latestLatencyMessage=null;
-let latestFrameMessage=null;
-inferenceReadout.textContent=data.inference_modes?.selected_mode||data.frame_loop?.inference_mode||'precomputed';
-debugInferenceReadout.textContent=inferenceReadout.textContent;
+let lastTarget=null,suppressTrails=0;
+// ── helpers ──
 function enabled(id){return document.getElementById(id)?.checked;}
-function frameFromVideoTime(timeSec){const fps=Number(data.config.fps)||30;const raw=Math.round(Math.max(0,timeSec||0)*fps);const end=Number(data.config.end_frame)||raw;return Math.min(raw,end);}
-function frameNow(){return frameFromVideoTime(video.currentTime||0);}
-function resolveOverlayFrame(targetFrame){if(byFrame.has(targetFrame))return{target_frame:targetFrame,resolved_frame:targetFrame,status:'exact',frame_gap:0};let previous=null;let future=null;for(const frame of availableFrames){if(frame<=targetFrame)previous=frame;if(frame>targetFrame){future=frame;break;}}const maxGap=Number(data.sync?.max_frame_gap||0)||Number.MAX_SAFE_INTEGER;if(previous!==null&&targetFrame-previous<=maxGap)return{target_frame:targetFrame,resolved_frame:previous,status:'previous',frame_gap:targetFrame-previous};if(future!==null&&future-targetFrame<=maxGap)return{target_frame:targetFrame,resolved_frame:future,status:'future',frame_gap:future-targetFrame};return{target_frame:targetFrame,resolved_frame:null,status:'missing',frame_gap:null};}
-function resizeCanvas(){const rect=video.getBoundingClientRect();const fallbackW=data.config.width||960;const fallbackH=data.config.height||540;canvas.width=Math.max(1,Math.round(rect.width||fallbackW));canvas.height=Math.max(1,Math.round(rect.height||fallbackH));}
+function esc(t){return String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function teamColor(row){return row.team==='blue'?'#4ba8ff':row.team==='red'?'#ff5f5f':'#4dce78';}
+function frameFromTime(t){const fps=Number(data.config.fps)||30;return Math.min(Math.round(Math.max(0,t||0)*fps),Number(data.config.end_frame)||99999);}
+function frameNow(){return frameFromTime(video.currentTime||0);}
+function resolveFrame(target){
+  if(byFrame.has(target))return{resolved_frame:target,status:'exact'};
+  let prev=null,next=null;
+  for(const f of availableFrames){if(f<=target)prev=f;if(f>target&&next===null)next=f;}
+  const maxGap=Number(data.sync?.max_frame_gap||0)||999999;
+  if(prev!==null&&target-prev<=maxGap)return{resolved_frame:prev,status:'prev'};
+  if(next!==null&&next-target<=maxGap)return{resolved_frame:next,status:'next'};
+  return{resolved_frame:null,status:'missing'};
+}
+function resizeCanvas(){
+  const r=video.getBoundingClientRect();
+  const W=data.config.width||1280,H=data.config.height||720;
+  canvas.width=Math.max(1,Math.round(r.width||W));
+  canvas.height=Math.max(1,Math.round(r.height||H));
+}
 function scaleX(x){return Number(x)*(canvas.width/(data.config.width||canvas.width));}
 function scaleY(y){return Number(y)*(canvas.height/(data.config.height||canvas.height));}
-function activeEvents(frame){return data.events.filter(e=>Number(e.start_frame)<=frame&&Number(e.end_frame)>=frame);}
-function activeHighlights(frame){return data.highlights.filter(e=>Number(e.start_frame)<=frame&&Number(e.end_frame)>=frame);}
-function draw(){resizeCanvas();ctx.clearRect(0,0,canvas.width,canvas.height);const target=frameNow();const resolved=resolveOverlayFrame(target);const frame=resolved.resolved_frame;const rows=frame===null?[]:(byFrame.get(frame)||[]);const events=activeEvents(target);const highlights=activeHighlights(target);if(lastTargetFrame!==null&&Math.abs(target-lastTargetFrame)>Number(data.sync?.jump_reset_threshold_frames||32))suppressTrails=2;lastTargetFrame=target;frameReadout.textContent=String(target);resolvedFrameReadout.textContent=frame===null?'sin datos':String(frame)+' ('+resolved.status+')';timeReadout.textContent=(video.currentTime||0).toFixed(3)+'s';durationReadout.textContent=Number.isFinite(video.duration)?video.duration.toFixed(3)+'s':Number(data.video_metadata?.configured_duration_sec||0).toFixed(3)+'s config';rateReadout.textContent=(video.playbackRate||1).toFixed(2)+'x';dataReadout.textContent=rows.length+' tracks | '+events.length+' eventos';syncState.textContent=resolved.status==='missing'?'missing_data':(resolved.status==='exact'?'replaying_cache':'stride_fallback');updateDebugPanel(target,rows,events,highlights);if(resolved.status==='missing')badge('sin datos para frame '+target,14,14,'#ff6b6b');if(enabled('layerTrails')&&suppressTrails<=0)drawTrails(frame===null?target:frame);else if(suppressTrails>0)suppressTrails-=1;if(enabled('layerTracks'))drawTracks(rows);if(enabled('layerBall'))drawBall(rows);if(enabled('layerEvents'))drawEvents(events);if(enabled('layerPossession'))drawPossession(events);if(enabled('layerHighlights'))drawHighlights(highlights);if(enabled('layerMinimap'))drawMinimap(rows);if(enabled('layerDebug'))drawDebug(target,rows,resolved);renderEventList(events,highlights);requestAnimationFrame(draw);}
-function drawTracks(rows){for(const row of rows){if(row.class==='ball')continue;const x=scaleX(row.x),y=scaleY(row.y),w=scaleX(row.w),h=scaleY(row.h);ctx.strokeStyle=row.team==='blue'?'#48a6ff':(row.team==='red'?'#ff6b6b':'#64d47c');ctx.lineWidth=2;ctx.strokeRect(x,y,w,h);ctx.fillStyle=ctx.strokeStyle;ctx.beginPath();ctx.arc(scaleX(row.center_x),scaleY(row.center_y),3,0,Math.PI*2);ctx.fill();if(enabled('layerIds'))label(row.track_id,x,y-6,ctx.strokeStyle);}}
-function drawBall(rows){for(const row of rows.filter(r=>r.class==='ball')){const x=scaleX(row.center_x),y=scaleY(row.center_y);ctx.fillStyle='#f4c430';ctx.strokeStyle='#10130f';ctx.lineWidth=3;ctx.beginPath();ctx.arc(x,y,8,0,Math.PI*2);ctx.fill();ctx.stroke();if(enabled('layerIds'))label(row.track_id,x+10,y,'#f4c430');}}
-function drawTrails(frame){const start=frame-(data.config.trail_length||16);const trails=new Map();for(const row of data.tracks){const f=Number(row.frame);if(f<start||f>frame)continue;if(!trails.has(row.track_id))trails.set(row.track_id,[]);trails.get(row.track_id).push(row);}for(const points of trails.values()){if(points.length<2)continue;ctx.beginPath();points.forEach((p,i)=>{const x=scaleX(p.center_x),y=scaleY(p.center_y);if(i===0)ctx.moveTo(x,y);else ctx.lineTo(x,y);});ctx.strokeStyle='rgba(244,196,48,.42)';ctx.lineWidth=2;ctx.stroke();}}
-function drawEvents(events){let top=14;for(const event of events){const text=event.label+' '+event.status;badge(text,14,top,'#f4c430');top+=30;}}
-function drawPossession(events){const possession=events.find(e=>(e.label||'').includes('possession')||(e.reason||'').includes('posesion'));if(!possession)return;badge('posesion candidata: '+(possession.team||'unknown'),14,canvas.height-42,'#64d47c');}
-function drawHighlights(highlights){for(const hl of highlights){badge('highlight #'+hl.rank+' '+Number(hl.score).toFixed(1),canvas.width-190,14,'#ff6b6b');}}
-function drawMinimap(rows){const w=150,h=96,x=canvas.width-w-14,y=canvas.height-h-14;ctx.fillStyle='rgba(13,16,13,.86)';ctx.fillRect(x,y,w,h);ctx.strokeStyle='#aab6a4';ctx.strokeRect(x,y,w,h);ctx.strokeStyle='rgba(170,182,164,.3)';ctx.beginPath();ctx.moveTo(x+w/2,y);ctx.lineTo(x+w/2,y+h);ctx.stroke();for(const row of rows){if(row.x_norm===''||row.y_norm==='')continue;ctx.fillStyle=row.class==='ball'?'#f4c430':(row.team==='blue'?'#48a6ff':'#64d47c');ctx.beginPath();ctx.arc(x+Number(row.x_norm)*w,y+Number(row.y_norm)*h,row.class==='ball'?4:3,0,Math.PI*2);ctx.fill();}}
-function drawDebug(frame,rows,resolved){label('fps='+data.config.fps+' rows='+rows.length+' target='+frame+' resolved='+(resolved.resolved_frame??'none')+' status='+resolved.status,12,canvas.height-12,'#edf2e9');}
-function label(text,x,y,color){ctx.font='12px system-ui';ctx.fillStyle='rgba(5,6,5,.78)';const width=ctx.measureText(text).width+8;ctx.fillRect(x,y-13,width,17);ctx.fillStyle=color;ctx.fillText(text,x+4,y);}
-function badge(text,x,y,color){ctx.font='13px system-ui';const width=Math.min(canvas.width-24,ctx.measureText(text).width+18);ctx.fillStyle='rgba(5,6,5,.82)';ctx.fillRect(x,y,width,24);ctx.strokeStyle=color;ctx.strokeRect(x,y,width,24);ctx.fillStyle='#edf2e9';ctx.fillText(text,x+8,y+16);}
-function renderEventList(events,highlights){const list=document.getElementById('eventList');list.innerHTML='';for(const item of [...events,...highlights].slice(0,6)){const div=document.createElement('div');div.className='event';div.innerHTML='<strong>'+escapeHtml(item.label||item.highlight_id)+'</strong><br>frames '+(item.start_frame||item.start_frame)+'-'+(item.end_frame||item.end_frame)+' | '+(item.status||'provisional');list.appendChild(div);}}
-function updateDebugPanel(frame,rows,events,highlights){const active=[...events,...highlights][0];debugFrameReadout.textContent=String(frame);debugTimestampReadout.textContent=(video.currentTime||0).toFixed(3)+'s';debugInferenceReadout.textContent=inferenceReadout.textContent;debugChannelReadout.textContent=streamReadout.textContent;debugLatencyReadout.textContent=latencyReadout.textContent;debugQueueReadout.textContent=String(latestLatencyMessage?.queue_depth??0);debugTracksReadout.textContent=String(rows.length);debugEventReadout.textContent=active?(active.label||active.highlight_id||active.event_id||'evento activo'):'sin evento';}
-function connectEventStream(){if(!data.endpoints?.stream||!window.EventSource){streamReadout.textContent='sse no disponible';appendStreamMessage({type:'warning',warning_code:'eventsource_unavailable',message:'EventSource no disponible en este navegador'});return;}streamOpenCount+=1;streamReadout.textContent=streamOpenCount===1?'sse conectando':'sse reconectando '+streamOpenCount;eventSource=new EventSource(data.endpoints.stream);eventSource.onopen=()=>{streamReadout.textContent='sse activo';};for(const type of ['session_status','frame_result','event_update','latency_metrics','warning']){eventSource.addEventListener(type,event=>handleStreamMessage(type,event.data));}eventSource.onerror=()=>{if(streamComplete){eventSource.close();return;}streamReadout.textContent='sse reconexion pendiente';};}
-function handleStreamMessage(type,raw){let message;try{message=JSON.parse(raw);}catch(error){message={type:'warning',warning_code:'bad_stream_payload',message:String(error)};}streamMessageCount+=1;streamMessageReadout.textContent=String(streamMessageCount);if(message.engine_mode||message.mode)engineReadout.textContent=message.engine_mode||message.mode;if(message.inference_mode)inferenceReadout.textContent=message.inference_mode;if(type==='latency_metrics'){latestLatencyMessage=message;latencyReadout.textContent=Number(message.total_to_overlay_ms||message.emit_latency_ms||0).toFixed(1)+'ms';}if(type==='frame_result'){latestFrameMessage=message;streamReadout.textContent='frame '+message.frame;}if(type==='warning'){streamReadout.textContent='warning '+(message.warning_code||'stream');}if(type==='session_status'&&(message.status==='complete'||message.status==='stopped')){streamComplete=true;streamReadout.textContent='sse '+message.status;if(eventSource)eventSource.close();}debugInferenceReadout.textContent=inferenceReadout.textContent;debugChannelReadout.textContent=streamReadout.textContent;appendStreamMessage(message);}
-function appendStreamMessage(message){if(!streamList)return;const div=document.createElement('div');div.className='event stream-event';const type=message.type||'message';const frame=message.frame!==undefined?'frame '+message.frame:'seq '+(message.sequence||'-');const detail=message.status||message.warning_code||message.label||message.resolution_status||message.source||'';div.innerHTML='<strong>'+escapeHtml(type)+'</strong><br>'+escapeHtml(frame)+' | '+escapeHtml(detail);streamList.prepend(div);while(streamList.children.length>8)streamList.removeChild(streamList.lastElementChild);}
-function escapeHtml(text){return String(text).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',\"'\":'&#39;'}[c]));}
-function markTemporalJump(){suppressTrails=2;resizeCanvas();}
-if(!data.config.video_exists){missing.hidden=false;}
-video.addEventListener('loadedmetadata',()=>{resizeCanvas();durationReadout.textContent=Number.isFinite(video.duration)?video.duration.toFixed(3)+'s':durationReadout.textContent;});
-video.addEventListener('seeking',markTemporalJump);
-video.addEventListener('seeked',markTemporalJump);
-video.addEventListener('ratechange',()=>{rateReadout.textContent=(video.playbackRate||1).toFixed(2)+'x';});
-video.addEventListener('play',()=>{syncState.textContent='playing';});
-video.addEventListener('pause',()=>{syncState.textContent='paused';});
-video.addEventListener('ended',()=>{syncState.textContent='ended';suppressTrails=2;});
+function label(text,x,y,color){
+  ctx.font='bold 11px system-ui';
+  const w=ctx.measureText(text).width+8;
+  ctx.fillStyle='rgba(8,12,8,.85)';ctx.fillRect(x,y-14,w,16);
+  ctx.fillStyle=color;ctx.fillText(text,x+4,y);
+}
+function badge(text,x,y,color){
+  ctx.font='12px system-ui';
+  const w=Math.min(canvas.width-x-8,ctx.measureText(text).width+16);
+  ctx.fillStyle='rgba(8,12,8,.85)';ctx.fillRect(x,y,w,22);
+  ctx.strokeStyle=color;ctx.lineWidth=1;ctx.strokeRect(x,y,w,22);
+  ctx.fillStyle='#dce8d8';ctx.fillText(text,x+7,y+15);
+}
+// ── draw functions ──
+function drawTracks(rows){
+  for(const row of rows){
+    const cls=row.class||'';
+    if(cls==='ball')continue;
+    const x=scaleX(row.x),y=scaleY(row.y),w=scaleX(row.w),h=scaleY(row.h);
+    const cx=scaleX(row.center_x),cy=scaleY(row.center_y);
+    if(cls.includes('goalpost')||cls.includes('porteria')){
+      ctx.strokeStyle='#f0c230';ctx.lineWidth=3;
+      ctx.setLineDash([6,4]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
+      if(enabled('layerGoalpost'))label('portería',x,y-3,'#f0c230');
+    } else if(cls.includes('field')||cls.includes('campo')){
+      if(!enabled('layerField'))continue;
+      ctx.strokeStyle='rgba(77,206,120,.35)';ctx.lineWidth=1.5;
+      ctx.setLineDash([4,6]);ctx.strokeRect(x,y,w,h);ctx.setLineDash([]);
+    } else {
+      const color=teamColor(row);
+      ctx.strokeStyle=color;ctx.lineWidth=2.5;ctx.strokeRect(x,y,w,h);
+      ctx.fillStyle=color;ctx.beginPath();ctx.arc(cx,cy,4,0,Math.PI*2);ctx.fill();
+      if(enabled('layerIds'))label(row.track_id.replace('_bt_','-'),x,y-3,color);
+    }
+  }
+}
+function drawBall(rows){
+  for(const row of rows.filter(r=>(r.class||'')==='ball')){
+    const x=scaleX(row.center_x),y=scaleY(row.center_y);
+    ctx.shadowColor='#f0c230';ctx.shadowBlur=12;
+    ctx.fillStyle='#f0c230';ctx.strokeStyle='#0a0d0a';ctx.lineWidth=2;
+    ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.fill();ctx.stroke();
+    ctx.shadowBlur=0;
+    if(enabled('layerIds'))label(row.track_id,x+11,y,'#f0c230');
+  }
+}
+function drawTrails(frame){
+  const start=frame-(data.config.trail_length||20);
+  const trails=new Map();
+  for(const row of data.tracks){
+    const f=Number(row.frame);
+    if(f<start||f>frame)continue;
+    if(!trails.has(row.track_id))trails.set(row.track_id,[]);
+    trails.get(row.track_id).push(row);
+  }
+  for(const [tid,pts] of trails){
+    if(pts.length<2)continue;
+    const isBall=(pts[0].class||'')==='ball';
+    ctx.beginPath();
+    pts.forEach((p,i)=>{
+      const x=scaleX(p.center_x),y=scaleY(p.center_y);
+      i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle=isBall?'rgba(240,194,48,.5)':teamColor(pts[0])+'88';
+    ctx.lineWidth=isBall?2:1.5;ctx.stroke();
+  }
+}
+function drawMinimap(rows){
+  const pw=180,ph=110,px=canvas.width-pw-12,py=canvas.height-ph-12;
+  ctx.fillStyle='rgba(10,13,10,.9)';ctx.fillRect(px,py,pw,ph);
+  ctx.strokeStyle='#2a362a';ctx.lineWidth=1;ctx.strokeRect(px,py,pw,ph);
+  // center line
+  ctx.strokeStyle='rgba(42,54,42,.7)';ctx.beginPath();
+  ctx.moveTo(px+pw/2,py);ctx.lineTo(px+pw/2,py+ph);ctx.stroke();
+  // penalty areas (rough)
+  ctx.strokeStyle='rgba(42,54,42,.5)';
+  ctx.strokeRect(px,py+ph*.25,pw*.15,ph*.5);
+  ctx.strokeRect(px+pw*.85,py+ph*.25,pw*.15,ph*.5);
+  for(const row of rows){
+    const xn=row.x_norm,yn=row.y_norm;
+    if(xn===''||yn===''||xn===undefined||yn===undefined)continue;
+    const isBall=(row.class||'')==='ball';
+    ctx.fillStyle=isBall?'#f0c230':teamColor(row);
+    ctx.beginPath();
+    ctx.arc(px+Number(xn)*pw,py+Number(yn)*ph,isBall?5:3.5,0,Math.PI*2);
+    ctx.fill();
+  }
+  ctx.font='10px system-ui';ctx.fillStyle='#7a8f78';
+  ctx.fillText('minimapa',px+4,py+ph-4);
+}
+function drawEvents(events){
+  let top=14;
+  for(const e of events.slice(0,4)){
+    if(!e.label)continue;
+    badge(e.label+(e.status?' · '+e.status:''),14,top,'#f0c230');top+=28;
+  }
+}
+function draw(){
+  resizeCanvas();ctx.clearRect(0,0,canvas.width,canvas.height);
+  const target=frameNow();
+  const resolved=resolveFrame(target);
+  const frame=resolved.resolved_frame;
+  const rows=frame===null?[]:(byFrame.get(frame)||[]);
+  const events=data.events.filter(e=>Number(e.start_frame)<=target&&Number(e.end_frame)>=target);
+  const highlights=data.highlights.filter(e=>Number(e.start_frame)<=target&&Number(e.end_frame)>=target);
+  if(lastTarget!==null&&Math.abs(target-lastTarget)>32)suppressTrails=2;
+  lastTarget=target;
+  frameReadout.textContent=String(target);
+  timeReadout.textContent=(video.currentTime||0).toFixed(2)+'s';
+  rateReadout.textContent=(video.playbackRate||1).toFixed(1)+'×';
+  resolvedFrameReadout.textContent=frame===null?'sin datos':frame+'('+resolved.status+')';
+  dataReadout.textContent=rows.length+' obj | '+events.length+' evt';
+  syncState.textContent=resolved.status==='missing'?'sin datos':resolved.status==='exact'?'en caché':'interpolado';
+  if(enabled('layerTrails')&&suppressTrails<=0)drawTrails(frame??target);
+  else if(suppressTrails>0)suppressTrails--;
+  if(enabled('layerTracks'))drawTracks(rows);
+  if(enabled('layerBall'))drawBall(rows);
+  if(enabled('layerEvents'))drawEvents(events);
+  if(enabled('layerMinimap'))drawMinimap(rows);
+  renderEvents(events,highlights);
+  requestAnimationFrame(draw);
+}
+function renderEvents(events,highlights){
+  const list=document.getElementById('eventList');
+  if(!list)return;
+  const all=[...highlights.slice(0,3).map(h=>({...h,_hl:true})),...events.filter(e=>e.label).slice(0,6)];
+  if(!all.length){list.innerHTML='<p class="ev-empty">Sin eventos en el frame actual.</p>';return;}
+  list.innerHTML=all.map(item=>`
+    <div class="ev-card${item._hl?' highlight':''}">
+      <div class="ev-label">${esc(item.label||item.event_id||'evento')}</div>
+      <div class="ev-meta">frames ${item.start_frame??'?'}–${item.end_frame??'?'} · ${esc(item.status||item.zone||'')}</div>
+    </div>`).join('');
+}
+// ── tabs ──
+function showTab(id,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.add('hidden'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  const panel=document.getElementById('tab-'+id);
+  if(panel)panel.classList.remove('hidden');
+  if(btn)btn.classList.add('active');
+}
+// ── analyze form ──
+const analyzeForm=document.getElementById('analyzeForm');
+const analyzeStatus=document.getElementById('analyzeStatus');
+let pollInterval=null;
+if(analyzeForm){
+  analyzeForm.addEventListener('submit',async e=>{
+    e.preventDefault();
+    const fd=new FormData(analyzeForm);
+    const params=new URLSearchParams(fd);
+    analyzeStatus.textContent='Iniciando análisis…';
+    analyzeStatus.classList.remove('hidden');
+    const resp=await fetch('/analyze',{method:'POST',body:params,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    if(resp.ok){
+      analyzeStatus.textContent='Analizando… (esto puede tomar varios minutos)';
+      pollInterval=setInterval(async()=>{
+        const s=await fetch('/analyze-status').then(r=>r.json());
+        const last=s.log?.slice(-1)[0]||'';
+        analyzeStatus.textContent=s.running?'Analizando… '+last:s.done&&!s.error?'¡Listo! Recargando…':('Error: '+(s.error||'?'));
+        if(s.done){clearInterval(pollInterval);if(!s.error)setTimeout(()=>window.location.reload(),1500);}
+      },3000);
+    } else {
+      analyzeStatus.textContent='Error al iniciar análisis';
+    }
+  });
+}
+// ── video events ──
+if(!data.config.video_exists)videoMissing.classList.remove('hidden');
+video.addEventListener('seeking',()=>{suppressTrails=2;resizeCanvas();});
+video.addEventListener('seeked',()=>{suppressTrails=2;resizeCanvas();});
+video.addEventListener('play',()=>{syncState.textContent='reproduciendo';});
+video.addEventListener('pause',()=>{syncState.textContent='pausado';});
+video.addEventListener('ended',()=>{syncState.textContent='fin';});
 window.addEventListener('resize',resizeCanvas);
-for(const input of document.querySelectorAll('input[type=checkbox]'))input.addEventListener('change',()=>{suppressTrails=1;});
-connectEventStream();
+for(const cb of document.querySelectorAll('input[type=checkbox]'))cb.addEventListener('change',()=>{suppressTrails=1;});
+// ── SSE stream ──
+if(data.endpoints?.stream&&window.EventSource){
+  const es=new EventSource(data.endpoints.stream);
+  es.addEventListener('session_status',e=>{const m=JSON.parse(e.data);if(m.status==='complete')es.close();});
+}
 requestAnimationFrame(draw);
 """
 

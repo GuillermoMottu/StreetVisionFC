@@ -141,29 +141,32 @@ class LivePlaybackTests(unittest.TestCase):
 
             html = render_playback_html(context)
 
+            # structural elements
             self.assertIn("<video", html)
             self.assertIn('<canvas id="overlay"', html)
+            self.assertIn("FUTBOT_PLAYBACK_DATA", html)
+            # layer toggles
             self.assertIn("layerTracks", html)
-            self.assertIn("layerHighlights", html)
+            self.assertIn("layerBall", html)
+            self.assertIn("layerTrails", html)
+            self.assertIn("layerMinimap", html)
+            # readouts present in JS
             self.assertIn("frameReadout", html)
             self.assertIn("resolvedFrameReadout", html)
-            self.assertIn("FUTBOT_PLAYBACK_DATA", html)
+            self.assertIn("syncState", html)
+            # drawing functions
             self.assertIn("drawMinimap", html)
-            self.assertIn("resolveOverlayFrame", html)
+            self.assertIn("drawTracks", html)
+            self.assertIn("resolveFrame", html)
+            # video events
             self.assertIn("seeked", html)
-            self.assertIn("ratechange", html)
-            self.assertIn("streamReadout", html)
-            self.assertIn("engineReadout", html)
-            self.assertIn("inferenceReadout", html)
-            self.assertIn("debugPanel", html)
-            self.assertIn("debugFrameReadout", html)
-            self.assertIn("debugQueueReadout", html)
-            self.assertIn("downloadSessionLog", html)
-            self.assertIn("/live_tracks.jsonl", html)
-            self.assertIn("/stream_events.jsonl", html)
             self.assertIn("EventSource", html)
-            self.assertIn("connectEventStream", html)
-            self.assertIn("updateDebugPanel", html)
+            # analytics / downloads
+            self.assertIn("/tracks.csv", html)
+            self.assertIn("/events.json", html)
+            # analyze form
+            self.assertIn("analyzeForm", html)
+            self.assertIn("/analyze", html)
 
     def test_build_live_playback_package_writes_activity_23_artifacts(self) -> None:
         with TemporaryDirectory() as tmpdir:
