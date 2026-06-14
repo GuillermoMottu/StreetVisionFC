@@ -1,7 +1,7 @@
 # Results Summary — FutBotMX / StreetVisionFC
 
-Final pipeline results as of 2026-06-13. Items pending human annotation are declared
-explicitly — no metrics were estimated or fabricated.
+Final pipeline results as of 2026-06-14. Supervised metrics computed against
+real human annotations (Roboflow, 49 annotations across 8 frames).
 
 ---
 
@@ -68,20 +68,24 @@ Source: `experiments/current_evaluation/masks_grounded_sam/`
 
 ---
 
-## R5. Supervised metrics (IoU/Dice/F1)
+## R5. Supervised metrics (IoU@0.5, frame 143)
 
-**Status: PENDING HUMAN ANNOTATION**
+Ground truth: **49 human annotations** (Roboflow) across 8 frames (120–180).
+Evaluation frame: **143** (only frame with pipeline predictions).
+Source: `data/annotations/train_COCO/_annotations.coco.json` → `data/annotations/annotation_template.json`
 
-Infrastructure is complete:
-- 8 frames exported to `data/annotations/frames/` (frames 120, 130, 140, 143, 150, 160, 170, 180)
-- COCO format template: `data/annotations/annotation_template.json`
-- 4 annotation classes: `small_robot`, `ball`, `green_soccer_field`, `goalpost`
-- Metrics script ready: `scripts/run_phase5_metrics.py`
+| Class | GT boxes | Pred boxes | TP | FP | FN | Precision | Recall | F1 |
+|---|---|---|---|---|---|---|---|---|
+| small\_robot | 3 | 5 | 3 | 2 | 0 | 0.60 | 1.00 | **0.75** |
+| ball | 1 | 1 | 1 | 0 | 0 | 1.00 | 1.00 | **1.00** |
+| green\_soccer\_field | 1 | 1 | 1 | 0 | 0 | 1.00 | 1.00 | **1.00** |
+| goalpost | 1 | 1 | 1 | 0 | 0 | 1.00 | 1.00 | **1.00** |
+| **Micro avg** | **6** | **8** | **6** | **2** | **0** | **0.75** | **1.00** | **0.857** |
 
-To complete: annotate bboxes/masks in `annotation_template.json` and re-run the metrics script.
+**Recall = 1.00** — every human-labeled object in frame 143 was detected.  
+**2 FP on small\_robot**: overlapping box on center-right robot cluster + 1 detection above the playing field.
 
-No IoU, Dice, precision, recall or F1 values are reported for this reason.
-These metrics **cannot be estimated without ground-truth annotations**.
+Source: `experiments/current_evaluation/phase5_metrics/supervised_metrics.json`
 
 ---
 
@@ -106,7 +110,7 @@ Key additions in this phase: `transformers==5.12.0` (OWLv2 support).
 | Limitation | Impact |
 |---|---|
 | Not real-time (0.45 FPS) | Offline analysis only; not suitable for live refereeing |
-| No supervised IoU/F1 | Cannot claim precision without human annotation |
+| Metrics on 1/8 frames only | Recall/F1 reflect frame 143; full 8-frame evaluation requires multi-frame inference |
 | video\_595 goalpost no mask | Plain bbox fallback; confidence=0.0 |
 | Team assignment heuristic | Confidence=0.64; not applicable if robots swap sides |
 | Green field no pixel mask | OWLv2 bbox used; enough for ROI, not for area measurement |

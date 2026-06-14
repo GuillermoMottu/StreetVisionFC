@@ -19,10 +19,53 @@
     }
   },
   "supervised_metrics": {
-    "status": "pending_annotation",
-    "message": "No annotations in template yet. Annotate data/annotations/annotation_template.json and re-run."
+    "status": "computed",
+    "iou_threshold": 0.5,
+    "evaluated_frames": [
+      143
+    ],
+    "gt_frames_total": 8,
+    "per_class": {
+      "ball": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "goalpost": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "green_soccer_field": {
+        "tp": 1,
+        "fp": 0,
+        "fn": 0,
+        "precision": 1.0,
+        "recall": 1.0,
+        "f1": 1.0
+      },
+      "small_robot": {
+        "tp": 3,
+        "fp": 2,
+        "fn": 0,
+        "precision": 0.6,
+        "recall": 1.0,
+        "f1": 0.75
+      }
+    },
+    "micro_avg": {
+      "precision": 0.75,
+      "recall": 1.0,
+      "f1": 0.8571
+    }
   },
-  "annotation_status": "pending_annotation",
+  "annotation_status": "computed",
   "annotation_frames": 8,
   "annotation_classes": 4
 }

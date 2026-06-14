@@ -91,6 +91,14 @@ def compute_metrics_from_annotations(
         for det in fd.detections:
             pred_by_frame_class.setdefault((fd.frame, det.class_name), []).append(det.bbox)
 
+    # Only evaluate frames where predictions exist; GT frames without predictions are
+    # out-of-scope (no inference was run) and would unfairly penalise recall.
+    evaluated_frames = {f for (f, _) in pred_by_frame_class}
+    gt_by_frame_class = {
+        (f, c): boxes for (f, c), boxes in gt_by_frame_class.items()
+        if f in evaluated_frames
+    }
+
     classes = sorted({c for (_, c) in list(gt_by_frame_class.keys()) + list(pred_by_frame_class.keys())})
     per_class: dict[str, dict] = {}
     total_tp = total_fp = total_fn = 0
@@ -114,6 +122,8 @@ def compute_metrics_from_annotations(
     return {
         "status": "computed",
         "iou_threshold": iou_threshold,
+        "evaluated_frames": sorted(evaluated_frames),
+        "gt_frames_total": len({ann["image_id"] for ann in ann_data["annotations"]}),
         "per_class": per_class,
         "micro_avg": {"precision": round(micro_prec, 4), "recall": round(micro_rec, 4),
                       "f1": round(f1(micro_prec, micro_rec), 4)},
