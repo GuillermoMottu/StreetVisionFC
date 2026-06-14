@@ -89,24 +89,31 @@ Videos are not included in the repository (large binary files). Paths are set vi
 ## Run
 
 ```bash
-source .env
+source .venv/bin/activate
 
-# Validate segmentation pipeline on a single frame
+# ── Pipeline completo (recomendado para jueces) ──────────────────────────────
+# Grounded-SAM → tracking → Level3 analytics → visualización en navegador
+PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
+python scripts/run_unified_analysis.py \
+  --video "$FUTBOTMX_VIDEO_836" \
+  --clip-id video_836 \
+  --start-frame 120 --end-frame 180
+# Abre automáticamente http://127.0.0.1:8766
+
+# ── Validación individual ────────────────────────────────────────────────────
+# Test suite (sin GPU)
+python -m unittest discover -s tests -q
+
+# Segmentación en un solo frame
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \
 python scripts/run_grounded_sam_test.py \
   --video "$FUTBOTMX_VIDEO_836" --frame 143
 
-# Run test suite (no GPU required)
-python -m unittest discover -s tests -q
-
-# Regenerate demo video
-python scripts/create_phase3_demo.py --video "$FUTBOTMX_VIDEO_836"
-
-# Benchmark
+# Métricas supervisadas
 python scripts/run_phase5_metrics.py
 ```
 
-Full guide: [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)
+Full guide: [docs/EVALUATOR_GUIDE.md](docs/EVALUATOR_GUIDE.md)
 
 ---
 
@@ -119,7 +126,7 @@ Full guide: [docs/REPRODUCIBILITY.md](docs/REPRODUCIBILITY.md)
 | Robots tracked | 3, frames 120–180 |
 | Goalpost detection | OWLv2 text → SAM3 mask (video\_836 conf=0.108) |
 | Test suite | 425 tests pass |
-| Supervised IoU/F1 | pending human annotation (infrastructure ready) |
+| Supervised IoU/F1 | **micro F1=0.857 · P=0.75 · R=1.00** (49 anotaciones Roboflow) |
 
 Full results: [docs/RESULTS_SUMMARY.md](docs/RESULTS_SUMMARY.md)
 
