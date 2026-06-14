@@ -13,8 +13,8 @@
 | 0 | Rama, baseline y respaldo | Completada — aprobada | "Aprobado, continúa con la Fase 1." (2026-06-11) |
 | 1 | Reproducibilidad rápida | Completada — aprobada | "Aprobado, continúa con la Fase 2." (2026-06-11) |
 | 2 | Segmentación SAM 3: masks y portería | Completada | "Apruebo la fase 2 y continua con la fase 3" (2026-06-13) |
-| 3 | Overlays, visualización y video demo | Completada — pendiente revisión D4 (usuario) | — |
-| 4 | Team assignment y análisis semántico | No iniciada | — |
+| 3 | Overlays, visualización y video demo | Completada | "Aprobamos la Fase 3 y continuamos con la Fase 4" (2026-06-13) |
+| 4 | Team assignment y análisis semántico | Completada | "Es correcta la asignación de equipos, continua con el desarrollo" (2026-06-13) |
 | 5 | Métricas, benchmark y dependencias | No iniciada | — |
 | 6 | Documentación para evaluación | No iniciada | — |
 | 7 | Limpieza de arquitectura y CI | No iniciada | — |
@@ -26,6 +26,8 @@
 | 0 | "Aprobado, continúa con la Fase 1." | 2026-06-11 |
 | 1 | "Aprobado, continúa con la Fase 2." | 2026-06-11 |
 | 2 | "Apruebo la fase 2 y continua con la fase 3" | 2026-06-13 |
+| 3 | "Aprobamos la Fase 3 y continuamos con la Fase 4" | 2026-06-13 |
+| 4 | "Es correcta la asignación de equipos, continua con el desarrollo" | 2026-06-13 |
 
 ## Tareas incompletas
 

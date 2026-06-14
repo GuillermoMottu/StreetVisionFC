@@ -41,8 +41,13 @@ CLASS_COLORS: dict[str, tuple[int, int, int]] = {
     "goalpost":    (255, 255, 0),
 }
 
+TEAM_COLORS: dict[str, tuple[int, int, int]] = {
+    "team_right": (50, 220, 50),    # green
+    "team_left":  (60, 120, 255),   # blue
+}
+
 MASKS_DIR = Path("experiments/current_evaluation/masks")
-TRACKS_CSV = Path("experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv")
+TRACKS_CSV = Path("experiments/current_evaluation/phase4_team_assignment/tracks_bytetrack_with_teams.csv")
 EVENTS_JSON = Path("experiments/test_013_level2_events/video_836_real_events_120_180/level2_events.json")
 METRICS_JSON = Path("experiments/test_012_level2_metrics/video_836_real_metrics_120_180/level2_metrics.json")
 HEATMAP_PNG = Path("experiments/test_003_tracking/video_836_real_tracking_120_180/heatmap_bytetrack.png")
@@ -102,7 +107,11 @@ def load_tracks(csv_path: Path) -> dict[int, list[dict]]:
 
 
 def draw_track_row(frame: np.ndarray, row: dict, sw: int, sh: int, src_w: int, src_h: int) -> None:
-    color = CLASS_COLORS.get(row["class_name"], (200, 200, 200))
+    team = row.get("team", "neutral")
+    if "robot" in row.get("class_name", "") and team in TEAM_COLORS:
+        color = TEAM_COLORS[team]
+    else:
+        color = CLASS_COLORS.get(row["class_name"], (200, 200, 200))
     sx, sy = sw / src_w, sh / src_h
     x1 = int(float(row["bbox_x1"]) * sx)
     y1 = int(float(row["bbox_y1"]) * sy)
@@ -113,8 +122,9 @@ def draw_track_row(frame: np.ndarray, row: dict, sw: int, sh: int, src_w: int, s
     cv2.rectangle(frame, (x1, y1), (x2, y2), color, 2)
     cv2.circle(frame, (cx, cy), 3, color, -1)
     tid = row.get("track_id", "")
-    cv2.putText(frame, tid, (x1, max(16, y1 - 4)),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.40, color, 1, cv2.LINE_AA)
+    label = f"{tid} [{team}]" if team not in ("neutral", "unknown", "") else tid
+    cv2.putText(frame, label, (x1, max(16, y1 - 4)),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.38, color, 1, cv2.LINE_AA)
 
 
 # ─── sections ─────────────────────────────────────────────────────────────────
@@ -202,7 +212,12 @@ def section_tracking(
         frame = scale_frame(bgr, sw, sh)
         for row in tracks.get(fi, []):
             draw_track_row(frame, row, sw, sh, src_w, src_h)
-        frame = add_section_header(frame, f"ByteTrack | Seguimiento  (frame {fi})")
+        frame = add_section_header(frame, f"ByteTrack | Tracking con equipos  (frame {fi})")
+        # team legend
+        cv2.circle(frame, (10, sh - 32), 5, TEAM_COLORS["team_right"], -1)
+        cv2.putText(frame, "team_right", (18, sh - 28), cv2.FONT_HERSHEY_SIMPLEX, 0.32, (220, 220, 220), 1)
+        cv2.circle(frame, (10, sh - 16), 5, TEAM_COLORS["team_left"], -1)
+        cv2.putText(frame, "team_left", (18, sh - 12), cv2.FONT_HERSHEY_SIMPLEX, 0.32, (220, 220, 220), 1)
         # small frame counter
         cv2.putText(frame, f"{fi}", (sw - 64, sh - 8),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.35, (180, 180, 180), 1)
