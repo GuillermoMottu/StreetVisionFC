@@ -1,0 +1,4 @@
+highlight_id,rank,clip_id,frame_start,frame_end,reference_frame_path,minimap_path,notes
+lvl3_evt_000004,1,video_595,122,123,experiments/test_017_level2_closure/video_595/overlay_lvl2_evt_000002_frame_122.png,minimap_highlight_rank_01_video_595.png,"Storyboard row combines Level 2 frame reference, Level 3 minimap and conservative text."
+lvl3_evt_000010,2,video_595,128,129,experiments/test_017_level2_closure/video_595/overlay_lvl2_evt_000002_frame_123.png,minimap_highlight_rank_02_video_595.png,"Storyboard row combines Level 2 frame reference, Level 3 minimap and conservative text."
+lvl3_evt_000015,3,video_595,133,135,,minimap_highlight_rank_03_video_595.png,"Storyboard row combines Level 2 frame reference, Level 3 minimap and conservative text."

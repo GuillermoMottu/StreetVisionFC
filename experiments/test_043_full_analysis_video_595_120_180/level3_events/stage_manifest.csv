@@ -1,0 +1,13 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+config,yaml,config.yaml,level3_events,true,configuration,stage_status=pass; size_bytes=5067
+level3_events,json,level3_events.json,level3_events,true,structured_data,stage_status=pass; size_bytes=140497
+level3_highlights,csv,level3_highlights.csv,level3_events,true,tabular_data,stage_status=pass; size_bytes=19863
+level3_narrative,md,level3_narrative.md,level3_events,true,artifact,stage_status=pass; size_bytes=1831
+overlay_highlight_01_video_595_frame_122,png,overlay_highlight_01_video_595_frame_122.png,level3_events,true,visual_evidence,stage_status=pass; size_bytes=36984
+overlay_highlight_02_video_595_frame_128,png,overlay_highlight_02_video_595_frame_128.png,level3_events,true,visual_evidence,stage_status=pass; size_bytes=36614
+overlay_highlight_03_video_595_frame_133,png,overlay_highlight_03_video_595_frame_133.png,level3_events,true,visual_evidence,stage_status=pass; size_bytes=36540
+overlay_highlight_04_video_595_frame_124,png,overlay_highlight_04_video_595_frame_124.png,level3_events,true,visual_evidence,stage_status=pass; size_bytes=36822
+overlay_highlight_05_video_595_frame_121,png,overlay_highlight_05_video_595_frame_121.png,level3_events,true,visual_evidence,stage_status=pass; size_bytes=36751
+overlay_highlight_06_video_595_frame_129,png,overlay_highlight_06_video_595_frame_129.png,level3_events,true,visual_evidence,stage_status=pass; size_bytes=36849
+overlay_validation,csv,overlay_validation.csv,level3_events,true,tabular_data,stage_status=pass; size_bytes=1157
+summary,md,summary.md,level3_events,true,summary,stage_status=pass; size_bytes=2741

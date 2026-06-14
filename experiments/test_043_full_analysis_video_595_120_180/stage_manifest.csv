@@ -1,0 +1,8 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+cache_manifest,csv,cache_manifest.csv,full_analysis,true,manifest,size_bytes=5320
+config,yaml,config.yaml,full_analysis,true,configuration,size_bytes=28301
+full_analysis_manifest,csv,full_analysis_manifest.csv,full_analysis,true,manifest,size_bytes=54125
+request,json,request.json,full_analysis,true,structured_data,size_bytes=577
+runtime_metrics,csv,runtime_metrics.csv,full_analysis,true,tabular_data,size_bytes=4137
+stage_plan,csv,stage_plan.csv,full_analysis,true,tabular_data,size_bytes=20506
+summary,md,summary.md,full_analysis,true,summary,size_bytes=5283

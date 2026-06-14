@@ -1,0 +1,14 @@
+{
+  "path": "/home/guillermo/V\u00eddeos/CopaFutMX/17 Abril/video-595_singular_display.mov",
+  "fps": 59.71505265331406,
+  "width": 1344,
+  "height": 1792,
+  "frame_count": 482,
+  "duration_sec": 8.071666666666667,
+  "exists": true,
+  "clip_id": "video_595",
+  "frame_window": {
+    "start_frame": 120,
+    "end_frame": 180
+  }
+}

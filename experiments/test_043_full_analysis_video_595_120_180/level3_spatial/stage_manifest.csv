@@ -1,0 +1,11 @@
+asset_id,asset_type,path,source_artifact,is_versioned,role,notes
+calibration_comparison,csv,calibration_comparison.csv,level3_spatial,true,tabular_data,stage_status=pass; size_bytes=454
+config,yaml,config.yaml,level3_spatial,true,configuration,stage_status=pass; size_bytes=5057
+field_calibration,json,field_calibration.json,level3_spatial,true,structured_data,stage_status=pass; size_bytes=3738
+level3_tracks,csv,level3_tracks.csv,level3_spatial,true,tabular_data,stage_status=pass; size_bytes=53250
+minimap_base,png,minimap_base.png,level3_spatial,true,visual_evidence,stage_status=pass; size_bytes=28470
+minimap_tracks,png,minimap_tracks.png,level3_spatial,true,visual_evidence,stage_status=pass; size_bytes=35178
+overlay_comparison,csv,overlay_comparison.csv,level3_spatial,true,tabular_data,stage_status=pass; size_bytes=1550
+spatial_manifest,csv,spatial_manifest.csv,level3_spatial,true,manifest,stage_status=pass; size_bytes=1064
+spatial_validation,csv,spatial_validation.csv,level3_spatial,true,tabular_data,stage_status=pass; size_bytes=371
+summary,md,summary.md,level3_spatial,true,summary,stage_status=pass; size_bytes=2858
