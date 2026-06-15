@@ -89,7 +89,7 @@ def write_event_timeline(events_json: str | Path, output_path: str | Path) -> in
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     if not events:
-        _write_empty_plot(output, "Timeline de eventos Nivel 2")
+        _write_empty_plot(output, "Timeline de eventos")
         return 0
 
     reliability_color = {
@@ -120,7 +120,7 @@ def write_event_timeline(events_json: str | Path, output_path: str | Path) -> in
     ax.set_yticks(range(len(y_labels)))
     ax.set_yticklabels(y_labels)
     ax.set_xlabel("tiempo (s)")
-    ax.set_title("Timeline de eventos Nivel 2")
+    ax.set_title("Copa FutBotMX — Timeline de eventos")
     ax.grid(axis="x", alpha=0.25)
     fig.tight_layout()
     fig.savefig(output, dpi=140)
@@ -134,7 +134,7 @@ def write_possession_timeline(metrics_json: str | Path, output_path: str | Path)
     output = Path(output_path)
     output.parent.mkdir(parents=True, exist_ok=True)
     if not intervals:
-        _write_empty_plot(output, "Timeline de posesion Nivel 2")
+        _write_empty_plot(output, "Timeline de posesión")
         return 0
 
     robot_ids = sorted({str(item["robot_id"]) for item in intervals})
@@ -152,7 +152,7 @@ def write_possession_timeline(metrics_json: str | Path, output_path: str | Path)
     ax.set_yticks(range(len(robot_ids)))
     ax.set_yticklabels(robot_ids)
     ax.set_xlabel("tiempo (s)")
-    ax.set_title("Timeline de posesion Nivel 2")
+    ax.set_title("Copa FutBotMX — Timeline de posesión")
     ax.grid(axis="x", alpha=0.25)
     fig.tight_layout()
     fig.savefig(output, dpi=140)
