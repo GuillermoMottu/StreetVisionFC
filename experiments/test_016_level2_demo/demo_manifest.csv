@@ -1,6 +1,0 @@
-artifact,type,path,source,bytes
-event_timeline,png,event_timeline.png,experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/event_timeline.png,33226
-possession_timeline,png,possession_timeline.png,experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/possession_timeline.png,20769
-heatmap_ball,png,heatmap_class_ball.png,experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/heatmap_class_ball.png,32460
-heatmap_robot,png,heatmap_class_robot.png,experiments/test_014_level2_visualizations/video_836_real_visuals_120_180/heatmap_class_robot.png,32635
-demo_board,png,demo_board.png,generated,159546

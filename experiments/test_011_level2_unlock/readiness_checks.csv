@@ -1,7 +1,0 @@
-check_id,status,evidence,notes
-level1_validation_green,pass,experiments/evidence_level1/validation_report.csv,Nivel 1 debe tener todos los checks automaticos en pass.
-level1_delivery_summary,pass,experiments/evidence_level1/DELIVERY_SUMMARY.md,Resumen de entrega Nivel 1 disponible.
-level1_demo_documented,pass,experiments/evidence_level1/demo_local.md,Demo local anotada documentada; MP4 permanece fuera de Git.
-level1_events_real,pass,experiments/test_004_events/video_836_real_events_120_180/events.json,Eventos Nivel 1 reales generados desde tracks ByteTrack.
-level1_tracks_real,pass,experiments/test_003_tracking/video_836_real_tracking_120_180/tracks_bytetrack.csv,Tracks reales ByteTrack disponibles.
-no_tracked_heavy_files,pass,git ls-files,"Videos, checkpoints y modelos pesados deben quedar fuera de Git."

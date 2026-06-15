@@ -1,7 +1,0 @@
-clip_id,highlight_id,rank,frame_start,frame_end,asset_path,confidence,review_status,reviewer,notes
-video_595,lvl3_evt_000004,1,122,123,overlay_highlight_01_video_595_frame_122.png,0.893107,confiable,rule_based_human_check_proxy,"Overlay generado, confianza alta y respaldo Nivel 2; aun se trata como highlight tactico aproximado."
-video_595,lvl3_evt_000010,2,128,129,overlay_highlight_02_video_595_frame_128.png,0.828654,provisional,rule_based_human_check_proxy,Overlay generado; provisional por falta de equipos confiables y validacion humana frame a frame.
-video_595,lvl3_evt_000015,3,133,135,overlay_highlight_03_video_595_frame_133.png,0.812052,provisional,rule_based_human_check_proxy,Overlay generado; provisional por falta de equipos confiables y validacion humana frame a frame.
-video_595,lvl3_evt_000006,4,124,125,overlay_highlight_04_video_595_frame_124.png,0.844279,provisional,rule_based_human_check_proxy,Overlay generado; provisional por falta de equipos confiables y validacion humana frame a frame.
-video_595,lvl3_evt_000003,5,121,122,overlay_highlight_05_video_595_frame_121.png,0.891154,confiable,rule_based_human_check_proxy,"Overlay generado, confianza alta y respaldo Nivel 2; aun se trata como highlight tactico aproximado."
-video_595,lvl3_evt_000011,6,129,130,overlay_highlight_06_video_595_frame_129.png,0.839396,provisional,rule_based_human_check_proxy,Overlay generado; provisional por falta de equipos confiables y validacion humana frame a frame.

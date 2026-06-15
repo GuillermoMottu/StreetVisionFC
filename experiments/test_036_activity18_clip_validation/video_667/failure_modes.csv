@@ -1,3 +1,0 @@
-clip_id,failure_type,severity,status,evidence,recommendation
-video_667,mala_homografia,media,degradacion,Homografia usable pero confianza conservadora: 0.738172.,Usar calibracion manual o descartar metricas espaciales finas para este clip.
-video_667,falsos_highlights,media,riesgo,homografia_provisional|revision_visual_provisional|equipos_neutrales,Mantener highlights como candidatos y revisar visualmente los top antes de narrarlos.

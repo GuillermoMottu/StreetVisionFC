@@ -1,4 +1,0 @@
-strategy,status,confidence,source,notes
-manual_by_id,editable_template,0.0,team_assignment.csv,0 valid manual rows; CSV can be edited by humans.
-dominant_color,not_available,0.0,experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv,Level 3 tracks do not include robot crops or color histograms; color strategy is documented for future video/crop integration.
-initial_side_fallback,available,0.55,experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv,Split robots by initial x_norm; mean clip spread=0.000.

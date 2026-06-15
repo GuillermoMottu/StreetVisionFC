@@ -1,9 +1,0 @@
-clip_id,metric_category,entity_type,entity_id,class_name,team,metric_name,value,unit,frame_start,frame_end,confidence,source,notes
-video_595,spatial_control,clip,video_595,clip,unknown,frames_analyzed,61.0,frames,120,180,0.763863,experiments/test_026_level3_multiclip/video_595/spatial_model/level3_tracks.csv,rectified frames with robot or ball tracks
-video_595,spatial_control,clip,video_595,clip,unknown,grid_cells,384.0,cells,120,180,0.763863,experiments/test_026_level3_multiclip/video_595/spatial_model/level3_tracks.csv,control grid resolution
-video_595,spatial_control,clip,video_595,clip,unknown,mean_control_entropy,0.0,ratio,120,180,0.763863,experiments/test_026_level3_multiclip/video_595/spatial_model/level3_tracks.csv,higher values mean more even robot spatial split
-video_595,interaction,clip,video_595,clip,unknown,interaction_samples,57.0,samples,120,180,0.763863,experiments/test_026_level3_multiclip/video_595/spatial_model/level3_tracks.csv,proximity and pressure samples
-video_595,interaction,clip,video_595,clip,unknown,graph_edges,1.0,edges,120,180,0.763863,experiments/test_026_level3_multiclip/video_595/spatial_model/level3_tracks.csv,aggregated proximity graph edges
-video_595,spatial_control,track,small_robot_bt_01,small_robot,neutral,mean_control_percent,100.0,percent,,,0.92655,experiments/test_026_level3_multiclip/video_595/spatial_model/level3_tracks.csv,track_fallback; dominant_zone=middle_third
-video_595,voronoi,track,small_robot_bt_01,small_robot,neutral,mean_voronoi_area_percent,100.0,percent,,,0.92655,experiments/test_026_level3_multiclip/video_595/spatial_model/level3_tracks.csv,grid-based Voronoi approximation clipped to normalized field
-video_595,interaction,track,small_robot_bt_01,small_robot,unknown,mean_robot_ball_distance_norm,0.199227,normalized_field,120,180,0.694415,experiments/test_026_level3_multiclip/video_595/spatial_model/level3_tracks.csv,distance from robot to best ball track per frame

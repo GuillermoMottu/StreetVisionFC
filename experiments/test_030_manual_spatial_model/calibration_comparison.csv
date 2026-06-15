@@ -1,3 +1,0 @@
-clip_id,method_used,selected_calibration_id,selected_method,selected_status,selected_confidence,automatic_calibration_id,automatic_method,automatic_status,automatic_confidence,corner_mean_delta_px,corner_max_delta_px,manual_points,notes
-video_595,manual,video_595_manual_four_corner_seed_v0.1,manual_four_corner_homography_seed,usable,0.95,video_595_field_bbox_homography_v0.1,field_bbox_homography_seed,usable,0.824417,0.0,1e-06,4,manual calibration overrides automatic seed
-video_667,manual,video_667_manual_four_corner_seed_v0.1,manual_four_corner_homography_seed,usable,0.95,video_667_field_bbox_homography_v0.1,field_bbox_homography_seed,usable,0.738172,0.0,0.0,4,manual calibration overrides automatic seed

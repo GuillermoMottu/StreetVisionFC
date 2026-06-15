@@ -1,4 +1,0 @@
-asset_id,asset_type,path,source_artifact,is_versioned,role,notes
-config,yaml,config.yaml,sam3_detections,true,configuration,stage_status=requires_gpu; size_bytes=4343
-requirements,md,requirements.md,sam3_detections,true,artifact,stage_status=requires_gpu; size_bytes=246
-summary,md,summary.md,sam3_detections,true,summary,stage_status=requires_gpu; size_bytes=458

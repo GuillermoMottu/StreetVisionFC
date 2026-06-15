@@ -1,9 +1,0 @@
-artifact,path,size_bytes,size_mib,status,notes
-event_frame_120,experiments/test_004_events/video_836_real_events_120_180/overlay_event_frame_120.png,2696107,2.57,ok,Captura representativa de eventos.
-event_frame_150,experiments/test_004_events/video_836_real_events_120_180/overlay_event_frame_150.png,2488852,2.37,ok,Captura representativa de eventos.
-tracking_bytetrack_frame_120,experiments/test_003_tracking/video_836_real_tracking_120_180/overlay_bytetrack_frame_120.png,2696107,2.57,ok,Captura ByteTrack representativa.
-tracking_bytetrack_frame_150,experiments/test_003_tracking/video_836_real_tracking_120_180/overlay_bytetrack_frame_150.png,2488852,2.37,ok,Captura ByteTrack representativa.
-more_video_595_frame_120,experiments/test_006_more_copafutmx_videos/video_595_short_window/overlay_frame_120_filtered_roi.png,2647319,2.52,ok,Captura de clip adicional con balon robot y cancha.
-more_video_667_frame_120,experiments/test_006_more_copafutmx_videos/video_667_short_window/overlay_frame_120_filtered_roi.png,2742498,2.62,ok,Captura de clip adicional con multiples robots.
-temporal_stride1_frame_150,experiments/test_002_sam3_segmentation/video_836_temporal_stability_120_180/stride_1/overlay_frame_150_filtered_roi.png,2491355,2.38,ok,Captura estabilidad temporal.
-png_inventory_summary,experiments/**/*.png,131455894,125.37,reviewed,Inventario total actual: 71 PNG; maximo individual 2875085 bytes.

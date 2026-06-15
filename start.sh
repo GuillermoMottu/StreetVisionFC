@@ -18,11 +18,15 @@ if [ ! -f "$VENV" ]; then
   exit 1
 fi
 
-# Cargar variables de entorno
+# Cargar variables de entorno (soporta rutas con espacios en el valor)
 if [ -f .env ]; then
-  set -o allexport
-  source .env
-  set +o allexport
+  while IFS= read -r line || [ -n "$line" ]; do
+    [[ "$line" =~ ^[[:space:]]*# ]] && continue
+    [[ -z "${line// }" ]] && continue
+    key="${line%%=*}"
+    val="${line#*=}"
+    export "${key}=${val}"
+  done < .env
 fi
 
 # Determinar experimento

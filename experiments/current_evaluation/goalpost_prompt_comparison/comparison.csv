@@ -1,6 +1,0 @@
-prompt,frames_evaluated,detected_frames,total_detections,mean_confidence
-goal,6,0,0,0.0000
-soccer goal,6,0,0,0.0000
-goalpost,6,0,0,0.0000
-small soccer goal,6,0,0,0.0000
-robot soccer goal,6,0,0,0.0000

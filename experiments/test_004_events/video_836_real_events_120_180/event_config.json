@@ -1,8 +1,0 @@
-{
-  "rule_version": "events_v0.2_real",
-  "possession_distance_px": 190.0,
-  "possession_min_frames": 8,
-  "collision_distance_px": 35,
-  "collision_min_frames": 4,
-  "shot_min_ball_speed_px_per_sec": 350.0
-}

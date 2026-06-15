@@ -1,6 +1,0 @@
-asset_id,asset_type,path,source_artifact,is_versioned,role,notes
-config,yaml,config.yaml,level2_events,true,configuration,stage_status=pass; size_bytes=3713
-level2_event_metrics,csv,level2_event_metrics.csv,level2_events,true,tabular_data,stage_status=pass; size_bytes=84
-level2_events,json,level2_events.json,level2_events,true,structured_data,stage_status=pass; size_bytes=1985
-overlay_validation,csv,overlay_validation.csv,level2_events,true,tabular_data,stage_status=pass; size_bytes=752
-summary,md,summary.md,level2_events,true,summary,stage_status=pass; size_bytes=1425

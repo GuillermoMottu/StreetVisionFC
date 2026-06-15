@@ -1,5 +1,0 @@
-tracker,class_name,frames_with_detections,rows,track_count,late_track_starts,mean_track_length,max_track_length,max_frame_gap,max_step_px
-simple,ball,59,59,1,0,59.000000,59,2,5.146840
-simple,robot,61,149,4,1,37.250000,61,5,95.687014
-bytetrack,ball,59,59,1,0,59.000000,59,2,5.146840
-bytetrack,robot,61,146,3,0,48.666667,61,2,33.651151

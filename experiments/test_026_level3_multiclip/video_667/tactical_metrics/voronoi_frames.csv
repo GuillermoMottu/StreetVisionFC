@@ -1,5 +1,0 @@
-clip_id,frame,time_sec,robot_count,control_mode,entropy,interaction_signals,selection_reason,confidence
-video_667,120,2.01,4,track_fallback,0.926674,6,timeline_or_interaction_representative,0.616345
-video_667,150,2.512,3,track_fallback,0.927475,5,timeline_or_interaction_representative,0.666085
-video_667,180,3.015,3,track_fallback,0.919591,5,timeline_or_interaction_representative,0.67858
-video_667,145,2.429,3,track_fallback,0.931083,6,timeline_or_interaction_representative,0.676658

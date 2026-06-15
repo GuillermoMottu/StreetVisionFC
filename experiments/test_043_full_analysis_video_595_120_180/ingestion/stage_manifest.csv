@@ -1,4 +1,0 @@
-asset_id,asset_type,path,source_artifact,is_versioned,role,notes
-config,yaml,config.yaml,ingestion,true,configuration,stage_status=pass; size_bytes=5511
-summary,md,summary.md,ingestion,true,summary,stage_status=pass; size_bytes=423
-video_metadata,json,video_metadata.json,ingestion,true,structured_data,stage_status=pass; size_bytes=330

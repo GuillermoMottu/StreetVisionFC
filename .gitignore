@@ -57,3 +57,6 @@ temp/
 # Local environment and private paths (never commit real paths)
 .env
 configs/local_paths.yaml
+
+# Experiment artifacts — generados en tiempo de ejecución, no pertenecen al repo
+experiments/

@@ -1,6 +1,0 @@
-clip_id,track_id,class_name,team,confidence,source,frame_start,frame_end,frames,median_x_norm,median_y_norm,dominant_zone,notes
-video_595,small_robot_bt_01,small_robot,team_right,0.539901,initial_side_fallback_single_robot,120,180,61,0.657205,0.1479,defensive_third,fallback by initial x_norm; split=0.500; value=0.540
-video_667,small_robot_bt_01,small_robot,team_left,0.662484,initial_side_fallback,120,180,61,0.04559,0.311569,defensive_third,fallback by initial x_norm; split=0.436; value=0.044
-video_667,small_robot_bt_02,small_robot,team_left,0.665119,initial_side_fallback,120,180,61,0.230437,0.295777,defensive_third,fallback by initial x_norm; split=0.436; value=0.227
-video_667,small_robot_bt_03,small_robot,team_right,0.668526,initial_side_fallback,120,180,61,0.662321,0.053209,defensive_third,fallback by initial x_norm; split=0.436; value=0.645
-video_667,small_robot_bt_04,small_robot,team_right,0.610938,initial_side_fallback,120,120,1,0.994895,0.160975,defensive_third,fallback by initial x_norm; split=0.436; value=0.995

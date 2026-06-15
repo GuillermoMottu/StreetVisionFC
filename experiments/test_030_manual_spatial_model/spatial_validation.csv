@@ -1,3 +1,0 @@
-clip_id,rows,frames,tracks,classes,calibration_id,calibration_status,calibration_confidence,rectified_rows,fallback_rows,out_of_bounds_rows,usable_rows,provisional_rows,x_norm_min,x_norm_max,y_norm_min,y_norm_max
-video_595,206,61,4,ball|green_soccer_field|small_robot,video_595_manual_four_corner_seed_v0.1,usable,0.95,206,0,0,87,58,0.499574,0.896163,0.137128,0.502455
-video_667,306,61,6,ball|green_soccer_field|small_robot,video_667_manual_four_corner_seed_v0.1,usable,0.95,306,0,0,244,1,0.043645,0.994895,0.027444,0.503813

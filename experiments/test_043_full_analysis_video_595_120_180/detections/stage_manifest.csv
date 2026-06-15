@@ -1,4 +1,0 @@
-asset_id,asset_type,path,source_artifact,is_versioned,role,notes
-config,yaml,config.yaml,sam3_detections,true,configuration,stage_status=pass; size_bytes=4957
-detections,json,detections.json,sam3_detections,true,structured_data,stage_status=pass; size_bytes=219173
-summary,md,summary.md,sam3_detections,true,summary,stage_status=pass; size_bytes=440

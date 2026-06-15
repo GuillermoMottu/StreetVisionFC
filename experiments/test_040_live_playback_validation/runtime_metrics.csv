@@ -1,1 +1,0 @@
-clip_id,session_id,video_fps,analysis_fps,mean_latency_ms,p95_latency_ms,skipped_frames,total_video_frames,total_analysis_frames,events_emitted,events_updated,classification,notes

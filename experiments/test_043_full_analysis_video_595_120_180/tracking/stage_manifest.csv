@@ -1,4 +1,0 @@
-asset_id,asset_type,path,source_artifact,is_versioned,role,notes
-config,yaml,config.yaml,tracking,true,configuration,stage_status=pass; size_bytes=5181
-summary,md,summary.md,tracking,true,summary,stage_status=pass; size_bytes=644
-tracks,csv,tracks.csv,tracking,true,tabular_data,stage_status=pass; size_bytes=74408

@@ -1211,9 +1211,12 @@ def _run_analysis_async(
     ]
     log_lines: list[str] = []
     try:
+        import os as _os_run
+        _env = dict(_os_run.environ)
+        _env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, cwd=str(root),
+            text=True, cwd=str(root), env=_env,
         )
         assert proc.stdout is not None
         for line in proc.stdout:
@@ -1387,22 +1390,36 @@ def render_playback_html(context: dict[str, Any]) -> str:
   {datalist_html}
   <form id="analyzeForm" action="/analyze" method="post" class="analyze-form">
     <span class="analyze-label">Analizar video</span>
-    <input name="video_path" class="inp-path" value="{default_video}" placeholder="/ruta/al/video.mp4"{list_attr} required>
-    <input name="clip_id" class="inp-short" placeholder="clip_id" value="{default_clip}">
-    <input type="number" name="start_frame" class="inp-num" value="{config.start_frame}" placeholder="Inicio">
-    <input type="number" name="end_frame" class="inp-num" value="{config.end_frame}" placeholder="Fin">
+    <input id="inpVideoPath" name="video_path" class="inp-path" value="{default_video}" placeholder="/ruta/al/video.mp4"{list_attr} required autocomplete="off">
+    <button type="button" id="btnBrowse" class="btn-browse" title="Explorar carpetas">📁</button>
+    <input id="inpClipId" name="clip_id" class="inp-short" placeholder="clip_id" value="{default_clip}">
+    <input id="inpStartFrame" type="number" name="start_frame" class="inp-num" value="0" placeholder="Inicio" min="0">
+    <input id="inpEndFrame" type="number" name="end_frame" class="inp-num" value="0" placeholder="Fin" min="0">
     <input type="number" name="stride" class="inp-num" value="1" placeholder="Stride" min="1">
     <button type="submit" class="btn-analyze">▶ Analizar</button>
   </form>
+  <div id="videoInfoRow" class="video-info-row" style="display:none"></div>
   <div id="analyzeStatus" class="analyze-status hidden"></div>
 </section>
+
+<!-- File browser overlay -->
+<div id="fbOverlay" class="fb-overlay">
+  <div class="fb-panel">
+    <div class="fb-head">
+      <span class="fb-title">📁 Seleccionar video</span>
+      <span id="fbPathLabel" class="fb-path-label"></span>
+      <button class="fb-close" id="fbClose" type="button">✕</button>
+    </div>
+    <div id="fbList" class="fb-list"></div>
+  </div>
+</div>
 
 <div class="stats-row">{stat_row}</div>
 
 <section class="workbench">
   <div class="stage">
-    <video id="video" controls preload="metadata" playsinline>
-      <source src="{video_src}" type="video/mp4">
+    <video id="video" controls preload="none" playsinline>
+      <source src="{video_src}">
     </video>
     <canvas id="overlay"></canvas>
     <div id="videoMissing" class="video-missing hidden">
@@ -1890,6 +1907,51 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
                     state_copy = dict(_ANALYSIS_STATE)
                 self._send_json(state_copy)
                 return
+            if parsed.path == "/browse":
+                import os as _os_browse
+                params = parse_qs(parsed.query)
+                req_dir = params.get("dir", [""])[0].strip() or str(Path.home())
+                target = Path(req_dir).expanduser().resolve()
+                # Security: only allow browsing home subtree
+                try:
+                    target.relative_to(Path.home().resolve())
+                except ValueError:
+                    target = Path.home().resolve()
+                VIDEO_EXTS = {".mp4", ".mov", ".avi", ".mkv", ".m4v", ".MOV", ".MP4"}
+                dirs: list[dict] = []
+                files: list[dict] = []
+                try:
+                    for entry in sorted(target.iterdir(), key=lambda e: (e.is_file(), e.name.lower())):
+                        if entry.name.startswith("."):
+                            continue
+                        if entry.is_dir():
+                            dirs.append({"name": entry.name, "path": str(entry)})
+                        elif entry.is_file() and entry.suffix in VIDEO_EXTS:
+                            files.append({"name": entry.name, "path": str(entry), "size_mb": round(entry.stat().st_size / 1_048_576, 1)})
+                except PermissionError:
+                    pass
+                parent = str(target.parent) if target != target.parent else ""
+                self._send_json({"current": str(target), "parent": parent, "dirs": dirs, "files": files})
+                return
+            if parsed.path == "/video-info":
+                params = parse_qs(parsed.query)
+                vpath = params.get("path", [""])[0].strip()
+                if not vpath or not Path(vpath).exists():
+                    self._send_json({"error": "not found"})
+                    return
+                try:
+                    import cv2 as _cv2
+                    cap = _cv2.VideoCapture(vpath)
+                    fps = cap.get(_cv2.CAP_PROP_FPS) or 30.0
+                    total = int(cap.get(_cv2.CAP_PROP_FRAME_COUNT))
+                    w = int(cap.get(_cv2.CAP_PROP_FRAME_WIDTH))
+                    h = int(cap.get(_cv2.CAP_PROP_FRAME_HEIGHT))
+                    cap.release()
+                    duration_s = round(total / fps, 2) if fps > 0 else 0
+                    self._send_json({"fps": round(fps, 3), "total_frames": total, "width": w, "height": h, "duration_s": duration_s})
+                except Exception as exc:
+                    self._send_json({"error": str(exc)})
+                return
             self.send_error(404)
 
         def do_POST(self) -> None:
@@ -1906,6 +1968,12 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
                 start_frame = _first_param("start_frame", "0")
                 end_frame = _first_param("end_frame", "300")
                 stride = _first_param("stride", "1")
+                if not video_path:
+                    self._send_json({"error": "Falta la ruta del video"})
+                    return
+                if not Path(video_path).exists():
+                    self._send_json({"error": f"Video no encontrado: {video_path}"})
+                    return
                 with _ANALYSIS_LOCK:
                     if _ANALYSIS_STATE["running"]:
                         self._send_json({"error": "ya hay un análisis en curso"})
@@ -2163,6 +2231,28 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .highlights-gallery{gap:8px}
 .highlights-gallery img{max-height:220px}
 .empty{color:var(--muted);font-size:13px;padding:24px;text-align:center;background:var(--panel);border-radius:8px;border:1px dashed var(--line2)}
+/* ── file browser ── */
+.btn-browse{background:none;border:1px solid var(--line2);color:var(--muted);border-radius:5px;padding:7px 10px;font-size:14px;cursor:pointer;white-space:nowrap;line-height:1}
+.btn-browse:hover{border-color:var(--green);color:var(--text)}
+.video-info-row{font-size:11px;color:var(--muted);padding:2px 0}
+.video-info-row span{color:var(--accent);font-weight:600}
+.fb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200}
+.fb-overlay.open{display:flex;align-items:flex-start;justify-content:center;padding-top:60px}
+.fb-panel{background:var(--panel);border:1px solid var(--line2);border-radius:10px;width:min(680px,96vw);max-height:70vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.6)}
+.fb-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);flex-shrink:0}
+.fb-title{font-size:13px;font-weight:700;color:var(--text)}
+.fb-path-label{font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fb-close{background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer;padding:0 4px;line-height:1}
+.fb-close:hover{color:var(--text)}
+.fb-list{overflow-y:auto;flex:1;padding:6px 0}
+.fb-item{display:flex;align-items:center;gap:10px;padding:7px 16px;cursor:pointer;font-size:13px;border-left:2px solid transparent}
+.fb-item:hover{background:var(--bg2);border-left-color:var(--green)}
+.fb-item.fb-dir{color:var(--blue)}
+.fb-item.fb-file{color:var(--text)}
+.fb-item.fb-up{color:var(--muted);font-style:italic}
+.fb-icon{font-size:15px;flex-shrink:0;width:20px;text-align:center}
+.fb-size{margin-left:auto;font-size:11px;color:var(--muted)}
+.fb-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
 /* ── events section ── */
 .events-section{padding:14px 20px;background:var(--bg)}
 .events-section h3{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px}
@@ -2207,14 +2297,19 @@ function resolveFrame(target){
   if(next!==null&&next-target<=maxGap)return{resolved_frame:next,status:'next'};
   return{resolved_frame:null,status:'missing'};
 }
+let _cx=0,_cy=0,_cw=1,_ch=1;
 function resizeCanvas(){
   const r=video.getBoundingClientRect();
   const W=data.config.width||1280,H=data.config.height||720;
   canvas.width=Math.max(1,Math.round(r.width||W));
   canvas.height=Math.max(1,Math.round(r.height||H));
+  // Compute actual content rect inside object-fit:contain (letterbox / pillarbox)
+  const vAspect=W/H,cAspect=canvas.width/canvas.height;
+  if(vAspect<cAspect){_ch=canvas.height;_cw=canvas.height*vAspect;_cx=(canvas.width-_cw)/2;_cy=0;}
+  else{_cw=canvas.width;_ch=canvas.width/vAspect;_cx=0;_cy=(canvas.height-_ch)/2;}
 }
-function scaleX(x){return Number(x)*(canvas.width/(data.config.width||canvas.width));}
-function scaleY(y){return Number(y)*(canvas.height/(data.config.height||canvas.height));}
+function scaleX(x){return _cx+Number(x)*(_cw/(data.config.width||_cw));}
+function scaleY(y){return _cy+Number(y)*(_ch/(data.config.height||_ch));}
 function label(text,x,y,color){
   ctx.font='bold 11px system-ui';
   const w=ctx.measureText(text).width+8;
@@ -2252,14 +2347,15 @@ function drawTracks(rows){
   }
 }
 function drawBall(rows){
-  for(const row of rows.filter(r=>(r.class||'')==='ball')){
-    const x=scaleX(row.center_x),y=scaleY(row.center_y);
-    ctx.shadowColor='#f0c230';ctx.shadowBlur=12;
-    ctx.fillStyle='#f0c230';ctx.strokeStyle='#0a0d0a';ctx.lineWidth=2;
-    ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.fill();ctx.stroke();
-    ctx.shadowBlur=0;
-    if(enabled('layerIds'))label(row.track_id,x+11,y,'#f0c230');
-  }
+  const balls=rows.filter(r=>(r.class||'')==='ball');
+  if(!balls.length)return;
+  const best=balls.reduce((a,b)=>Number(b.confidence||0)>Number(a.confidence||0)?b:a);
+  const x=scaleX(best.center_x),y=scaleY(best.center_y);
+  ctx.shadowColor='#f0c230';ctx.shadowBlur=12;
+  ctx.fillStyle='#f0c230';ctx.strokeStyle='#0a0d0a';ctx.lineWidth=2;
+  ctx.beginPath();ctx.arc(x,y,9,0,Math.PI*2);ctx.fill();ctx.stroke();
+  ctx.shadowBlur=0;
+  if(enabled('layerIds'))label(best.track_id,x+11,y,'#f0c230');
 }
 function drawTrails(frame){
   const start=frame-(data.config.trail_length||20);
@@ -2283,7 +2379,7 @@ function drawTrails(frame){
   }
 }
 function drawMinimap(rows){
-  const pw=180,ph=110,px=canvas.width-pw-12,py=canvas.height-ph-12;
+  const pw=180,ph=110,px=_cx+_cw-pw-12,py=_cy+_ch-ph-12;
   ctx.fillStyle='rgba(10,13,10,.9)';ctx.fillRect(px,py,pw,ph);
   ctx.strokeStyle='#2a362a';ctx.lineWidth=1;ctx.strokeRect(px,py,pw,ph);
   // center line
@@ -2381,28 +2477,111 @@ function showTab(id,btn){
   if(panel)panel.classList.remove('hidden');
   if(btn)btn.classList.add('active');
 }
+// ── file browser ──
+const fbOverlay=document.getElementById('fbOverlay');
+const fbList=document.getElementById('fbList');
+const fbPathLabel=document.getElementById('fbPathLabel');
+const inpVideoPath=document.getElementById('inpVideoPath');
+const inpClipId=document.getElementById('inpClipId');
+const inpStartFrame=document.getElementById('inpStartFrame');
+const inpEndFrame=document.getElementById('inpEndFrame');
+const videoInfoRow=document.getElementById('videoInfoRow');
+let _fbCurrentDir='';
+async function fbLoad(dir){
+  fbList.innerHTML='<div class="fb-empty">Cargando…</div>';
+  const bd=await fetch('/browse?dir='+encodeURIComponent(dir)).then(r=>r.json());
+  _fbCurrentDir=bd.current||dir;
+  fbPathLabel.textContent=_fbCurrentDir;
+  let html='';
+  if(bd.parent){
+    html+=`<div class="fb-item fb-up" data-dir="${esc(bd.parent)}"><span class="fb-icon">⬆</span>.. (subir)</div>`;
+  }
+  for(const d of (bd.dirs||[])){
+    html+=`<div class="fb-item fb-dir" data-dir="${esc(d.path)}"><span class="fb-icon">📁</span>${esc(d.name)}</div>`;
+  }
+  for(const f of (bd.files||[])){
+    html+=`<div class="fb-item fb-file" data-path="${esc(f.path)}"><span class="fb-icon">🎬</span>${esc(f.name)}<span class="fb-size">${f.size_mb} MB</span></div>`;
+  }
+  if(!html)html='<div class="fb-empty">Sin videos ni subdirectorios</div>';
+  fbList.innerHTML=html;
+  fbList.querySelectorAll('.fb-item[data-dir]').forEach(el=>el.addEventListener('click',()=>fbLoad(el.dataset.dir)));
+  fbList.querySelectorAll('.fb-item[data-path]').forEach(el=>el.addEventListener('click',()=>{
+    fbSelectFile(el.dataset.path);
+  }));
+}
+function fbSelectFile(path){
+  inpVideoPath.value=path;
+  fbOverlay.classList.remove('open');
+  loadVideoInfo(path);
+  const parts=path.split('/');
+  const name=parts[parts.length-1].replace(/[.][^.]+$/,'').replace(/[^a-zA-Z0-9]/g,'_');
+  if(inpClipId)inpClipId.value=name.slice(0,30);
+}
+document.getElementById('btnBrowse')?.addEventListener('click',()=>{
+  fbOverlay.classList.add('open');
+  const startDir=inpVideoPath.value?inpVideoPath.value.split('/').slice(0,-1).join('/')||'/':'/home';
+  fbLoad(startDir||'/home');
+});
+document.getElementById('fbClose')?.addEventListener('click',()=>fbOverlay.classList.remove('open'));
+fbOverlay?.addEventListener('click',e=>{if(e.target===fbOverlay)fbOverlay.classList.remove('open');});
+// ── video info auto-detect ──
+let _viTimer=null;
+async function loadVideoInfo(path){
+  if(!path)return;
+  videoInfoRow.style.display='none';
+  const info=await fetch('/video-info?path='+encodeURIComponent(path)).then(r=>r.json()).catch(()=>({}));
+  if(info.error||!info.total_frames)return;
+  const dur=info.duration_s,mm=Math.floor(dur/60),ss=(dur%60).toFixed(1);
+  videoInfoRow.textContent='';
+  videoInfoRow.innerHTML=`Video detectado: <span>${info.width}×${info.height}</span> · <span>${info.fps} fps</span> · <span>${mm}:${ss.padStart(4,'0')} min</span> · <span>${info.total_frames} frames</span>`;
+  videoInfoRow.style.display='block';
+  if(inpStartFrame)inpStartFrame.value=0;
+  if(inpEndFrame)inpEndFrame.value=info.total_frames;
+}
+inpVideoPath?.addEventListener('change',()=>loadVideoInfo(inpVideoPath.value));
+inpVideoPath?.addEventListener('input',()=>{clearTimeout(_viTimer);_viTimer=setTimeout(()=>loadVideoInfo(inpVideoPath.value),800);});
+// Cargar info del video actual si ya tiene ruta
+if(inpVideoPath?.value)setTimeout(()=>loadVideoInfo(inpVideoPath.value),200);
 // ── analyze form ──
 const analyzeForm=document.getElementById('analyzeForm');
 const analyzeStatus=document.getElementById('analyzeStatus');
-let pollInterval=null;
+let pollInterval=null,_analyzeStart=0;
 if(analyzeForm){
   analyzeForm.addEventListener('submit',async e=>{
     e.preventDefault();
+    if(pollInterval){clearInterval(pollInterval);pollInterval=null;}
     const fd=new FormData(analyzeForm);
     const params=new URLSearchParams(fd);
     analyzeStatus.textContent='Iniciando análisis…';
     analyzeStatus.classList.remove('hidden');
     const resp=await fetch('/analyze',{method:'POST',body:params,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
     if(resp.ok){
-      analyzeStatus.textContent='Analizando… (esto puede tomar varios minutos)';
+      const rj=await resp.json();
+      if(rj.error){
+        analyzeStatus.textContent='✗ '+rj.error;
+        return;
+      }
+      _analyzeStart=Date.now();
+      analyzeStatus.textContent='⏳ Analizando… (la segmentación Grounded-SAM tarda 10–30 min en GPU)';
       pollInterval=setInterval(async()=>{
         const s=await fetch('/analyze-status').then(r=>r.json());
+        const elapsed=Math.round((Date.now()-_analyzeStart)/1000);
+        const mm=String(Math.floor(elapsed/60)).padStart(2,'0'),ss=String(elapsed%60).padStart(2,'0');
         const last=s.log?.slice(-1)[0]||'';
-        analyzeStatus.textContent=s.running?'Analizando… '+last:s.done&&!s.error?'¡Listo! Recargando…':('Error: '+(s.error||'?'));
-        if(s.done){clearInterval(pollInterval);if(!s.error)setTimeout(()=>window.location.reload(),1500);}
+        if(s.running){
+          analyzeStatus.textContent=`⏳ Analizando… ${mm}:${ss} — ${last}`;
+        } else if(s.done&&!s.error){
+          analyzeStatus.textContent='✓ ¡Listo! Recargando…';
+          clearInterval(pollInterval);setTimeout(()=>window.location.reload(),1500);
+        } else {
+          const errLog=(s.log||[]).slice(-5).join('\\n');
+          analyzeStatus.style.whiteSpace='pre-wrap';
+          analyzeStatus.textContent='✗ Error: '+(s.error||'?')+'\\n'+errLog;
+          clearInterval(pollInterval);
+        }
       },3000);
     } else {
-      analyzeStatus.textContent='Error al iniciar análisis';
+      analyzeStatus.textContent='✗ Error al iniciar análisis';
     }
   });
 }

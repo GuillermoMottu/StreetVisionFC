@@ -1,9 +1,0 @@
-check_id,status,evidence,notes
-unit_tests_green,pass,env MPLCONFIGDIR=/tmp/matplotlib .venv/bin/python -m unittest discover -s tests -q,La suite unitaria debe pasar antes de cerrar Nivel 2.
-no_tracked_heavy_files,pass,git ls-files,"Videos, checkpoints y modelos pesados deben quedar fuera de Git."
-docs_current,pass,README/docs,No se encontraron estados obsoletos de Nivel 1/Nivel 2 en docs principales.
-level2_baseline_artifacts,pass,experiments/test_012..016,"Metricas, eventos, visualizaciones y demo Nivel 2 base deben existir."
-video_595_dense_bytetrack,pass,experiments/test_017_level2_closure/video_595,"observed_frames=61, tracks=206"
-video_667_dense_bytetrack,pass,experiments/test_017_level2_closure/video_667,"observed_frames=61, tracks=306"
-video_480_diagnostic,pass,experiments/test_017_level2_closure/video_480,diagnostic summary present
-closure_summary,pass,experiments/test_017_level2_closure/LEVEL2_CLOSURE_SUMMARY.md,El resumen final debe declarar Nivel 2 cerrado y Nivel 3 listo para gate/decision.

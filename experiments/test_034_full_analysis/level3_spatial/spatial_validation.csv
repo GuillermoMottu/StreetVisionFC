@@ -1,2 +1,0 @@
-clip_id,rows,frames,tracks,classes,calibration_id,calibration_status,calibration_confidence,rectified_rows,fallback_rows,out_of_bounds_rows,usable_rows,provisional_rows,x_norm_min,x_norm_max,y_norm_min,y_norm_max
-video_595,206,61,4,ball|green_soccer_field|small_robot,video_595_field_bbox_homography_v0.1,usable,0.824417,206,0,0,87,58,0.499574,0.896163,0.137128,0.502455

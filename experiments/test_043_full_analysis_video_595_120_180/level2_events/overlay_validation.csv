@@ -1,6 +1,0 @@
-event_id,event_type,reliability,frame,overlay_status,overlay_path
-lvl2_evt_000001,interception,descartado,120,matched,experiments/test_017_level2_closure/video_595/overlay_lvl2_evt_000001_frame_120.png
-lvl2_evt_000001,interception,descartado,150,matched,experiments/test_017_level2_closure/video_595/overlay_lvl2_evt_000001_frame_150.png
-lvl2_evt_000001,interception,descartado,180,matched,experiments/test_017_level2_closure/video_595/overlay_lvl2_evt_000001_frame_180.png
-lvl2_evt_000002,highlight_play,provisional,172,missing,
-lvl2_evt_000002,highlight_play,provisional,173,missing,
