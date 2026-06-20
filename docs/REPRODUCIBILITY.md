@@ -92,7 +92,7 @@ OWLV2_MODEL_PATH=checkpoints/owlv2-base
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 ```
 
-Videos are not versioned in Git. They must be placed on the local machine.
+Source match videos are not versioned in Git. They must be placed on the local machine. The public demo MP4 required by the call is versioned at `outputs/videos/futbotmx_demo_h264.mp4`.
 
 ---
 
@@ -100,8 +100,11 @@ Videos are not versioned in Git. They must be placed on the local machine.
 
 ```bash
 # Test suite (no GPU required)
+python -m pip check
+# Expected: No broken requirements found.
+
 python -m unittest discover -s tests -q
-# Expected: 425 tests pass, 0 fail
+# Expected: 461 tests pass, 0 fail
 
 # Verify SAM3 + OWLv2 on a real frame
 source .env
@@ -157,6 +160,6 @@ python scripts/create_phase3_demo.py \
 
 ## 8. Pinned dependencies
 
-See `requirements-gpu.txt` for the full list (17 packages, exact versions).
+See `requirements-gpu.txt` for the pinned GPU environment.
 Key packages: `torch==2.12.0`, `torchvision==0.27.0`, `transformers==5.12.0`,
 `supervision==0.28.0`, `timm==1.0.27`, `huggingface-hub==1.17.0`.

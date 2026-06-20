@@ -10,7 +10,9 @@ Quick access to demo, metrics, and evidence in under 5 minutes.
 outputs/videos/futbotmx_demo_h264.mp4
 ```
 
-H.264, 46.6 s, 2.3 MB. Five sections: raw video, segmentation overlays, tracking paths, team assignment, and benchmark summary. Play with any video player.
+H.264, 46.6 s, 2.3 MB. This MP4 is versioned in the public repository. Five sections: raw video, segmentation overlays, tracking paths, team assignment, and benchmark summary. Play with any video player.
+
+Instagram Reel: https://www.instagram.com/reel/DZynpB2pH_L_Mxq8V9Iq3bN5WHSFDGvsy_17iw0/?igsh=dnZ6MnlyYm13ZWV2
 
 ---
 
@@ -26,7 +28,9 @@ H.264, 46.6 s, 2.3 MB. Five sections: raw video, segmentation overlays, tracking
 | Robots tracked | 3 (robot\_bt\_01, 02, 03) | ByteTrack, video\_836 |
 | Team assignment confidence | 0.64 (initial-side method) | `team_assignment_summary.json` |
 | Supervised IoU/F1 | **micro F1=0.857 · P=0.75 · R=1.00** | `supervised_metrics.json` |
-| Test suite | **425 tests pass** | `python -m unittest discover -s tests` |
+| Test suite | **461 tests pass** | `python -m unittest discover -s tests` |
+
+Professional-category rubric map: `docs/PROFESSIONAL_EVALUATION.md`.
 
 ---
 
@@ -41,6 +45,9 @@ H.264, 46.6 s, 2.3 MB. Five sections: raw video, segmentation overlays, tracking
 | Benchmark JSON | `experiments/current_evaluation/phase5_metrics/benchmark_summary.json` |
 | Annotation frames (8 PNGs) | `data/annotations/frames/` |
 | COCO template | `data/annotations/annotation_template.json` |
+| Public demo video | `outputs/videos/futbotmx_demo_h264.mp4` |
+| Instagram Reel | `https://www.instagram.com/reel/DZynpB2pH_L_Mxq8V9Iq3bN5WHSFDGvsy_17iw0/?igsh=dnZ6MnlyYm13ZWV2` |
+| Heatmap screenshot | `outputs/visualizations/heatmap.png` |
 | All artefacts index | `ARTIFACTS_INDEX.md` |
 
 ---

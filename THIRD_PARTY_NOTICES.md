@@ -8,11 +8,13 @@ for compliance with their respective licenses.
 ## SAM 3 (Segment Anything Model 3)
 
 - **Repository:** https://github.com/facebookresearch/sam3
-- **License:** Apache License 2.0
+- **License:** SAM License
 - **Copyright:** Copyright (c) Meta Platforms, Inc. and affiliates.
 - **Usage:** Core segmentation model. Installed as editable dependency from git.
 - **Note:** SAM 3 checkpoint weights must be downloaded separately from the
-  official release. They are NOT included in this repository.
+  official release. They are NOT included in this repository. By installing SAM 3
+  from the official repository, users must review and comply with the SAM License
+  distributed with that release.
 
 ---
 
@@ -29,7 +31,7 @@ for compliance with their respective licenses.
 ## OpenCV
 
 - **Package:** `opencv-python`
-- **Version used:** 4.13.0.92
+- **Version used:** 4.11.0.86
 - **License:** Apache License 2.0
 - **URL:** https://github.com/opencv/opencv
 
@@ -66,7 +68,7 @@ for compliance with their respective licenses.
 ## pandas
 
 - **Package:** `pandas`
-- **Version used:** 3.0.3
+- **Version used:** 2.3.3
 - **License:** BSD 3-Clause License
 - **URL:** https://github.com/pandas-dev/pandas
 
@@ -153,5 +155,4 @@ for compliance with their respective licenses.
 
 ---
 
-*For a complete list of installed packages and their versions, see
-`experiments/current_evaluation/requirements-freeze.txt`.*
+*For the pinned evaluation environment, see `requirements-gpu.txt`.*

@@ -1,6 +1,6 @@
-# ARTIFACTS_INDEX — FutBotMX / StreetVisionFC
+# ARTIFACTS_INDEX - FutBotMX / StreetVisionFC
 
-> Índice de artefactos clave del pipeline. Los archivos binarios grandes (MP4, checkpoints) no se versionan en Git; se documentan aquí con el comando de regeneración.
+> Índice de artefactos clave del pipeline. Los videos fuente, checkpoints, caches y renders pesados no se versionan en Git. El demo público ligero requerido por la convocatoria sí se versiona.
 
 ## Video Demo
 
@@ -8,11 +8,19 @@
 |---|---|---|---|
 | `futbotmx_demo_h264.mp4` | `outputs/videos/futbotmx_demo_h264.mp4` | 46.6 s | Título + SAM 3 masks + ByteTrack + Eventos + Heatmap |
 
+Estado Git: versionado como entregable público ligero.
+
+## Publicacion Externa
+
+| Artefacto | URL | Estado |
+|---|---|---|
+| Instagram Reel | https://www.instagram.com/reel/DZynpB2pH_L_Mxq8V9Iq3bN5WHSFDGvsy_17iw0/?igsh=dnZ6MnlyYm13ZWV2 | Publicado |
+
 ### Regenerar
 
 ```bash
 python scripts/create_phase3_demo.py \
-  --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" \
+  --video "$FUTBOTMX_VIDEO_836" \
   --output outputs/videos/futbotmx_demo.mp4
 
 ffmpeg -i outputs/videos/futbotmx_demo.mp4 \
@@ -51,7 +59,7 @@ Directorio: `experiments/current_evaluation/masks/`
 
 ```bash
 python scripts/run_goalpost_mask_test.py \
-  --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov" \
+  --video "$FUTBOTMX_VIDEO_836" \
   --frame 143
 ```
 

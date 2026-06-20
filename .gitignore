@@ -35,12 +35,16 @@ datasets/
 *.MP4
 
 # Heavy outputs
-outputs/videos/
+outputs/videos/*
 outputs/masks/
 outputs/frames/
 local_outputs/
 *.npy
 *.npz
+
+# Competition deliverable: small public demo required by the call.
+!outputs/videos/
+!outputs/videos/futbotmx_demo_h264.mp4
 
 # Temporary files
 .cache/

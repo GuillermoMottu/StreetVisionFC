@@ -1,6 +1,6 @@
 # Results Summary — FutBotMX / StreetVisionFC
 
-Final pipeline results as of 2026-06-14. Supervised metrics computed against
+Final pipeline results as of 2026-06-20. Supervised metrics computed against
 real human annotations (Roboflow, 49 annotations across 8 frames).
 
 ---
@@ -93,14 +93,14 @@ Source: `experiments/current_evaluation/phase5_metrics/supervised_metrics.json`
 
 ```
 python -m unittest discover -s tests -q
-425 tests: PASS  0 FAIL
+461 tests: PASS  0 FAIL
 ```
 
 ---
 
 ## R7. Dependencies
 
-18 pinned packages. See `requirements-gpu.txt`.
+Pinned GPU environment. See `requirements-gpu.txt`.
 Key additions in this phase: `transformers==5.12.0` (OWLv2 support).
 
 ---
