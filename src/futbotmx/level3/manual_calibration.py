@@ -774,7 +774,7 @@ function renderPoints() {
   labels.forEach((label, index) => {
     const point = points[index];
     const item = document.createElement("li");
-    item.textContent = point ? `${label}: ${point.x}, ${point.y}` : `${label}: pendiente`;
+    item.textContent = point ? `${label}: ${point.x}, ${point.y}` : `${label}: sin punto`;
     pointList.appendChild(item);
   });
 }

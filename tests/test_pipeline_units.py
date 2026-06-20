@@ -543,12 +543,11 @@ class PipelineUnitTests(unittest.TestCase):
     def test_level2_closure_docs_check_fails_on_obsolete_status(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
-            (root / "FutBotMX_documentacion_markdown").mkdir()
             (root / "docs").mkdir()
             (root / "README.md").write_text("SAM 3 real pendiente de validacion en laptop MSI.\n", encoding="utf-8")
-            (root / "FutBotMX_documentacion_markdown/README.md").write_text("Nivel 2 cerrado.\n", encoding="utf-8")
-            (root / "FutBotMX_documentacion_markdown/EVENTS_DEFINITION.md").write_text("Eventos validados.\n", encoding="utf-8")
-            (root / "docs/TASK_LIST_DETAILED.md").write_text("Nivel 3 listo para gate/decision.\n", encoding="utf-8")
+            (root / "docs/EVALUATOR_GUIDE.md").write_text("Evaluacion lista.\n", encoding="utf-8")
+            (root / "docs/PROFESSIONAL_EVALUATION.md").write_text("Criterios completos.\n", encoding="utf-8")
+            (root / "docs/RESULTS_SUMMARY.md").write_text("Resultados finales.\n", encoding="utf-8")
 
             ok, notes = docs_are_current(root)
 

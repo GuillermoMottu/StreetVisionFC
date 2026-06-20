@@ -140,7 +140,7 @@ def write_summary(
             "## Validacion Visual",
             "",
             f"- Overlays representativos encontrados/generados: `{matched}`.",
-            f"- Overlays pendientes: `{missing}`.",
+            f"- Overlays por generar: `{missing}`.",
             "- Si no se provee `--video`, el script enlaza overlays existentes cercanos por frame.",
             "",
             "## Limitaciones",

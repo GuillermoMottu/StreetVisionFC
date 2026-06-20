@@ -146,9 +146,9 @@ def report_links(config: FinalReportConfig) -> list[dict[str, Any]]:
         _link("activity19_summary", "Resumen actividad 19", config.activity19_summary_md, True, "Overlay corto local."),
         _link("activity19_segments", "Segmentos overlay", config.activity19_segments_csv, True, "Timeline reproducible para MP4 local."),
         _link("activity19_contact_sheet", "Contact sheet overlay", config.activity19_contact_sheet_png, True, "Evidencia visual ligera del overlay."),
-        _link("activity19_render_plan", "Plan render overlay", config.activity19_render_plan_md, True, "Render MP4 local fuera de Git."),
-        _link("pdf_export_plan", "Plan PDF local", output_dir / "pdf_export_plan.md", True, "Instrucciones para PDF local no versionado."),
-        _link("pdf_render_script", "Script PDF local", output_dir / "render_final_report_pdf.sh", True, "Ayuda local para imprimir PDF fuera de Git."),
+        _link("activity19_render_plan", "Plan render overlay", config.activity19_render_plan_md, True, "Render MP4 local."),
+        _link("pdf_export_plan", "Plan PDF local", output_dir / "pdf_export_plan.md", True, "Instrucciones para PDF local opcional."),
+        _link("pdf_render_script", "Script PDF local", output_dir / "render_final_report_pdf.sh", True, "Ayuda local para imprimir PDF."),
     ]
 
 
@@ -266,7 +266,7 @@ def write_pdf_export_plan(path: str | Path, config: FinalReportConfig) -> None:
     lines = [
         "# Plan PDF Local - Reporte Final",
         "",
-        "El PDF es una salida local opcional y no se versiona. El artefacto versionado es `final_report.html`.",
+        "El PDF es una salida local opcional. El artefacto principal es `final_report.html`.",
         "",
         "## Salida local esperada",
         "",

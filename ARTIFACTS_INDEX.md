@@ -1,6 +1,6 @@
 # ARTIFACTS_INDEX - FutBotMX / StreetVisionFC
 
-> Índice de artefactos clave del pipeline. Los videos fuente, checkpoints, caches y renders pesados no se versionan en Git. El demo público ligero requerido por la convocatoria sí se versiona.
+> Índice de artefactos clave del pipeline. Los videos fuente provienen de los materiales Copa FutBotMX, los checkpoints se obtienen desde fuentes oficiales y el demo público requerido por la convocatoria está incluido.
 
 ## Video Demo
 

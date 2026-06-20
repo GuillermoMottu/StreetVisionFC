@@ -11,6 +11,7 @@ Output: outputs/videos/demo_compilation.mp4
 from __future__ import annotations
 
 import csv
+import os
 import subprocess
 import sys
 import tempfile
@@ -23,8 +24,8 @@ import numpy as np
 ROOT = Path(__file__).resolve().parent.parent
 EXP_595 = ROOT / "experiments/test_043_full_analysis_video_595_120_180"
 EXP_836 = ROOT / "experiments/test_044_full_analysis_video_836_120_180"
-VIDEO_595 = Path("/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-595_singular_display.mov")
-VIDEO_836 = Path("/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov")
+VIDEO_595 = Path(os.environ.get("FUTBOTMX_VIDEO_595", "/path/to/CopaFutMX/video-595_singular_display.mov"))
+VIDEO_836 = Path(os.environ.get("FUTBOTMX_VIDEO_836", "/path/to/CopaFutMX/video-836_singular_display.mov"))
 OUT_DIR = ROOT / "outputs/videos"
 OUT_PATH = OUT_DIR / "demo_compilation.mp4"
 

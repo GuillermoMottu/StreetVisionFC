@@ -64,7 +64,7 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
         f"- Highlights con revision humana: `{summary['reviewed_highlights']}`.",
         f"- Highlights descartados por revision: `{summary['discarded_highlights']}`.",
         f"- Manifest rows: `{len(manifest)}`.",
-        "- MP4 final: local y no versionado.",
+        "- MP4 final: artefacto local de publicacion.",
         "",
         "## Segmentos",
         "",

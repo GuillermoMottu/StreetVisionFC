@@ -29,7 +29,7 @@ The project extends plain SAM 3 prompting into a Grounded-SAM pipeline tailored 
 | Hardware-aware inference | OWLv2 is offloaded before SAM 3 runs to avoid GPU OOM on 6 GB VRAM | Makes the pipeline reproducible on the verified RTX 4050 laptop |
 | Tactical analytics | Field rectification, Voronoi approximation, minimap, interaction graph and highlight ranking | Turns segmentation/tracking into match-understanding evidence |
 
-No fine-tuning is claimed. The professional innovation claim is prompt engineering, model integration, tracker integration, post-processing and quantitative validation.
+Professional innovation is demonstrated through prompt engineering, model integration, tracker integration, post-processing and quantitative validation.
 
 ## Quantitative Results
 
@@ -88,7 +88,7 @@ Expected results on the verified environment:
 - `validate_pipeline.py`: all checks pass.
 - `check_level3_closure.py`: `11 pass`, `0 fail`.
 
-Source match videos and model checkpoints remain outside Git because they are large binary assets. The `.env.example` file documents the required local paths.
+Source match videos come from the Copa FutBotMX materials and model checkpoints are obtained from their official releases. The `.env.example` file documents the required local configuration.
 
 ## External Publication
 

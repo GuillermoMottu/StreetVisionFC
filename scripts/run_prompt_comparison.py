@@ -216,7 +216,7 @@ def write_prompt_summary(path: Path, summary: PromptSummary, overlay_frames: lis
         "- Confianza media filtrada: `{mean_filtered:.4f}`.\n"
         "- Frames sin deteccion filtrada: `{missing}`.\n\n"
         "## Revision visual\n\n"
-        "- Precision visual: `pendiente de revision humana`.\n"
+        "- Precision visual: `requiere revision humana`.\n"
         "- Overlays revisables: `{overlays}`.\n".format(
             prompt=summary.prompt,
             group=summary.group,

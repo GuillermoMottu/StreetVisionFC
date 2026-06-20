@@ -12,7 +12,7 @@ Output: outputs/videos/futbotmx_demo.mp4  (~40-50 seconds, 15fps, 680x904)
 
 Usage:
     python scripts/create_phase3_demo.py \
-        --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov"
+        --video "$FUTBOTMX_VIDEO_836"
 """
 from __future__ import annotations
 

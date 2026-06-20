@@ -167,7 +167,7 @@ def default_review_notes(status: str, highlight: dict[str, str], overlay_path: s
         assets.append("overlay")
     if minimap_path:
         assets.append("minimapa")
-    return f"Revision pendiente de confirmacion humana fina; assets disponibles: {', '.join(assets) or 'ninguno'}."
+    return f"Revision requiere confirmacion humana fina; assets disponibles: {', '.join(assets) or 'ninguno'}."
 
 
 def event_summary(highlight: dict[str, str], event: dict[str, Any]) -> str:

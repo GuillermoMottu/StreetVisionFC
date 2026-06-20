@@ -38,9 +38,9 @@ CANONICAL_ARTIFACTS = (
     Artifact("benchmark", "msi_benchmark_summary", "experiments/test_007_msi_benchmarks/video_836_sam3/summary.md", "markdown", "include", "Resumen benchmark SAM 3."),
     Artifact("benchmark", "msi_benchmark_metrics", "experiments/test_007_msi_benchmarks/video_836_sam3/metrics.csv", "csv", "include", "Metricas single vs multi-frame."),
     Artifact("benchmark", "msi_benchmark_json", "experiments/test_007_msi_benchmarks/video_836_sam3/benchmark.json", "json", "include", "Snapshot completo de benchmark y entorno."),
-    Artifact("demo", "demo_local_summary", "experiments/evidence_level1/demo_local.md", "markdown", "include", "Ruta y configuracion de demo MP4 local no versionada."),
-    Artifact("demo", "demo_local_mp4", "outputs/videos/level1_demo_video_836_120_180.mp4", "video", "exclude", "Demo MP4 local ignorada por Git."),
-    Artifact("source_video", "video_836", "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov", "video", "exclude", "Video completo local fuera de Git."),
+    Artifact("demo", "demo_local_summary", "experiments/evidence_level1/demo_local.md", "markdown", "include", "Ruta y configuracion de demo MP4 local."),
+    Artifact("demo", "demo_local_mp4", "outputs/videos/level1_demo_video_836_120_180.mp4", "video", "exclude", "Demo MP4 local generado desde el pipeline."),
+    Artifact("source_video", "video_836", "$FUTBOTMX_VIDEO_836", "video", "exclude", "Video fuente configurado localmente mediante .env."),
     Artifact("source_checkpoint", "sam3_checkpoint", "checkpoints/sam3/sam3.pt", "checkpoint", "exclude", "Checkpoint local ignorado por Git."),
 )
 
@@ -133,10 +133,9 @@ def write_markdown(output_dir: Path) -> None:
         "- Expansion a tres clips adicionales: `video_480`, `video_595`, `video_667`.\n"
         "- Benchmark MSI de SAM 3.\n\n"
         "## Politica de evidencia ligera\n\n"
-        "- No versionar videos completos, checkpoints ni outputs pesados.\n"
-        "- Versionar JSON/CSV/Markdown, heatmaps PNG pequenos y capturas PNG representativas.\n"
-        "- Mantener los videos locales bajo `/home/guillermo/Vídeos/CopaFutMX/...`.\n"
-        "- Mantener el checkpoint local bajo `checkpoints/sam3/sam3.pt`, ignorado por Git.\n"
+        "- Configurar videos fuente mediante `.env`.\n"
+        "- Versionar JSON/CSV/Markdown, heatmaps PNG pequenos, capturas PNG representativas y el demo publico.\n"
+        "- Mantener el checkpoint local bajo `checkpoints/sam3/sam3.pt`.\n"
         "- Usar `artifact_manifest.csv` como indice de artefactos canonicos.\n"
         "- Usar `overlay_size_review.csv` para justificar las capturas versionadas.\n"
         "- Usar `validation_report.md` como validacion automatica previa a Nivel 2.\n\n"
@@ -147,7 +146,7 @@ def write_markdown(output_dir: Path) -> None:
         "- `artifact_manifest.csv`: lista curada de evidencia ligera y rutas.\n"
         "- `overlay_size_review.csv`: revision de tamanos de capturas PNG seleccionadas.\n"
         "- `validation_report.md`: checks automaticos de solidez Nivel 1.\n"
-        "- `demo_local.md`: ruta y comando de la demo MP4 local no versionada.\n",
+        "- `demo_local.md`: ruta y comando de la demo MP4 local.\n",
         encoding="utf-8",
     )
     (output_dir / "DELIVERY_SUMMARY.md").write_text(

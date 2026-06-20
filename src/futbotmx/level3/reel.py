@@ -289,7 +289,7 @@ def write_reel_narrative(path: str | Path, segments: list[dict[str, Any]], confi
             "## Cierre",
             "",
             "- Mostrar dashboard Nivel 3 y manifests como evidencia reproducible.",
-            "- Mantener el MP4 final como salida local no versionada.",
+            "- Mantener el MP4 final como artefacto local de publicacion.",
         ]
     )
     Path(path).write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -324,7 +324,7 @@ def write_render_plan(path: str | Path, segments: list[dict[str, Any]], config: 
     lines = [
         "# Plan De Render Local Reel Nivel 3",
         "",
-        "El MP4 no se versiona. Para renderizarlo localmente desde las capturas ligeras:",
+        "Para renderizar el MP4 local desde las capturas ligeras:",
         "",
         "```bash",
         f"cd {config.output_dir}",
@@ -384,7 +384,7 @@ def render_reel_demo_html(context: dict[str, Any]) -> str:
             '<header class="fb-topbar">',
             '<p class="fb-eyebrow">FutBotMX Nivel 3</p>',
             "<h1>Reel final y demo de presentacion</h1>",
-            f"<span>{len(context['segments'])} segmentos | {context['summary']['duration_sec']:.1f}s sugeridos | MP4 local no versionado</span>",
+            f"<span>{len(context['segments'])} segmentos | {context['summary']['duration_sec']:.1f}s sugeridos | MP4 local</span>",
             "</header>",
             '<section class="grid">',
             "".join(cards),

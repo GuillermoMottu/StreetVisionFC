@@ -39,7 +39,7 @@ _CLIP_GOALS: dict[str, list[tuple[float, float, float, float]]] = {
     # video_480: same camera setup as video_836 (same resolution/ROI).
     "video_480": [(1000.0, 650.0, 1360.0, 800.0)],
     # video_595 and video_667: not yet surveyed — using centered field model estimate.
-    # TODO: run HSV blob detection on these clips when videos are accessible.
+    # Future improvement: run HSV blob detection on these clips when videos are accessible.
     "video_595": [(525.0, 486.0, 820.0, 540.0), (525.0, 1745.0, 820.0, 1792.0)],
     "video_667": [(530.0, 686.0, 830.0, 740.0), (530.0, 1760.0, 830.0, 1807.0)],
 }

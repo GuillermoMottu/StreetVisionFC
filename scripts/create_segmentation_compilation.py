@@ -14,6 +14,7 @@ so bounding boxes and masks are clearly visible.
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -26,21 +27,21 @@ ROOT = Path(__file__).resolve().parent.parent
 CLIPS = [
     {
         "id": "video_692",
-        "video": Path("/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-692_singular_display.mov"),
+        "video": Path(os.environ.get("FUTBOTMX_VIDEO_692", "/path/to/CopaFutMX/video-692_singular_display.mov")),
         "detections": ROOT / "experiments/seg_video_692_400_700/detections.json",
         "masks_dir": ROOT / "experiments/seg_video_692_400_700/masks",
         "label": "video-692  |  frames 400–700",
     },
     {
         "id": "video_560",
-        "video": Path("/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-560_singular_display.mov"),
+        "video": Path(os.environ.get("FUTBOTMX_VIDEO_560", "/path/to/CopaFutMX/video-560_singular_display.mov")),
         "detections": ROOT / "experiments/seg_video_560_150_400/detections.json",
         "masks_dir": ROOT / "experiments/seg_video_560_150_400/masks",
         "label": "video-560  |  frames 150–400",
     },
     {
         "id": "video_853",
-        "video": Path("/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-853_singular_display.mov"),
+        "video": Path(os.environ.get("FUTBOTMX_VIDEO_853", "/path/to/CopaFutMX/video-853_singular_display.mov")),
         "detections": ROOT / "experiments/seg_video_853_900_1200/detections.json",
         "masks_dir": ROOT / "experiments/seg_video_853_900_1200/masks",
         "label": "video-853  |  frames 900–1200",

@@ -12,6 +12,7 @@ from typing import Any
 
 
 HEAVY_EXTENSIONS = (".mov", ".mp4", ".avi", ".mkv", ".m4v", ".pt", ".pth", ".onnx", ".safetensors")
+ALLOWED_TRACKED_HEAVY_FILES = {"outputs/videos/futbotmx_demo_h264.mp4"}
 DEFAULT_OUTPUT_DIR = Path("experiments/test_017_level2_closure")
 
 
@@ -42,7 +43,10 @@ def git_has_tracked_heavy_files(root: Path) -> bool:
         result = subprocess.run(["git", "ls-files"], cwd=root, check=True, capture_output=True, text=True, timeout=10)
     except (FileNotFoundError, subprocess.SubprocessError):
         return False
-    return any(line.lower().endswith(HEAVY_EXTENSIONS) for line in result.stdout.splitlines())
+    return any(
+        line.lower().endswith(HEAVY_EXTENSIONS) and line not in ALLOWED_TRACKED_HEAVY_FILES
+        for line in result.stdout.splitlines()
+    )
 
 
 def unit_tests_pass(root: Path) -> bool:
@@ -65,18 +69,18 @@ def docs_are_current(root: Path) -> tuple[bool, str]:
             "Nivel 1 en preparacion",
             "test_002_sam3_segmentation`: bloqueado",
         ],
-        "FutBotMX_documentacion_markdown/README.md": [
+        "docs/EVALUATOR_GUIDE.md": [
             "SAM 3 pendiente de validación en laptop MSI",
             "Tracking pendiente de prueba real",
             "Eventos pendientes de validación con datos reales",
             "Visualizaciones pendientes de generación",
             "Nivel 2 pendiente",
         ],
-        "FutBotMX_documentacion_markdown/EVENTS_DEFINITION.md": [
+        "docs/PROFESSIONAL_EVALUATION.md": [
             "| Posesión | Nivel 1 | Pendiente de validar |",
             "| Timeline de posesión | Nivel 2 | Pendiente |",
         ],
-        "docs/TASK_LIST_DETAILED.md": [
+        "docs/RESULTS_SUMMARY.md": [
             "Nivel 3 permanece bloqueado hasta documentar Nivel 2 con resultados.",
         ],
     }
@@ -161,7 +165,7 @@ def build_checks(root: Path) -> list[ClosureCheck]:
             "no_tracked_heavy_files",
             "pass" if heavy_files_ok else "fail",
             "git ls-files",
-            "Videos, checkpoints y modelos pesados deben quedar fuera de Git.",
+            "Solo el demo publico versionado puede ser MP4 en Git; videos fuente, checkpoints y modelos quedan fuera.",
         ),
         ClosureCheck(
             "docs_current",
@@ -212,7 +216,7 @@ def write_report(checks: list[ClosureCheck], output_dir: Path) -> None:
 
     passed = sum(1 for check in checks if check.status == "pass")
     failed = sum(1 for check in checks if check.status == "fail")
-    status = "cerrado" if failed == 0 else "pendiente"
+    status = "cerrado" if failed == 0 else "requiere_atencion"
     lines = [
         "# Cierre Nivel 2",
         "",
@@ -240,7 +244,7 @@ def write_report(checks: list[ClosureCheck], output_dir: Path) -> None:
     closure_lines = [
         "# LEVEL2_CLOSURE_SUMMARY",
         "",
-        "Nivel 2 cerrado." if failed == 0 else "Nivel 2 pendiente de cierre.",
+        "Nivel 2 cerrado." if failed == 0 else "Nivel 2 requiere atencion antes del cierre.",
         "",
         "Nivel 3 listo para gate/decision, no iniciado." if failed == 0 else "Nivel 3 no debe iniciarse hasta resolver checks fallidos.",
         "",

@@ -104,7 +104,7 @@ cp .env.example .env
 # PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 ```
 
-Source match videos are not included in the repository because they are large binary files. The public demo required by the call is included at `outputs/videos/futbotmx_demo_h264.mp4`. Source video paths are set via `.env`.
+Source match videos come from the Copa FutBotMX materials and are configured locally through `.env`. The public demo required by the call is included at `outputs/videos/futbotmx_demo_h264.mp4`.
 
 ---
 
@@ -161,7 +161,7 @@ src/futbotmx/          Python package (segmentation, tracking, team assignment, 
 scripts/               Runnable scripts (test, demo, benchmark, annotation)
 configs/               YAML configuration (default.yaml)
 data/annotations/      Ground-truth annotation template + exported frames
-checkpoints/           Model weights (not versioned — see ARTIFACTS_INDEX.md)
+checkpoints/           External model weights (see ARTIFACTS_INDEX.md)
 experiments/           Experiment outputs and evaluation results
 outputs/videos/        Versioned public demo video
 docs/                  Documentation for evaluation

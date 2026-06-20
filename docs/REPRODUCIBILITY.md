@@ -22,7 +22,6 @@ Installation and execution on the verified hardware configuration.
 ```bash
 git clone <repo-url> StreetVisionFC
 cd StreetVisionFC
-git checkout fix/master-audit-corrections   # active branch
 
 python3.14 -m venv .venv
 source .venv/bin/activate
@@ -92,7 +91,7 @@ OWLV2_MODEL_PATH=checkpoints/owlv2-base
 PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 ```
 
-Source match videos are not versioned in Git. They must be placed on the local machine. The public demo MP4 required by the call is versioned at `outputs/videos/futbotmx_demo_h264.mp4`.
+Source match videos come from the Copa FutBotMX materials and are configured locally through `.env`. The public demo MP4 required by the call is included at `outputs/videos/futbotmx_demo_h264.mp4`.
 
 ---
 

@@ -894,7 +894,7 @@ def backend_endpoint_manifest(context: dict[str, Any], route_prefix: str = "") -
         _endpoint_row(endpoint("/minimap.json?frame=120"), "application/json", "minimap", "Frame-specific minimap payload."),
         _endpoint_row(endpoint("/calibration.json"), "application/json", "calibration", "Calibration status inferred from normalized tracks."),
         _endpoint_row(endpoint("/video-metadata.json"), "application/json", "video_metadata", "Configured video metadata."),
-        _endpoint_row(endpoint(f"/video?clip_id={config.clip_id}"), "video/*", "local_video", "Configured local video; heavy file is not versioned."),
+        _endpoint_row(endpoint(f"/video?clip_id={config.clip_id}"), "video/*", "local_video", "Configured local video for playback."),
     ]
     return {
         "rule_version": RULE_VERSION,

@@ -10,7 +10,7 @@ validate (or edit) team_assignment.csv before teams are considered final.
 
 Usage:
     python scripts/run_phase4_team_assignment.py \
-        --video "/home/guillermo/Vídeos/CopaFutMX/17 Abril/video-836_singular_display.mov"
+        --video "$FUTBOTMX_VIDEO_836"
 """
 from __future__ import annotations
 

@@ -276,7 +276,7 @@ def write_summary(path: str | Path, context: dict[str, Any]) -> None:
         f"- Clips incluidos: `{', '.join(summary['clips'])}`.",
         f"- Duracion sugerida: `{summary['duration_sec']}` segundos.",
         f"- MP4 local esperado: `{config.local_mp4_path}`.",
-        "- MP4 generado localmente y no versionado.",
+        "- MP4 generado localmente como artefacto de revision.",
         "",
         "## Segmentos",
         "",

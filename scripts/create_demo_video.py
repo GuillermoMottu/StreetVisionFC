@@ -42,7 +42,7 @@ def write_summary(path: Path, video_path: str, tracks_csv: str, output: str, sta
     path.write_text(
         "# Demo local Nivel 1\n\n"
         "## Estado\n\n"
-        "Demo MP4 generado localmente y no versionado por Git.\n\n"
+        "Demo MP4 generado localmente para revision.\n\n"
         "## Configuracion\n\n"
         f"- Video fuente: `{video_path}`\n"
         f"- Tracks: `{tracks_csv}`\n"
