@@ -8,8 +8,14 @@ from pathlib import Path
 from statistics import median
 from typing import Any
 
+from futbotmx.artifact_names import (
+    LEGACY_TEAM_TRACKS_CSV,
+    SPATIAL_TRACKS_CSV,
+    TEAM_TRACKS_CSV,
+    mirror_legacy_file,
+)
 from futbotmx.level3.schema import write_csv_artifact
-from futbotmx.level3.spatial import read_level3_tracks
+from futbotmx.level3.spatial import read_spatial_tracks
 
 
 RULE_VERSION = "team_assignment_v0.1"
@@ -36,7 +42,7 @@ MANIFEST_FIELDS = ["asset_id", "asset_type", "path", "source_artifact", "is_vers
 
 @dataclass(frozen=True)
 class TeamAssignmentConfig:
-    tracks_csv: str = "experiments/test_020_level3_spatial_model/level3_tracks.csv"
+    tracks_csv: str = "experiments/test_020_spatial_model/spatial_tracks.csv"
     manual_assignment_csv: str = ""
     output_dir: str = "experiments/test_031_team_assignment"
     fallback_split_axis: str = "x_norm"
@@ -57,7 +63,7 @@ def known_team(team: str) -> bool:
 def build_team_assignment_package(config: TeamAssignmentConfig) -> dict[str, Any]:
     output_dir = Path(config.output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    tracks = read_level3_tracks(config.tracks_csv)
+    tracks = read_spatial_tracks(config.tracks_csv)
     manual_rows = read_manual_assignments(config.manual_assignment_csv) if config.manual_assignment_csv else []
     summaries = robot_track_summaries(tracks, config)
     assignments, validation_rows = build_team_assignments(summaries, manual_rows, config)
@@ -66,7 +72,8 @@ def build_team_assignment_package(config: TeamAssignmentConfig) -> dict[str, Any
     write_team_assignment_csv(output_dir / "team_assignment.csv", assignments)
     write_dict_csv(output_dir / "team_assignment_validation.csv", validation_rows, VALIDATION_FIELDS)
     write_dict_csv(output_dir / "strategy_evaluation.csv", strategy_rows, STRATEGY_FIELDS)
-    write_csv_artifact(output_dir / "level3_tracks_with_teams.csv", "level3_tracks.csv", tracks_with_teams)
+    write_csv_artifact(output_dir / TEAM_TRACKS_CSV, SPATIAL_TRACKS_CSV, tracks_with_teams)
+    mirror_legacy_file(output_dir / TEAM_TRACKS_CSV, output_dir / LEGACY_TEAM_TRACKS_CSV)
     manifest_rows = write_team_assignment_manifest(output_dir / "team_assignment_manifest.csv", config)
     write_team_assignment_summary(output_dir / "summary.md", config, assignments, validation_rows, strategy_rows, manifest_rows)
     return {
@@ -220,7 +227,7 @@ def evaluate_assignment_strategies(
             "status": "not_available",
             "confidence": 0.0,
             "source": config.tracks_csv,
-            "notes": "Level 3 tracks do not include robot crops or color histograms; color strategy is documented for future video/crop integration.",
+            "notes": "Spatial tracks do not include robot crops or color histograms; color strategy is documented for future video/crop integration.",
         },
         {
             "strategy": "initial_side_fallback",
@@ -266,7 +273,7 @@ def write_team_assignment_manifest(path: str | Path, config: TeamAssignmentConfi
         _manifest_row("team_assignment", "csv", "team_assignment.csv", config.tracks_csv, True, "editable_assignment", "Editable team assignment by track ID."),
         _manifest_row("team_assignment_validation", "csv", "team_assignment_validation.csv", "team_assignment.csv", True, "validation", "Validation of track IDs and team labels."),
         _manifest_row("strategy_evaluation", "csv", "strategy_evaluation.csv", config.tracks_csv, True, "strategy", "Manual/color/side strategy evaluation."),
-        _manifest_row("level3_tracks_with_teams", "csv", "level3_tracks_with_teams.csv", "level3_tracks.csv|team_assignment.csv", True, "tracks", "Level 3 tracks with approximate teams applied."),
+        _manifest_row("tracks_with_teams", "csv", TEAM_TRACKS_CSV, f"{SPATIAL_TRACKS_CSV}|team_assignment.csv", True, "tracks", "Spatial tracks with approximate teams applied."),
         _manifest_row("summary", "md", "summary.md", "team_assignment.csv", True, "summary", "Team assignment summary."),
         _manifest_row("manifest", "csv", "team_assignment_manifest.csv", "team_assignment.csv", True, "manifest", "Team assignment artifact manifest."),
     ]
@@ -288,7 +295,7 @@ def write_team_assignment_summary(
     source_counts = Counter(str(row["source"]) for row in assignments)
     validation_counts = Counter(str(row["status"]) for row in validation_rows)
     lines = [
-        "# Asignacion De Equipos Nivel 3",
+        "# Asignacion de equipos",
         "",
         "## Resultado",
         "",
@@ -297,7 +304,7 @@ def write_team_assignment_summary(
         f"- Tracks fuente: `{config.tracks_csv}`.",
         f"- Robots asignados: `{len(assignments)}`.",
         f"- Archivo editable: `team_assignment.csv`.",
-        f"- Tracks enriquecidos: `level3_tracks_with_teams.csv`.",
+        f"- Tracks enriquecidos: `{TEAM_TRACKS_CSV}`.",
         "",
         "## Estrategias",
         "",
@@ -316,11 +323,11 @@ def write_team_assignment_summary(
     lines.extend(
         [
             "",
-            "## Uso En Nivel 3",
+            "## Uso tactico",
             "",
             "```bash",
-            ".venv/bin/python scripts/run_level3_tactical_metrics.py --tracks experiments/test_031_team_assignment/level3_tracks_with_teams.csv --experiment experiments/test_032_level3_team_metrics",
-            ".venv/bin/python scripts/run_level3_advanced_events.py --tracks experiments/test_031_team_assignment/level3_tracks_with_teams.csv --interaction-metrics experiments/test_032_level3_team_metrics/interaction_metrics.csv --interaction-edges experiments/test_032_level3_team_metrics/interaction_edges.csv --experiment experiments/test_033_level3_team_events",
+            f".venv/bin/python scripts/run_tactical_metrics.py --tracks experiments/test_031_team_assignment/{TEAM_TRACKS_CSV} --experiment experiments/test_032_team_metrics",
+            f".venv/bin/python scripts/run_advanced_events.py --tracks experiments/test_031_team_assignment/{TEAM_TRACKS_CSV} --interaction-metrics experiments/test_032_team_metrics/interaction_metrics.csv --interaction-edges experiments/test_032_team_metrics/interaction_edges.csv --experiment experiments/test_033_team_events",
             "```",
             "",
             "## Limitaciones",

@@ -41,6 +41,8 @@ class FinalReportTests(unittest.TestCase):
             self.assertTrue((output_dir / "pdf_export_plan.md").exists())
             self.assertTrue((output_dir / "render_final_report_pdf.sh").exists())
             self.assertIn("@media print", html)
+            self.assertIn('data-ui-shell="futbotmx-ui-v1"', html)
+            self.assertIn('data-product-flow="report"', html)
             self.assertIn("Reporte Final FutBotMX", html)
             self.assertIn("clip_validation_comparison.csv", html)
             self.assertIn("contact_sheet.png", html)

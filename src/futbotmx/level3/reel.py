@@ -13,6 +13,8 @@ from typing import Any
 import matplotlib.image as mpimg
 import matplotlib.pyplot as plt
 
+from futbotmx.ui import shared_css, ui_body_attrs
+
 
 RULE_VERSION = "level3_reel_v0.1"
 
@@ -377,10 +379,10 @@ def render_reel_demo_html(context: dict[str, Any]) -> str:
             "<title>FutBotMX Nivel 3 Reel</title>",
             f"<style>{_demo_css()}</style>",
             "</head>",
-            "<body>",
-            "<main>",
-            "<header>",
-            "<p>FutBotMX Nivel 3</p>",
+            f'<body {ui_body_attrs("report", "reel-page")}>',
+            '<main class="fb-shell">',
+            '<header class="fb-topbar">',
+            '<p class="fb-eyebrow">FutBotMX Nivel 3</p>',
             "<h1>Reel final y demo de presentacion</h1>",
             f"<span>{len(context['segments'])} segmentos | {context['summary']['duration_sec']:.1f}s sugeridos | MP4 local no versionado</span>",
             "</header>",
@@ -519,22 +521,28 @@ def _manifest_row(asset_id: str, asset_type: str, path: str, source_artifact: st
 
 
 def _demo_css() -> str:
-    return """
+    return shared_css() + """
 :root {
-  --ink: #17201b;
-  --muted: #5b675f;
-  --line: #c9d6ce;
-  --field: #e9f4ea;
-  --paper: #fbfcfa;
+  --ink: #05261d;
+  --muted: #52665d;
+  --line: #c7e2d1;
+  --field: #e9ffd8;
+  --paper: #f5f9ef;
   --panel: #ffffff;
-  --blue: #315f9b;
-  --green: #2f6f4f;
-  --amber: #a36d1f;
+  --blue: #00c853;
+  --green: #00d25b;
+  --amber: #d6ad38;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--paper);
+  background:
+    linear-gradient(90deg, rgba(0,200,83,.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(0,75,58,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183,243,0,.18) 0 24%, transparent 24%),
+    radial-gradient(circle at 84% 0%, rgba(0,75,58,.14), transparent 30%),
+    var(--paper);
+  background-size: 52px 52px, 52px 52px, auto, auto, auto;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -544,12 +552,16 @@ main {
   padding: 22px 0 36px;
 }
 header {
-  border-bottom: 2px solid var(--line);
-  padding-bottom: 16px;
+  border: 1px solid var(--line);
+  border-bottom: 4px solid #b7f300;
+  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #004b3a, #00c853);
+  color: #ffffff;
 }
 header p {
   margin: 0 0 5px;
-  color: var(--green);
+  color: #eaffd6;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -559,6 +571,7 @@ h1 {
   font-size: 38px;
   line-height: 1.05;
   letter-spacing: 0;
+  color: inherit;
 }
 h2 {
   margin: 0;

@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from futbotmx.config import write_config_snapshot
+from futbotmx.ui import shared_css, ui_body_attrs
 
 
 RULE_VERSION = "activity20_final_report_v0.1"
@@ -181,8 +182,8 @@ def render_final_report_html(context: dict[str, Any]) -> str:
             f"<title>{_esc(config.report_title)}</title>",
             f"<style>{_report_css()}</style>",
             "</head>",
-            "<body>",
-            "<main>",
+            f'<body {ui_body_attrs("report", "final-report-page")}>',
+            '<main class="fb-shell">',
             _cover_html(context),
             _quick_links_html(context),
             _summary_cards_html(context),
@@ -383,8 +384,8 @@ def _cover_html(context: dict[str, Any]) -> str:
     config: FinalReportConfig = context["config"]
     summary = context["summary"]
     return f"""
-<header class="cover">
-  <p>{_esc(config.project_name)} Nivel 3</p>
+<header class="cover fb-cover">
+  <p class="fb-eyebrow">{_esc(config.project_name)} Nivel 3</p>
   <h1>{_esc(config.report_title)}</h1>
   <span>Entrega local reproducible | regla {_esc(context['rule_version'])}</span>
   <dl>
@@ -413,7 +414,7 @@ def _quick_links_html(context: dict[str, Any]) -> str:
         f'<a href="{_esc(_rel_path(link["path"], config.output_dir))}">{_esc(link["label"])}</a>'
         for link in links
     )
-    return f'<nav class="quick-links" aria-label="Evidencia principal">{anchors}</nav>'
+    return f'<nav class="quick-links fb-quick-links" aria-label="Evidencia principal">{anchors}</nav>'
 
 
 def _summary_cards_html(context: dict[str, Any]) -> str:
@@ -563,24 +564,30 @@ def _pdf_policy_html(context: dict[str, Any]) -> str:
 
 
 def _report_css() -> str:
-    return """
+    return shared_css() + """
 :root {
-  --ink: #18201c;
-  --muted: #5c675f;
-  --line: #cad5ce;
-  --paper: #fbfcfa;
+  --ink: #05261d;
+  --muted: #52665d;
+  --line: #c7e2d1;
+  --paper: #f5f9ef;
   --panel: #ffffff;
-  --field: #eaf3ec;
-  --green: #2e6a4f;
-  --blue: #315f9b;
-  --amber: #9a6a24;
-  --red: #9b4444;
+  --field: #e9ffd8;
+  --green: #00d25b;
+  --blue: #00c853;
+  --amber: #d6ad38;
+  --red: #b7f300;
 }
 * { box-sizing: border-box; }
 @page { size: A4; margin: 14mm; }
 body {
   margin: 0;
-  background: var(--paper);
+  background:
+    linear-gradient(90deg, rgba(0,200,83,.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(0,75,58,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183,243,0,.18) 0 24%, transparent 24%),
+    radial-gradient(circle at 84% 0%, rgba(0,75,58,.14), transparent 30%),
+    var(--paper);
+  background-size: 52px 52px, 52px 52px, auto, auto, auto;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -593,12 +600,16 @@ main {
   min-height: 58vh;
   display: grid;
   align-content: center;
-  border-bottom: 2px solid var(--line);
-  padding: 18px 0 24px;
+  border: 1px solid var(--line);
+  border-bottom: 4px solid var(--red);
+  border-radius: 8px;
+  padding: 24px;
+  background: linear-gradient(135deg, #004b3a, #00c853);
+  color: #ffffff;
 }
 .cover p {
   margin: 0 0 8px;
-  color: var(--green);
+  color: #eaffd6;
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
@@ -608,6 +619,7 @@ h1 {
   font-size: 46px;
   line-height: 1.03;
   letter-spacing: 0;
+  color: inherit;
 }
 h2 {
   margin: 0 0 9px;

@@ -40,6 +40,8 @@ class ExecutiveReportTests(unittest.TestCase):
             self.assertTrue((output / "assets" / "highlight_storyboard.png").exists())
             self.assertTrue((output / "assets" / "interaction_graph.png").exists())
             self.assertTrue((output / "assets" / "reel_contact_sheet.png").exists())
+            self.assertIn('data-ui-shell="futbotmx-ui-v1"', html)
+            self.assertIn('data-product-flow="report"', html)
             self.assertIn("Reporte ejecutivo para evaluadores", html)
             self.assertIn("../dashboard/dashboard.html", html)
             self.assertIn("Tabla multi-clip", html)

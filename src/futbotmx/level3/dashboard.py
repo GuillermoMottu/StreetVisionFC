@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from futbotmx.ui import shared_css, ui_body_attrs
+
 
 RULE_VERSION = "level3_dashboard_v0.1"
 
@@ -143,8 +145,8 @@ def render_dashboard_html(context: dict[str, Any]) -> str:
             "<title>FutBotMX Nivel 3 Dashboard</title>",
             f"<style>{_dashboard_css()}</style>",
             "</head>",
-            "<body>",
-            '<main class="dashboard-shell">',
+            f'<body {ui_body_attrs("report", "dashboard-page")}>',
+            '<main class="dashboard-shell fb-shell">',
             _header_html(context),
             _summary_html(summary),
             _clip_metrics_html(context),
@@ -286,12 +288,12 @@ def _first_asset(rows: list[dict[str, str]], prefix: str, clip_id: str) -> dict[
 def _header_html(context: dict[str, Any]) -> str:
     clips = ", ".join(context["summary"]["clip_ids"])
     return f"""
-<header class="dashboard-header">
+<header class="dashboard-header fb-topbar">
   <div>
-    <p class="eyebrow">FutBotMX Nivel 3</p>
+    <p class="eyebrow fb-eyebrow">FutBotMX Nivel 3</p>
     <h1>Dashboard tactico avanzado</h1>
   </div>
-  <div class="status-strip">
+  <div class="status-strip fb-status-strip">
     <span>Estado: generado</span>
     <span>Regla: {_esc(context["rule_version"])}</span>
     <span>Clips: {_esc(clips)}</span>
@@ -465,24 +467,30 @@ def _evidence_html(context: dict[str, Any], output_dir: Path) -> str:
 
 
 def _dashboard_css() -> str:
-    return """
+    return shared_css() + """
 :root {
   color-scheme: light;
-  --ink: #17201b;
-  --muted: #5b675f;
-  --line: #c9d6ce;
-  --field: #e9f4ea;
-  --paper: #fbfcfa;
+  --ink: #05261d;
+  --muted: #52665d;
+  --line: #c7e2d1;
+  --field: #e9ffd8;
+  --paper: #f5f9ef;
   --panel: #ffffff;
-  --blue: #315f9b;
-  --green: #2f6f4f;
-  --red: #a33f3f;
-  --amber: #a36d1f;
+  --blue: #00c853;
+  --green: #00d25b;
+  --red: #b7f300;
+  --amber: #d6ad38;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--paper);
+  background:
+    linear-gradient(90deg, rgba(0,200,83,.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(0,75,58,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183,243,0,.18) 0 24%, transparent 24%),
+    radial-gradient(circle at 84% 0%, rgba(0,75,58,.14), transparent 30%),
+    var(--paper);
+  background-size: 52px 52px, 52px 52px, auto, auto, auto;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -496,12 +504,16 @@ body {
   justify-content: space-between;
   gap: 24px;
   align-items: end;
-  padding: 10px 0 18px;
-  border-bottom: 2px solid var(--line);
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-bottom: 4px solid var(--red);
+  border-radius: 8px;
+  background: linear-gradient(135deg, #004b3a, #00c853);
+  color: #ffffff;
 }
 .eyebrow {
   margin: 0 0 4px;
-  color: var(--green);
+  color: #eaffd6;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -511,6 +523,7 @@ h1 {
   font-size: 40px;
   line-height: 1.02;
   letter-spacing: 0;
+  color: inherit;
 }
 h2 {
   margin: 0;

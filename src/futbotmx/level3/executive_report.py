@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from futbotmx.config import write_config_snapshot
+from futbotmx.ui import shared_css, ui_body_attrs
 
 
 RULE_VERSION = "executive_report_v0.1"
@@ -125,8 +126,8 @@ def render_report_html(context: dict[str, Any]) -> str:
             "<title>FutBotMX Reporte Ejecutivo</title>",
             f"<style>{_report_css()}</style>",
             "</head>",
-            "<body>",
-            "<main>",
+            f'<body {ui_body_attrs("report", "executive-report-page")}>',
+            '<main class="fb-shell">',
             _header_html(context),
             _link_strip_html(context, output_dir),
             _summary_html(summary),
@@ -259,8 +260,8 @@ def config_to_dict(config: ExecutiveReportConfig) -> dict[str, Any]:
 
 def _header_html(context: dict[str, Any]) -> str:
     return f"""
-<header class="report-header">
-  <p>FutBotMX Nivel 3</p>
+<header class="report-header fb-topbar">
+  <p class="fb-eyebrow">FutBotMX Nivel 3</p>
   <h1>Reporte ejecutivo para evaluadores</h1>
   <span>Regla {_esc(context['rule_version'])} | demo local reproducible</span>
 </header>"""
@@ -274,7 +275,7 @@ def _link_strip_html(context: dict[str, Any], output_dir: Path) -> str:
         ("Cierre Nivel 3", context["source_paths"]["closure_summary_md"]),
     ]
     anchors = "".join(f'<a href="{_esc(_rel_path(path, output_dir))}">{_esc(label)}</a>' for label, path in links)
-    return f'<nav class="quick-links" aria-label="Evidencia principal">{anchors}</nav>'
+    return f'<nav class="quick-links fb-quick-links" aria-label="Evidencia principal">{anchors}</nav>'
 
 
 def _summary_html(summary: dict[str, Any]) -> str:
@@ -394,23 +395,29 @@ def _evidence_html(context: dict[str, Any], output_dir: Path) -> str:
 
 
 def _report_css() -> str:
-    return """
+    return shared_css() + """
 :root {
-  --ink: #17201b;
-  --muted: #5b675f;
-  --line: #c9d6ce;
-  --paper: #fbfcfa;
+  --ink: #05261d;
+  --muted: #52665d;
+  --line: #c7e2d1;
+  --paper: #f5f9ef;
   --panel: #ffffff;
-  --field: #e9f4ea;
-  --green: #2f6f4f;
-  --blue: #315f9b;
-  --amber: #a36d1f;
-  --red: #a33f3f;
+  --field: #e9ffd8;
+  --green: #00d25b;
+  --blue: #00c853;
+  --amber: #d6ad38;
+  --red: #b7f300;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--paper);
+  background:
+    linear-gradient(90deg, rgba(0,200,83,.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(0,75,58,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183,243,0,.18) 0 24%, transparent 24%),
+    radial-gradient(circle at 84% 0%, rgba(0,75,58,.14), transparent 30%),
+    var(--paper);
+  background-size: 52px 52px, 52px 52px, auto, auto, auto;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -420,12 +427,16 @@ main {
   padding: 20px 0 38px;
 }
 .report-header {
-  border-bottom: 2px solid var(--line);
-  padding: 10px 0 16px;
+  border: 1px solid var(--line);
+  border-bottom: 4px solid var(--red);
+  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #004b3a, #00c853);
+  color: #ffffff;
 }
 .report-header p {
   margin: 0 0 5px;
-  color: var(--green);
+  color: #eaffd6;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -433,6 +444,7 @@ main {
 h1 {
   margin: 0 0 8px;
   font-size: 40px;
+  color: inherit;
   line-height: 1.03;
   letter-spacing: 0;
 }

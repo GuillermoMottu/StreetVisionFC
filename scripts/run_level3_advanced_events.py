@@ -9,6 +9,15 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from futbotmx.artifact_names import (
+    ADVANCED_EVENTS_JSON,
+    HIGHLIGHTS_CSV,
+    LEGACY_ADVANCED_EVENTS_JSON,
+    LEGACY_HIGHLIGHTS_CSV,
+    LEGACY_NARRATIVE_MD,
+    NARRATIVE_MD,
+    mirror_legacy_file,
+)
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.level3 import (
     LEVEL3_ADVANCED_EVENTS_RULE_VERSION,
@@ -22,18 +31,18 @@ from futbotmx.level3 import (
 )
 
 
-DEFAULT_OUTPUT_DIR = Path("experiments/test_022_level3_advanced_events")
+DEFAULT_OUTPUT_DIR = Path("experiments/test_022_advanced_events")
 
 
 def write_config(config: dict[str, Any], output_dir: Path, advanced_config: AdvancedEventsConfig) -> None:
     snapshot = copy.deepcopy(config)
-    snapshot["level3_advanced_events"] = {
+    snapshot["advanced_events"] = {
         "rule_version": LEVEL3_ADVANCED_EVENTS_RULE_VERSION,
         **advanced_events_config_to_dict(advanced_config),
         "outputs": [
-            "level3_events.json",
-            "level3_highlights.csv",
-            "level3_narrative.md",
+            ADVANCED_EVENTS_JSON,
+            HIGHLIGHTS_CSV,
+            NARRATIVE_MD,
             "overlay_validation.csv",
             "overlay_highlight_*.png",
             "summary.md",
@@ -59,7 +68,7 @@ def write_summary(path: Path, outputs: dict[str, Any], overlay_rows: list[dict[s
     top_all = sorted(highlight_rows, key=lambda row: int(row["rank"]))[:6]
 
     lines = [
-        "# Eventos Avanzados Nivel 3",
+        "# Eventos avanzados",
         "",
         "## Resultado",
         "",
@@ -69,8 +78,8 @@ def write_summary(path: Path, outputs: dict[str, Any], overlay_rows: list[dict[s
         f"- Eventos avanzados: `{len(events)}`.",
         f"- Highlights rankeados: `{len(highlight_rows)}`.",
         f"- Segmentos de posesion candidata: `{len(possessions)}`.",
-        f"- Segmentos de posesion Nivel 2 reutilizables: `{len(level2_possessions)}`.",
-        f"- Segmentos fallback desde interacciones Nivel 3: `{len(fallback_possessions)}`.",
+        f"- Segmentos de posesion historicos reutilizables: `{len(level2_possessions)}`.",
+        f"- Segmentos fallback desde interacciones tacticas: `{len(fallback_possessions)}`.",
         f"- Segmentos de velocidad de balon: `{len(speeds)}`.",
         f"- Overlays ligeros generados: `{len(overlay_rows)}`.",
         "",
@@ -107,9 +116,9 @@ def write_summary(path: Path, outputs: dict[str, Any], overlay_rows: list[dict[s
     else:
         lines.append("- `level2_metrics.json` no trae `possession_timeline` reutilizable en estos clips; se usa fallback desde `interaction_metrics.csv`.")
     lines.append("- Cuando existen etiquetas de equipo aproximadas, las cadenas usan esa informacion; si no, se mantienen como `dudoso_sin_equipo`.")
-    lines.extend(["", "## Fuentes Nivel 2", ""])
+    lines.extend(["", "## Fuentes historicas", ""])
     for clip_id, clip_events in sorted(level2_events.items()):
-        lines.append(f"- `{clip_id}` eventos Nivel 2 usados como respaldo: `{len(clip_events)}`.")
+        lines.append(f"- `{clip_id}` eventos contextuales usados como respaldo: `{len(clip_events)}`.")
     lines.extend(
         [
             "",
@@ -122,9 +131,9 @@ def write_summary(path: Path, outputs: dict[str, Any], overlay_rows: list[dict[s
             "## Artefactos",
             "",
             "- `config.yaml`",
-            "- `level3_events.json`",
-            "- `level3_highlights.csv`",
-            "- `level3_narrative.md`",
+            f"- `{ADVANCED_EVENTS_JSON}`",
+            f"- `{HIGHLIGHTS_CSV}`",
+            f"- `{NARRATIVE_MD}`",
             "- `overlay_validation.csv`",
             "- `overlay_highlight_*.png`",
             "- `summary.md`",
@@ -132,7 +141,7 @@ def write_summary(path: Path, outputs: dict[str, Any], overlay_rows: list[dict[s
             "## Comando",
             "",
             "```bash",
-            ".venv/bin/python scripts/run_level3_advanced_events.py",
+            ".venv/bin/python scripts/run_advanced_events.py",
             "```",
         ]
     )
@@ -144,21 +153,24 @@ def run_advanced_events(config_path: str | Path, output_dir: Path, advanced_conf
     output_dir.mkdir(parents=True, exist_ok=True)
     outputs = build_advanced_events(advanced_config)
     write_config(config, output_dir, advanced_config)
-    write_level3_events(output_dir / "level3_events.json", outputs["events"])
-    write_level3_highlights(output_dir / "level3_highlights.csv", outputs["highlight_rows"])
-    write_narrative(output_dir / "level3_narrative.md", outputs["events"], outputs["highlight_rows"], advanced_config)
+    write_level3_events(output_dir / ADVANCED_EVENTS_JSON, outputs["events"])
+    write_level3_highlights(output_dir / HIGHLIGHTS_CSV, outputs["highlight_rows"])
+    write_narrative(output_dir / NARRATIVE_MD, outputs["events"], outputs["highlight_rows"], advanced_config)
+    mirror_legacy_file(output_dir / ADVANCED_EVENTS_JSON, output_dir / LEGACY_ADVANCED_EVENTS_JSON)
+    mirror_legacy_file(output_dir / HIGHLIGHTS_CSV, output_dir / LEGACY_HIGHLIGHTS_CSV)
+    mirror_legacy_file(output_dir / NARRATIVE_MD, output_dir / LEGACY_NARRATIVE_MD)
     overlay_rows = write_overlay_validation(output_dir / "overlay_validation.csv", output_dir, outputs["tracks"], outputs["highlight_rows"])
     write_summary(output_dir / "summary.md", outputs, overlay_rows)
     return outputs
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate Level 3 advanced events, highlights and narrative.")
+    parser = argparse.ArgumentParser(description="Generate advanced events, highlights and narrative.")
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--experiment", default=str(DEFAULT_OUTPUT_DIR))
-    parser.add_argument("--tracks", default="experiments/test_020_level3_spatial_model/level3_tracks.csv")
-    parser.add_argument("--interaction-metrics", default="experiments/test_021_level3_tactical_metrics/interaction_metrics.csv")
-    parser.add_argument("--interaction-edges", default="experiments/test_021_level3_tactical_metrics/interaction_edges.csv")
+    parser.add_argument("--tracks", default="experiments/test_020_spatial_model/spatial_tracks.csv")
+    parser.add_argument("--interaction-metrics", default="experiments/test_021_tactical_metrics/interaction_metrics.csv")
+    parser.add_argument("--interaction-edges", default="experiments/test_021_tactical_metrics/interaction_edges.csv")
     parser.add_argument("--level2-root", default="experiments/test_017_level2_closure")
     parser.add_argument("--primary-clip", default="video_595")
     parser.add_argument("--highlight-top-n", type=int, default=6)
@@ -174,7 +186,7 @@ def main() -> int:
     )
     outputs = run_advanced_events(args.config, Path(args.experiment), advanced_config)
     print(
-        "Wrote Level 3 advanced events to "
+        "Wrote advanced events to "
         f"{args.experiment} ({len(outputs['events'])} events, {len(outputs['highlight_rows'])} highlights)"
     )
     return 0

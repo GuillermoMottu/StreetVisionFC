@@ -107,14 +107,14 @@ def _nearest_robot(point: tuple[float, float], robots: list[dict[str, Any]]) -> 
 
 def _draw_pitch(ax: Any, title: str | None = None) -> None:
     model = FieldModel()
-    ax.set_facecolor("#e9f4ea")
-    ax.add_patch(plt.Rectangle((0, 0), 1, 1, fill=False, lw=1.8, ec="#2f6f4f"))
+    ax.set_facecolor("#e9ffd8")
+    ax.add_patch(plt.Rectangle((0, 0), 1, 1, fill=False, lw=1.8, ec="#00d25b"))
     for y in (1.0 / 3.0, 2.0 / 3.0, 0.5):
-        ax.axhline(y, color="#7aa37d", lw=0.8, ls="--" if y != 0.5 else "-")
+        ax.axhline(y, color="#b7f300", lw=0.8, ls="--" if y != 0.5 else "-")
     goal_start = 0.5 - model.goal_width_norm / 2
     goal_end = 0.5 + model.goal_width_norm / 2
-    ax.plot([goal_start, goal_end], [0.0, 0.0], color="#2f6f4f", lw=3)
-    ax.plot([goal_start, goal_end], [1.0, 1.0], color="#2f6f4f", lw=3)
+    ax.plot([goal_start, goal_end], [0.0, 0.0], color="#b7f300", lw=3)
+    ax.plot([goal_start, goal_end], [1.0, 1.0], color="#b7f300", lw=3)
     ax.set_xlim(-0.04, 1.04)
     ax.set_ylim(1.04, -0.04)
     ax.set_xlabel("x_norm")

@@ -1,29 +1,52 @@
 from __future__ import annotations
 
-import csv
 import html
 import json
 import mimetypes
-import os
+import re
 import subprocess
 import sys
+import threading
 import time
-from dataclasses import asdict, dataclass, replace
+from dataclasses import dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
 from urllib.parse import parse_qs, quote, unquote, urlparse
 
-from futbotmx.config import load_config, write_config_snapshot
+from futbotmx.artifact_names import (
+    ADVANCED_EVENTS_DIR,
+    ADVANCED_EVENTS_JSON,
+    HIGHLIGHTS_CSV,
+    LEGACY_ADVANCED_EVENTS_DIR,
+    LEGACY_ADVANCED_EVENTS_JSON,
+    LEGACY_HIGHLIGHTS_CSV,
+    LEGACY_SPATIAL_DIR,
+    LEGACY_SPATIAL_TRACKS_CSV,
+    LEGACY_VISUALIZATIONS_DIR,
+    SPATIAL_DIR,
+    SPATIAL_TRACKS_CSV,
+    VISUALIZATIONS_DIR,
+    first_existing,
+)
+from futbotmx.app_state import AppState
+from futbotmx.config import load_config
+from futbotmx.live_playback import (
+    DEFAULT_EXPERIMENT_DIR as DEFAULT_LIVE_PLAYBACK_EXPERIMENT_DIR,
+    build_live_playback_context,
+    live_playback_config_from_project,
+    make_handler as make_live_playback_handler,
+)
+from futbotmx.live_playback_contract import read_csv_rows, read_json_events
+from futbotmx.ui import shared_css, ui_body_attrs
 
 
-RULE_VERSION = "local_app_v0.1"
 DEFAULT_EXPERIMENT_DIR = Path("experiments/test_028_local_app")
-DEFAULT_DASHBOARD_HTML = Path("experiments/test_024_level3_dashboard/dashboard.html")
-DEFAULT_REEL_HTML = Path("experiments/test_025_level3_reel/reel_demo.html")
-DEFAULT_CLOSURE_CHECKS = Path("experiments/test_027_level3_closure/closure_checks.csv")
-MANIFEST_FIELDS = ["asset_id", "asset_type", "path", "source_artifact", "is_versioned", "role", "notes"]
 
+
+# ---------------------------------------------------------------------------
+# Dataclasses
+# ---------------------------------------------------------------------------
 
 @dataclass(frozen=True)
 class ClipOption:
@@ -40,61 +63,24 @@ class ClipOption:
 
 
 @dataclass(frozen=True)
-class AnalysisRequest:
-    clip_id: str
+class PipelineRequest:
     video_path: str
+    clip_id: str
     start_frame: int
     end_frame: int
     stride: int
-    roi: tuple[int, int, int, int]
-    run_dashboard: bool = True
-    run_reel: bool = True
+    skip_segmentation: bool = False
 
 
-@dataclass(frozen=True)
-class CommandStatus:
-    name: str
-    status: str
-    command: str
-    notes: str
-    duration_sec: float
-
-
-@dataclass(frozen=True)
-class ArtifactRow:
-    label: str
-    path: str
-    exists: bool
-    size_bytes: int
-    role: str
-
-
-@dataclass(frozen=True)
-class CheckRow:
-    check_id: str
-    status: str
-    evidence: str
-    notes: str
-
-
-@dataclass(frozen=True)
-class AnalysisResult:
-    status: str
-    message: str
-    generated_at: str
-    request: AnalysisRequest
-    commands: list[CommandStatus]
-    artifacts: list[ArtifactRow]
-    checks: list[CheckRow]
-    summary_path: str
-    manifest_path: str
-
+# ---------------------------------------------------------------------------
+# Config
+# ---------------------------------------------------------------------------
 
 def clip_options_from_config(config: dict[str, Any]) -> list[ClipOption]:
-    clips = _clips_from_level2_closure(config)
+    clips = _clips_from_legacy_closure(config)
     if clips:
         return clips
-    return _clips_from_level2_multiclip(config)
+    return _clips_from_legacy_multiclip(config)
 
 
 def selected_clip(clips: list[ClipOption], clip_id: str | None = None) -> ClipOption:
@@ -106,307 +92,1228 @@ def selected_clip(clips: list[ClipOption], clip_id: str | None = None) -> ClipOp
     return clips[0]
 
 
-def analysis_request_from_form(form: dict[str, list[str]], clips: list[ClipOption]) -> AnalysisRequest:
-    clip = selected_clip(clips, _first(form, "clip_id", ""))
+def pipeline_request_from_form(form: dict[str, list[str]], clips: list[ClipOption]) -> PipelineRequest:
+    requested_clip_id = _first(form, "clip_id", "").strip()
+    clip = selected_clip(clips, requested_clip_id)
+    video_path = _first(form, "video_path", clip.video_path).strip()
     start_frame = _coerce_int(_first(form, "start_frame", str(clip.start_frame)), clip.start_frame, minimum=0)
     end_frame = _coerce_int(_first(form, "end_frame", str(clip.end_frame)), clip.end_frame, minimum=start_frame)
     stride = _coerce_int(_first(form, "stride", str(clip.stride)), clip.stride, minimum=1)
-    video_path = _first(form, "video_path", clip.video_path).strip()
-    roi = _roi_from_form(form, clip)
-    return AnalysisRequest(
-        clip_id=clip.clip_id,
+    skip = _checkbox(form, "skip_segmentation", default=False)
+    known_clip_ids = {item.clip_id for item in clips}
+    clip_id = requested_clip_id if requested_clip_id in known_clip_ids else _clip_id_from_video_path(video_path, requested_clip_id)
+    return PipelineRequest(
         video_path=video_path,
+        clip_id=clip_id,
         start_frame=start_frame,
         end_frame=end_frame,
         stride=stride,
-        roi=roi,
-        run_dashboard=_checkbox(form, "run_dashboard", default=False),
-        run_reel=_checkbox(form, "run_reel", default=False),
+        skip_segmentation=skip,
     )
 
 
-def artifact_inventory(root: Path, experiment_dir: Path) -> list[ArtifactRow]:
-    paths = [
-        ("App summary", experiment_dir / "summary.md", "local_app"),
-        ("App manifest", experiment_dir / "local_app_manifest.csv", "local_app"),
-        ("App config", experiment_dir / "config.yaml", "local_app"),
-        ("Generated dashboard", experiment_dir / "dashboard/dashboard.html", "dashboard"),
-        ("Generated reel", experiment_dir / "reel/reel_demo.html", "reel"),
-        ("Generated reel manifest", experiment_dir / "reel/reel_manifest.csv", "reel"),
-        ("Nivel 3 dashboard", DEFAULT_DASHBOARD_HTML, "evidence"),
-        ("Nivel 3 reel", DEFAULT_REEL_HTML, "evidence"),
-        ("Nivel 3 closure checks", DEFAULT_CLOSURE_CHECKS, "checks"),
-    ]
-    rows = []
-    for label, path, role in paths:
-        full_path = root / path
-        exists = full_path.exists()
-        size = full_path.stat().st_size if exists and full_path.is_file() else 0
-        rows.append(ArtifactRow(label, path.as_posix(), exists, size, role))
-    return rows
+def _clip_id_from_video_path(video_path: str, fallback: str = "manual") -> str:
+    source = Path(video_path).stem if video_path else fallback
+    if source in ("", "nuevo"):
+        source = "manual"
+    clip_id = re.sub(r"[^a-zA-Z0-9_-]+", "_", source).strip("_")[:48]
+    return clip_id or "manual"
 
 
-def read_closure_checks(root: Path, limit: int = 12) -> list[CheckRow]:
-    path = root / DEFAULT_CLOSURE_CHECKS
-    if not path.exists():
-        return [CheckRow("level3_closure", "missing", DEFAULT_CLOSURE_CHECKS.as_posix(), "closure checks not found")]
-    with path.open("r", newline="", encoding="utf-8") as handle:
-        rows = list(csv.DictReader(handle))
-    checks = [
-        CheckRow(
-            str(row.get("check_id", "")),
-            str(row.get("status", "")),
-            str(row.get("evidence", "")),
-            str(row.get("notes", "")),
-        )
-        for row in rows[:limit]
-    ]
-    return checks
+# ---------------------------------------------------------------------------
+# Pipeline execution
+# ---------------------------------------------------------------------------
+
+def _generate_experiment_dir(video_path: str) -> str:
+    stem = re.sub(r"[^a-zA-Z0-9_-]", "_", Path(video_path).stem)[:24]
+    ts = time.strftime("%Y%m%d_%H%M%S")
+    return f"experiments/run_{stem}_{ts}"
 
 
-def run_light_analysis(
+def _build_pipeline_cmd(
     root: Path,
-    config_path: Path,
-    experiment_dir: Path,
-    request: AnalysisRequest,
-    python_executable: str | None = None,
-) -> AnalysisResult:
-    experiment_path = root / experiment_dir
-    dashboard_dir = experiment_dir / "dashboard"
-    reel_dir = experiment_dir / "reel"
-    commands: list[CommandStatus] = []
-    python = python_executable or sys.executable
-    if request.run_dashboard:
-        commands.append(
-            _run_command(
-                root,
-                "dashboard",
-                [
-                    python,
-                    "scripts/run_level3_dashboard.py",
-                    "--config",
-                    config_path.as_posix(),
-                    "--experiment",
-                    dashboard_dir.as_posix(),
-                ],
-            )
+    request: PipelineRequest,
+    experiment_dir: str,
+    state: AppState,
+    previous_experiment_dir: str | None = None,
+) -> list[str]:
+    python = sys.executable
+    script = str(root / "scripts" / "run_unified_analysis.py")
+    cmd = [
+        python, script,
+        "--video", request.video_path,
+        "--clip-id", request.clip_id,
+        "--start-frame", str(request.start_frame),
+        "--end-frame", str(request.end_frame),
+        "--stride", str(request.stride),
+        "--experiment", experiment_dir,
+        "--no-browser",
+        "--no-serve",
+    ]
+    reuse_experiment_dir = previous_experiment_dir or state.experiment_dir
+    if request.skip_segmentation and reuse_experiment_dir:
+        detections = root / reuse_experiment_dir / "detections.json"
+        if detections.exists():
+            cmd += ["--detections", str(detections)]
+    return cmd
+
+
+def _launch_pipeline(root: Path, request: PipelineRequest, state: AppState) -> None:
+    experiment_dir = _generate_experiment_dir(request.video_path)
+    previous_experiment_dir = state.experiment_dir
+    state.start(request.video_path, experiment_dir)
+    cmd = _build_pipeline_cmd(root, request, experiment_dir, state, previous_experiment_dir)
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            cwd=str(root),
         )
-    if request.run_reel:
-        commands.append(
-            _run_command(
-                root,
-                "reel",
-                [
-                    python,
-                    "scripts/run_level3_reel.py",
-                    "--config",
-                    config_path.as_posix(),
-                    "--experiment",
-                    reel_dir.as_posix(),
-                    "--dashboard-html",
-                    (dashboard_dir / "dashboard.html").as_posix(),
-                ],
-            )
-        )
-    config = load_config(root / config_path)
-    write_local_app_config(config, experiment_path, request, commands)
-    artifacts = artifact_inventory(root, experiment_dir)
-    checks = read_closure_checks(root)
-    status = "pass" if all(command.status == "pass" for command in commands) else "fail"
-    if not commands:
-        status = "pass"
-    result = AnalysisResult(
-        status=status,
-        message="analysis completed" if status == "pass" else "analysis completed with failures",
-        generated_at=_timestamp(),
-        request=request,
-        commands=commands,
-        artifacts=artifacts,
-        checks=checks,
-        summary_path=(experiment_dir / "summary.md").as_posix(),
-        manifest_path=(experiment_dir / "local_app_manifest.csv").as_posix(),
+    except (FileNotFoundError, OSError) as exc:
+        state.fail(str(exc))
+        return
+    t = threading.Thread(target=_pipeline_reader, args=(proc, state), daemon=True)
+    t.start()
+
+
+def _pipeline_reader(proc: subprocess.Popen, state: AppState) -> None:
+    assert proc.stdout is not None
+    for raw in proc.stdout:
+        state.append_log(raw.rstrip())
+    proc.wait()
+    if proc.returncode == 0:
+        state.complete()
+    else:
+        state.fail(f"pipeline terminó con código {proc.returncode}")
+
+
+# ---------------------------------------------------------------------------
+# Results data
+# ---------------------------------------------------------------------------
+
+@dataclass(frozen=True)
+class ExperimentMetrics:
+    highlight_count: int
+    top_score: float
+    frame_count: int
+    event_count: int
+    has_voronoi: bool
+    has_graph: bool
+    voronoi_path: str
+    graph_path: str
+    highlights_csv: str
+    tracks_csv: str
+    events_json: str
+    playback_html: str
+
+
+def _read_experiment_metrics(root: Path, experiment_dir: str) -> ExperimentMetrics:
+    base = root / experiment_dir
+    highlights_path = first_existing(base / ADVANCED_EVENTS_DIR / HIGHLIGHTS_CSV, base / LEGACY_ADVANCED_EVENTS_DIR / LEGACY_HIGHLIGHTS_CSV)
+    tracks_path = first_existing(base / SPATIAL_DIR / SPATIAL_TRACKS_CSV, base / LEGACY_SPATIAL_DIR / LEGACY_SPATIAL_TRACKS_CSV)
+    events_path = first_existing(base / ADVANCED_EVENTS_DIR / ADVANCED_EVENTS_JSON, base / LEGACY_ADVANCED_EVENTS_DIR / LEGACY_ADVANCED_EVENTS_JSON)
+    highlights_csv = highlights_path.as_posix()
+    tracks_csv = tracks_path.as_posix()
+    events_json = events_path.as_posix()
+    playback_html = (base / "live_playback" / "playback.html").as_posix()
+    viz_dir = first_existing(base / VISUALIZATIONS_DIR, base / LEGACY_VISUALIZATIONS_DIR)
+    voronoi = viz_dir / "voronoi.png"
+    graph = viz_dir / "interaction_graph.png"
+
+    highlight_count = 0
+    top_score = 0.0
+    try:
+        rows = read_csv_rows(root / highlights_csv)
+        highlight_count = len(rows)
+        scores = [float(r.get("score", 0) or 0) for r in rows if r.get("score")]
+        top_score = max(scores) if scores else 0.0
+    except Exception:
+        pass
+
+    event_count = 0
+    frame_count = 0
+    try:
+        events = read_json_events(root / events_json)
+        event_count = len(events)
+    except Exception:
+        pass
+    try:
+        tracks = read_csv_rows(root / tracks_csv)
+        frames = {r.get("frame") for r in tracks if r.get("frame")}
+        frame_count = len(frames)
+    except Exception:
+        pass
+
+    return ExperimentMetrics(
+        highlight_count=highlight_count,
+        top_score=top_score,
+        frame_count=frame_count,
+        event_count=event_count,
+        has_voronoi=voronoi.exists(),
+        has_graph=graph.exists(),
+        voronoi_path=voronoi.relative_to(root).as_posix() if voronoi.exists() else "",
+        graph_path=graph.relative_to(root).as_posix() if graph.exists() else "",
+        highlights_csv=Path(highlights_csv).relative_to(root).as_posix() if (root / highlights_csv).exists() else "",
+        tracks_csv=Path(tracks_csv).relative_to(root).as_posix() if (root / tracks_csv).exists() else "",
+        events_json=Path(events_json).relative_to(root).as_posix() if (root / events_json).exists() else "",
+        playback_html=Path(playback_html).relative_to(root).as_posix() if (root / playback_html).exists() else "",
     )
-    write_local_app_manifest(root, experiment_dir, result)
-    write_local_app_summary(root, experiment_dir, result)
-    result = replace(result, artifacts=artifact_inventory(root, experiment_dir))
-    write_local_app_manifest(root, experiment_dir, result)
-    write_local_app_summary(root, experiment_dir, result)
-    return result
 
 
-def run_smoke_test(root: Path, config_path: Path, experiment_dir: Path) -> AnalysisResult:
-    config = load_config(root / config_path)
-    clips = clip_options_from_config(config)
+def _read_highlights(root: Path, experiment_dir: str, limit: int = 10) -> list[dict]:
+    base = root / experiment_dir
+    csv_path = first_existing(base / ADVANCED_EVENTS_DIR / HIGHLIGHTS_CSV, base / LEGACY_ADVANCED_EVENTS_DIR / LEGACY_HIGHLIGHTS_CSV)
+    if not csv_path.exists():
+        return []
+    try:
+        return list(read_csv_rows(csv_path))[:limit]
+    except Exception:
+        return []
+
+
+# ---------------------------------------------------------------------------
+# Screen renderers
+# ---------------------------------------------------------------------------
+
+def render_home(root: Path, state: AppState) -> str:
+    snap = state.snapshot()
+    metrics: ExperimentMetrics | None = None
+    if snap["status"] == "complete" and snap["experiment_dir"]:
+        try:
+            metrics = _read_experiment_metrics(root, snap["experiment_dir"])
+        except Exception:
+            pass
+    return "\n".join([
+        "<!doctype html>",
+        '<html lang="es">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        "<title>FutBotMX</title>",
+        f"<style>{_css()}</style>",
+        "</head>",
+        f'<body {ui_body_attrs("launcher", "home-page")}>',
+        '<main class="fb-shell">',
+        _topbar_html("FutBotMX Analysis Center", "Centro de analisis deportivo", snap["status"]),
+        _home_metrics_html(snap, metrics),
+        _home_nav_html(snap),
+        _tech_stack_html(),
+        "</main>",
+        "</body>",
+        "</html>",
+    ]) + "\n"
+
+
+def render_analyze(root: Path, clips: list[ClipOption], state: AppState) -> str:
+    snap = state.snapshot()
     clip = selected_clip(clips)
-    request = AnalysisRequest(
-        clip_id=clip.clip_id,
-        video_path=clip.video_path,
-        start_frame=clip.start_frame,
-        end_frame=clip.end_frame,
-        stride=clip.stride,
-        roi=clip.roi,
-        run_dashboard=False,
-        run_reel=False,
+    has_detections = state.has_detections(str(root))
+    clip_json = json.dumps([
+        {
+            "clip_id": c.clip_id,
+            "video_path": c.video_path,
+            "start_frame": c.start_frame,
+            "end_frame": c.end_frame,
+            "stride": c.stride,
+        }
+        for c in clips
+    ], ensure_ascii=True)
+    return "\n".join([
+        "<!doctype html>",
+        '<html lang="es">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        "<title>FutBotMX — Análisis</title>",
+        f"<style>{_css()}</style>",
+        "</head>",
+        f'<body {ui_body_attrs("launcher", "analyze-page")}>',
+        '<main class="fb-shell">',
+        _topbar_html("Nuevo analisis tactico", "Pipeline deportivo end-to-end", snap["status"]),
+        _analyze_form_html(clip, clips, has_detections, snap),
+        _analyze_progress_html(snap),
+        _fb_overlay_html(),
+        "</main>",
+        f"<script>window.FB_CLIPS={clip_json};{_analyze_js()}</script>",
+        "</body>",
+        "</html>",
+    ]) + "\n"
+
+
+def render_results(root: Path, state: AppState) -> str:
+    snap = state.snapshot()
+    if not snap["experiment_dir"] or snap["status"] not in ("complete", "error"):
+        return _results_empty_html(snap)
+    metrics = None
+    highlights: list[dict] = []
+    try:
+        metrics = _read_experiment_metrics(root, snap["experiment_dir"])
+        highlights = _read_highlights(root, snap["experiment_dir"])
+    except Exception:
+        pass
+    return "\n".join([
+        "<!doctype html>",
+        '<html lang="es">',
+        "<head>",
+        '<meta charset="utf-8">',
+        '<meta name="viewport" content="width=device-width, initial-scale=1">',
+        "<title>FutBotMX — Resultados</title>",
+        f"<style>{_css()}</style>",
+        "</head>",
+        f'<body {ui_body_attrs("report", "results-page")}>',
+        '<main class="fb-shell">',
+        _topbar_html("Resultados tacticos", _esc(Path(snap["video_path"]).name), "complete"),
+        _results_metrics_html(metrics),
+        _results_playback_html(),
+        _results_visualizations_html(metrics),
+        _results_highlights_html(highlights),
+        _results_downloads_html(metrics),
+        "</main>",
+        "</body>",
+        "</html>",
+    ]) + "\n"
+
+
+# ---------------------------------------------------------------------------
+# Internal HTML builders
+# ---------------------------------------------------------------------------
+
+def _topbar_html(title: str, subtitle: str, status: str) -> str:
+    nav = """
+  <nav class="topbar-nav">
+    <a href="/">Inicio</a>
+    <a href="/analyze">Analizar</a>
+    <a href="/results">Resultados</a>
+  </nav>"""
+    return f"""
+<header class="topbar fb-topbar">
+  <div>
+    <p class="eyebrow">{_esc(subtitle)}</p>
+    <h1>{_esc(title)}</h1>
+  </div>{nav}
+  <span class="pill status-{_esc(status)}">{_esc(status)}</span>
+</header>"""
+
+
+def _home_metrics_html(snap: dict, metrics: ExperimentMetrics | None) -> str:
+    if metrics is None:
+        hl = "—"
+        score = "—"
+        frames = "—"
+        events = "—"
+        note = "Sin análisis previo"
+    else:
+        hl = str(metrics.highlight_count)
+        score = f"{metrics.top_score:.2f}" if metrics.top_score else "—"
+        frames = str(metrics.frame_count)
+        events = str(metrics.event_count)
+        note = _esc(snap.get("video_path", ""))
+    return f"""
+<section class="home-metrics">
+  <ul class="summary-grid">
+    <li><span>Highlights</span><strong>{hl}</strong><em>detectados</em></li>
+    <li><span>Score máx.</span><strong>{score}</strong><em>highlight top</em></li>
+    <li><span>Frames</span><strong>{frames}</strong><em>analizados</em></li>
+    <li><span>Eventos</span><strong>{events}</strong><em>registrados</em></li>
+  </ul>
+  <p class="home-note">{note}</p>
+</section>"""
+
+
+def _home_nav_html(snap: dict) -> str:
+    results_disabled = "" if snap["status"] == "complete" else " disabled"
+    results_href = "/results" if snap["status"] == "complete" else "#"
+    running_note = '<p class="running-note">Pipeline en curso — <a href="/analyze">ver progreso</a></p>' if snap["status"] == "running" else ""
+    return f"""
+<section class="home-nav">
+  <div class="home-nav-grid">
+    <a href="/analyze" class="nav-card primary">
+      <span class="nav-icon">▶</span>
+      <strong>Analizar video</strong>
+      <span>Selecciona un video y corre el pipeline completo end-to-end</span>
+    </a>
+    <a href="{results_href}" class="nav-card secondary{results_disabled}">
+      <span class="nav-icon">◉</span>
+      <strong>Ver resultados</strong>
+      <span>Métricas, highlights, mapas y descargas del último análisis</span>
+    </a>
+  </div>
+  {running_note}
+</section>"""
+
+
+def _tech_stack_html() -> str:
+    return """
+<section class="tech-stack">
+  <p class="stack-label">Stack</p>
+  <div class="stack-pills">
+    <span class="pill">Grounded-SAM 3</span>
+    <span class="pill">OWLv2</span>
+    <span class="pill">ByteTrack</span>
+    <span class="pill">Táctica avanzada</span>
+    <span class="pill">Voronoi</span>
+  </div>
+</section>"""
+
+
+def _analyze_form_html(clip: ClipOption, clips: list[ClipOption], has_detections: bool, snap: dict) -> str:
+    is_running = snap["status"] == "running"
+    disabled = " disabled" if is_running else ""
+    skip_html = ""
+    if has_detections:
+        skip_html = f"""
+  <label class="toggle skip-option">
+    <input type="checkbox" name="skip_segmentation">
+    Reutilizar detecciones previas
+    <span class="skip-note">(omite Grounded-SAM)</span>
+  </label>"""
+    clips_html = "".join(
+        f'<option value="{_esc(item.clip_id)}"{" selected" if item.clip_id == clip.clip_id else ""}>'
+        f'{_esc(item.clip_id)} · {_esc(Path(item.video_path).name or item.video_path)}</option>'
+        for item in clips
     )
-    command = CommandStatus("server_smoke", "pass", "render local app", "index rendered without starting long-lived server", 0.0)
-    write_local_app_config(config, root / experiment_dir, request, [command])
-    result = AnalysisResult(
-        status="pass",
-        message="smoke test completed",
-        generated_at=_timestamp(),
-        request=request,
-        commands=[command],
-        artifacts=artifact_inventory(root, experiment_dir),
-        checks=read_closure_checks(root),
-        summary_path=(experiment_dir / "summary.md").as_posix(),
-        manifest_path=(experiment_dir / "local_app_manifest.csv").as_posix(),
-    )
-    write_local_app_manifest(root, experiment_dir, result)
-    write_local_app_summary(root, experiment_dir, result)
-    result = replace(result, artifacts=artifact_inventory(root, experiment_dir))
-    write_local_app_manifest(root, experiment_dir, result)
-    write_local_app_summary(root, experiment_dir, result)
-    return result
+    if not clips_html:
+        clips_html = '<option value="manual" selected>manual</option>'
+    selected_video_name = _esc(Path(clip.video_path).name or clip.video_path or "Sin video seleccionado")
+    return f"""
+<section class="analyze-section panel fb-panel">
+  <h2>Configuración del análisis</h2>
+  <form method="post" action="/start-analysis" id="analyze-form">
+    <div class="field-group">
+      <label>Video
+        <div class="video-picker">
+          <div class="video-field">
+            <input type="text" name="video_path" id="video_path"
+                   value="{_esc(clip.video_path)}" placeholder="/ruta/al/video.mp4"
+                   aria-describedby="video_selected_name video_meta"{disabled}>
+            <button type="button" class="btn-browse" onclick="fbOpen()" title="📁 Explorar" aria-label="Explorar videos"{disabled}>
+              <span>📁</span><span>Explorar</span>
+            </button>
+          </div>
+          <div class="video-selected" id="video_selected">
+            <span>Seleccionado</span>
+            <strong id="video_selected_name">{selected_video_name}</strong>
+          </div>
+        </div>
+      </label>
+      <div class="video-meta" id="video_meta"></div>
+    </div>
+    <div class="field-group">
+      <label>Clip ID
+        <select name="clip_id" id="clip_id"{disabled}>
+          {clips_html}
+          <option value="nuevo">nuevo · seleccionar desde explorar</option>
+        </select>
+      </label>
+    </div>
+    <div class="field-group triple">
+      <label>Frame inicial
+        <input type="number" name="start_frame" id="start_frame"
+               min="0" value="{clip.start_frame}"{disabled}>
+      </label>
+      <label>Frame final
+        <input type="number" name="end_frame" id="end_frame"
+               min="0" value="{clip.end_frame}"{disabled}>
+      </label>
+      <label>Stride
+        <input type="number" name="stride" id="stride"
+               min="1" value="{clip.stride}"{disabled}>
+      </label>
+    </div>
+    {skip_html}
+    <div class="action-stack">
+      <button type="submit" class="btn-primary"{disabled}>
+        {'⏳ Pipeline en curso…' if is_running else '▶ Ejecutar análisis completo'}
+      </button>
+    </div>
+  </form>
+</section>"""
 
 
-def write_local_app_config(
-    config: dict[str, Any],
-    experiment_path: Path,
-    request: AnalysisRequest,
-    commands: list[CommandStatus],
-) -> None:
-    snapshot = dict(config)
-    snapshot["local_app"] = {
-        "rule_version": RULE_VERSION,
-        "architecture": "html_plus_local_stdlib_backend",
-        "server": "http.server.ThreadingHTTPServer",
-        "request": asdict(request),
-        "commands": [asdict(command) for command in commands],
-        "outputs": [
-            "summary.md",
-            "local_app_manifest.csv",
-            "config.yaml",
-            "dashboard/dashboard.html",
-            "reel/reel_demo.html",
-        ],
-    }
-    write_config_snapshot(snapshot, experiment_path / "config.yaml")
+def _analyze_progress_html(snap: dict) -> str:
+    show = snap["status"] in ("running", "complete", "error")
+    hidden = "" if show else " hidden"
+    status = snap["status"]
+    seg_cls = _stage_class(status, "segmentation", snap)
+    ana_cls = _stage_class(status, "analysis", snap)
+    done_cls = _stage_class(status, "complete", snap)
+    return f"""
+<section class="progress-section panel fb-panel" id="progress-panel"{hidden}>
+  <h2>Progreso del pipeline</h2>
+  <div class="stage-bar">
+    <div class="stage-step {seg_cls}" id="stage-segmentation">
+      <span class="stage-num">1</span>
+      <span class="stage-label">Segmentación<br><small>Grounded-SAM</small></span>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage-step {ana_cls}" id="stage-analysis">
+      <span class="stage-num">2</span>
+      <span class="stage-label">Análisis<br><small>Táctico</small></span>
+    </div>
+    <div class="stage-connector"></div>
+    <div class="stage-step {done_cls}" id="stage-complete">
+      <span class="stage-num">3</span>
+      <span class="stage-label">Listo</span>
+    </div>
+  </div>
+  <div class="log-output" id="log-output" aria-live="polite"></div>
+  <div class="results-cta" id="results-cta" hidden>
+    <a href="/results" class="btn-primary">Ver resultados →</a>
+  </div>
+</section>"""
 
 
-def write_local_app_manifest(root: Path, experiment_dir: Path, result: AnalysisResult) -> None:
-    rows = [
-        _manifest_row("summary", "md", "summary.md", "local_app", True, "local_app", "Local app execution summary."),
-        _manifest_row("config", "yaml", "config.yaml", "configs/default.yaml", True, "local_app", "Configuration snapshot."),
-        _manifest_row("local_app_manifest", "csv", "local_app_manifest.csv", "local_app", True, "manifest", "Local app artifact manifest."),
-    ]
-    for artifact in result.artifacts:
+def _stage_class(status: str, stage: str, snap: dict) -> str:
+    if status == "idle":
+        return "pending"
+    if stage == "complete":
+        return "done" if status == "complete" else ("error" if status == "error" else "pending")
+    return "done" if status == "complete" else "active" if status == "running" else "pending"
+
+
+def _results_empty_html(snap: dict) -> str:
+    msg = "Ejecuta un análisis primero para ver los resultados."
+    if snap["status"] == "running":
+        msg = 'Pipeline en curso. <a href="/analyze">Ver progreso →</a>'
+    elif snap["status"] == "error":
+        msg = f'El último pipeline terminó con error: {_esc(snap.get("error", ""))}'
+    return f"""<!doctype html>
+<html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>FutBotMX — Resultados</title>
+<style>{_css()}</style></head>
+<body {ui_body_attrs("report", "results-page")}>
+<main class="fb-shell">
+{_topbar_html("Resultados tacticos", "Sin datos disponibles", snap["status"])}
+<section class="panel fb-panel empty-state">
+  <p>{msg}</p>
+  <a href="/analyze" class="btn-primary">Analizar video →</a>
+</section>
+</main></body></html>"""
+
+
+def _results_metrics_html(metrics: ExperimentMetrics | None) -> str:
+    if metrics is None:
+        return '<section class="results-metrics"><ul class="summary-grid"></ul></section>'
+    score = f"{metrics.top_score:.2f}" if metrics.top_score else "—"
+    return f"""
+<section class="results-metrics">
+  <ul class="summary-grid">
+    <li><span>Highlights</span><strong>{metrics.highlight_count}</strong><em>detectados</em></li>
+    <li><span>Score máx.</span><strong>{score}</strong><em>highlight top</em></li>
+    <li><span>Frames</span><strong>{metrics.frame_count}</strong><em>con tracks</em></li>
+    <li><span>Eventos</span><strong>{metrics.event_count}</strong><em>registrados</em></li>
+  </ul>
+</section>"""
+
+
+def _results_playback_html() -> str:
+    return """
+<section class="results-playback panel fb-panel">
+  <div class="section-heading">
+    <h2>Live Playback</h2>
+    <p>Video con overlays, tracks, eventos y minimapa en tiempo real.</p>
+  </div>
+  <iframe src="/playback/" title="Live Playback" class="playback-frame"
+          loading="lazy" allowfullscreen></iframe>
+</section>"""
+
+
+def _results_visualizations_html(metrics: ExperimentMetrics | None) -> str:
+    def _img(path: str, label: str, exists: bool) -> str:
+        if exists and path:
+            href = _file_href(path)
+            return f"""
+<figure>
+  <img src="{href}" alt="{_esc(label)}" loading="lazy">
+  <figcaption>{_esc(label)}</figcaption>
+</figure>"""
+        return f'<figure class="missing viz-placeholder"><figcaption>{_esc(label)} — no disponible</figcaption></figure>'
+
+    voronoi = _img(metrics.voronoi_path if metrics else "", "Control espacial (Voronoi)", bool(metrics and metrics.has_voronoi))
+    graph = _img(metrics.graph_path if metrics else "", "Grafo de interacciones", bool(metrics and metrics.has_graph))
+    return f"""
+<section class="results-viz panel fb-panel">
+  <div class="section-heading">
+    <h2>Visualizaciones</h2>
+    <p>Análisis espacial y red de interacciones entre robots.</p>
+  </div>
+  <div class="visual-grid">
+    {voronoi}
+    {graph}
+  </div>
+</section>"""
+
+
+def _results_highlights_html(highlights: list[dict]) -> str:
+    if not highlights:
+        return """
+<section class="results-highlights panel fb-panel">
+  <h2>Highlights</h2>
+  <p class="muted">No se encontraron highlights para este experimento.</p>
+</section>"""
+    rows = []
+    for i, row in enumerate(highlights, 1):
+        score = row.get("score", "")
+        conf = row.get("confidence", row.get("conf", ""))
+        track = row.get("track_id", row.get("robot_id", ""))
+        label = row.get("event_label", row.get("label", ""))
+        frame_start = row.get("frame_start", row.get("start_frame", ""))
+        try:
+            score_val = float(score)
+            score_disp = f"{score_val:.3f}"
+        except (TypeError, ValueError):
+            score_disp = _esc(str(score))
         rows.append(
-            _manifest_row(
-                _asset_id(artifact.label),
-                Path(artifact.path).suffix.lstrip(".") or "artifact",
-                _rel_to_experiment(artifact.path, experiment_dir),
-                artifact.path,
-                artifact.exists,
-                artifact.role,
-                f"{artifact.label}; size={artifact.size_bytes}",
-            )
+            "<tr>"
+            f"<td>{i}</td>"
+            f"<td>{_esc(str(track))}</td>"
+            f"<td><strong>{score_disp}</strong></td>"
+            f"<td>{_esc(str(conf))}</td>"
+            f"<td>{_esc(str(frame_start))}</td>"
+            f"<td>{_esc(str(label))}</td>"
+            "</tr>"
         )
-    output = root / experiment_dir / "local_app_manifest.csv"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    with output.open("w", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=MANIFEST_FIELDS, lineterminator="\n")
-        writer.writeheader()
-        writer.writerows(rows)
+    return f"""
+<section class="results-highlights panel fb-panel">
+  <div class="section-heading">
+    <h2>Highlights</h2>
+    <p>Top {len(highlights)} por score de relevancia.</p>
+  </div>
+  <div class="table-scroll">
+    <table>
+      <thead><tr><th>#</th><th>Robot</th><th>Score</th><th>Conf.</th><th>Frame</th><th>Evento</th></tr></thead>
+      <tbody>{"".join(rows)}</tbody>
+    </table>
+  </div>
+</section>"""
 
 
-def write_local_app_summary(root: Path, experiment_dir: Path, result: AnalysisResult) -> None:
-    lines = [
-        "# Interfaz Local De Ejecucion",
-        "",
-        "## Resultado",
-        "",
-        f"- Estado: `{result.status}`.",
-        f"- Regla: `{RULE_VERSION}`.",
-        "- Arquitectura: `HTML + backend local con libreria estandar`.",
-        f"- Clip seleccionado: `{result.request.clip_id}`.",
-        f"- Frames: `{result.request.start_frame}-{result.request.end_frame}`.",
-        f"- Stride: `{result.request.stride}`.",
-        f"- ROI: `{','.join(str(value) for value in result.request.roi)}`.",
-        "",
-        "## Comandos",
-        "",
+def _results_downloads_html(metrics: ExperimentMetrics | None) -> str:
+    if metrics is None:
+        return ""
+    items = [
+        ("Highlights CSV", metrics.highlights_csv),
+        ("Tracks CSV", metrics.tracks_csv),
+        ("Events JSON", metrics.events_json),
+        ("Playback HTML", metrics.playback_html),
     ]
-    for command in result.commands:
-        lines.append(
-            f"- `{command.name}`: `{command.status}` en `{command.duration_sec:.3f}s`; "
-            f"{command.notes}"
-        )
-    lines.extend(["", "## Artefactos", ""])
-    for artifact in result.artifacts:
-        state = "presente" if artifact.exists else "pendiente"
-        lines.append(f"- `{artifact.path}`: `{state}`, rol `{artifact.role}`.")
-    pass_count = sum(1 for check in result.checks if check.status == "pass")
-    fail_count = sum(1 for check in result.checks if check.status not in {"pass", ""})
-    lines.extend(
-        [
-            "",
-            "## Checks",
-            "",
-            f"- Checks Nivel 3 leidos: `{len(result.checks)}`.",
-            f"- Pass: `{pass_count}`.",
-            f"- No pass: `{fail_count}`.",
-            "",
-            "## Comando",
-            "",
-            "```bash",
-            ".venv/bin/python scripts/run_local_app.py",
-            "```",
-        ]
-    )
-    output = root / experiment_dir / "summary.md"
-    output.parent.mkdir(parents=True, exist_ok=True)
-    output.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    links = []
+    for label, path in items:
+        if path:
+            links.append(f'<a class="dl-link btn-link" href="{_file_href(path)}" target="_blank" rel="noreferrer">{_esc(label)}</a>')
+    if not links:
+        return ""
+    return f"""
+<section class="results-downloads panel fb-panel">
+  <h2>Descargas</h2>
+  <div class="quick-links">{"".join(links)}</div>
+</section>"""
 
 
-def render_index(
-    root: Path,
-    config_path: Path,
-    experiment_dir: Path,
-    clips: list[ClipOption],
-    result: AnalysisResult | None = None,
-    error: str | None = None,
-) -> str:
-    current = result.request if result else _request_from_clip(selected_clip(clips))
-    artifacts = result.artifacts if result else artifact_inventory(root, experiment_dir)
-    checks = result.checks if result else read_closure_checks(root)
-    clip_json = json.dumps([asdict(clip) for clip in clips], ensure_ascii=True)
-    return "\n".join(
-        [
-            "<!doctype html>",
-            '<html lang="es">',
-            "<head>",
-            '<meta charset="utf-8">',
-            '<meta name="viewport" content="width=device-width, initial-scale=1">',
-            "<title>FutBotMX Local</title>",
-            f"<style>{_css()}</style>",
-            "</head>",
-            "<body>",
-            '<main class="shell">',
-            _header(result),
-            _error_html(error),
-            '<form method="post" action="/run-analysis" class="layout">',
-            _input_panel(clips, current),
-            _control_panel(current),
-            _action_panel(current),
-            "</form>",
-            _result_panel(result, artifacts, checks),
-            "</main>",
-            f"<script>window.FUTBOT_CLIPS = {clip_json};{_js()}</script>",
-            "</body>",
-            "</html>",
-        ]
-    ) + "\n"
+def _fb_overlay_html() -> str:
+    return """
+<div class="fb-overlay" id="fb-overlay" role="dialog" aria-modal="true" aria-label="Explorar videos" hidden>
+  <div class="fb-panel">
+    <div class="fb-header">
+      <span id="fb-path" class="fb-path"></span>
+      <button type="button" class="fb-close" onclick="fbClose()" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="fb-list" id="fb-list" role="listbox"></div>
+  </div>
+</div>"""
 
+
+# ---------------------------------------------------------------------------
+# CSS
+# ---------------------------------------------------------------------------
+
+def _css() -> str:
+    return shared_css() + """
+/* ── Product app styles ───────────────────────────────────────────────── */
+.topbar-nav {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 1;
+}
+.topbar-nav a {
+  color: #f2ffe7;
+  font-size: 13px;
+  font-weight: 800;
+  text-decoration: none;
+  border: 1px solid rgba(255,255,255,.22);
+  border-radius: 6px;
+  padding: 5px 10px;
+}
+.topbar-nav a:hover { background: rgba(183,243,0,.18); }
+
+.status-idle    { background:#ecffd8; color:var(--fb-navy); }
+.status-running { background:#fff6cf; color:#725000; }
+.status-complete{ background:#ecffd8; color:var(--fb-navy); }
+.status-error   { background:#fff2ee; color:var(--fb-alert); }
+
+.panel,
+.fb-panel {
+  background: rgba(255,255,255,.96);
+  border: 1px solid var(--fb-line);
+  border-radius: var(--fb-radius);
+  padding: 16px;
+  box-shadow: 0 10px 24px rgba(0,75,58,.08);
+}
+
+/* Home */
+.home-metrics { padding: 18px 0 4px; }
+.home-note { margin: 8px 0 0; color: var(--fb-muted); font-size: 12px; overflow-wrap: anywhere; }
+
+.home-nav { padding: 10px 0 18px; }
+.home-nav-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+.nav-card {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  min-height: 148px;
+  background:
+    linear-gradient(135deg, rgba(0,75,58,.98), rgba(0,200,83,.86)),
+    var(--fb-navy);
+  border: 1px solid var(--fb-line);
+  border-top: 4px solid var(--fb-lime);
+  border-radius: var(--fb-radius);
+  padding: 18px;
+  text-decoration: none;
+  color: #ffffff;
+  box-shadow: 0 14px 32px rgba(0,75,58,.16);
+  transition: transform .15s, box-shadow .15s;
+}
+.nav-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -12% -34% 48%;
+  height: 90%;
+  background: rgba(183,243,0,.28);
+  transform: skewX(-9deg);
+}
+.nav-card:hover { transform: translateY(-2px); box-shadow: 0 18px 40px rgba(0,75,58,.2); }
+.nav-card.secondary {
+  background: #ffffff;
+  color: var(--fb-ink);
+  border-top-color: var(--fb-green);
+}
+.nav-card.secondary.disabled { opacity: .5; pointer-events: none; }
+.nav-icon {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(183,243,0,.24);
+  font-size: 18px;
+  position: relative;
+  z-index: 1;
+}
+.nav-card strong { font-size: 22px; color: inherit; position: relative; z-index: 1; }
+.nav-card span:last-child { color: inherit; opacity: .82; font-size: 13px; line-height: 1.45; position: relative; z-index: 1; }
+.running-note { margin: 10px 0 0; color: var(--fb-amber); font-weight: 800; font-size: 13px; }
+
+.tech-stack { padding: 0 0 24px; }
+.stack-label { margin: 0 0 8px; color: var(--fb-muted); font-size: 12px; font-weight: 800; text-transform: uppercase; }
+.stack-pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.stack-pills .pill { background: #ecffd8; color: var(--fb-navy); border: 1px solid var(--fb-line); }
+
+/* Analyze */
+.analyze-section { margin-top: 14px; }
+.field-group { margin-bottom: 14px; }
+.video-picker {
+  display: grid;
+  gap: 7px;
+}
+.video-field {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: stretch;
+  width: 100%;
+}
+.video-field input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+}
+.btn-browse {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: auto;
+  min-width: 132px;
+  min-height: 42px;
+  border: 1px solid var(--fb-line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--fb-navy);
+  font-weight: 800;
+  padding: 0 16px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-browse:hover { border-color: var(--fb-green); background: #f2ffe7; }
+.video-selected {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 28px;
+  border: 1px solid var(--fb-line-soft);
+  border-radius: 6px;
+  background: #f6fff2;
+  padding: 5px 8px;
+  overflow: hidden;
+}
+.video-selected span {
+  flex: 0 0 auto;
+  color: var(--fb-muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.video-selected strong {
+  min-width: 0;
+  color: var(--fb-ink);
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.video-meta { color: var(--fb-muted); font-size: 12px; margin-top: 5px; min-height: 18px; }
+
+.skip-option { margin: 8px 0; }
+.skip-note { color: var(--fb-muted); font-size: 12px; }
+
+.action-stack { margin-top: 16px; }
+
+/* Progress */
+.progress-section { margin-top: 14px; }
+.stage-bar {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 16px 0;
+}
+.stage-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  min-width: 90px;
+}
+.stage-num {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  font-weight: 900;
+  font-size: 14px;
+  background: #e2f2e6;
+  color: var(--fb-muted);
+}
+.stage-step.active .stage-num  { background: var(--fb-lime); color: var(--fb-navy); }
+.stage-step.done .stage-num    { background: var(--fb-green); color: #fff; }
+.stage-step.error .stage-num   { background: var(--fb-alert); color: #fff; }
+.stage-label { font-size: 12px; font-weight: 700; text-align: center; color: var(--fb-muted); }
+.stage-step.active .stage-label,
+.stage-step.done .stage-label  { color: var(--fb-ink); }
+.stage-connector {
+  flex: 1;
+  height: 2px;
+  background: var(--fb-line);
+  margin-bottom: 24px;
+}
+
+.log-output {
+  background: #031b14;
+  color: #b7f300;
+  font-family: "JetBrains Mono", "Fira Code", ui-monospace, monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 12px;
+  border-radius: 6px;
+  min-height: 120px;
+  max-height: 320px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.results-cta { margin-top: 14px; }
+.results-cta a.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 20px;
+  background: var(--fb-navy);
+  color: #fff;
+  border-radius: 6px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
+/* File browser overlay */
+.fb-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,75,58,.55);
+  z-index: 900;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 60px;
+}
+.fb-overlay[hidden] { display: none; }
+.fb-panel {
+  background: #fff;
+  border-radius: var(--fb-radius);
+  box-shadow: var(--fb-shadow);
+  width: min(620px, calc(100vw - 32px));
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.fb-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--fb-line);
+  background: #ecffd8;
+}
+.fb-path {
+  flex: 1;
+  font-size: 12px;
+  font-family: monospace;
+  color: var(--fb-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fb-close {
+  border: none;
+  background: none;
+  color: var(--fb-muted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.fb-close:hover { background: var(--fb-line); }
+.fb-list { flex: 1; overflow-y: auto; padding: 6px 0; }
+.fb-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--fb-ink);
+  border: none;
+  background: none;
+  width: 100%;
+  text-align: left;
+}
+.fb-item:hover { background: #f2ffe7; }
+.fb-item.dir { color: var(--fb-navy); font-weight: 700; }
+.fb-item.file { color: var(--fb-ink); }
+.fb-item.up { color: var(--fb-muted); }
+.fb-empty { padding: 20px 14px; color: var(--fb-muted); font-size: 13px; }
+
+/* Results */
+.results-playback { margin-top: 14px; }
+.playback-frame {
+  width: 100%;
+  min-height: 580px;
+  border: 1px solid var(--fb-line);
+  border-radius: 6px;
+  background: #031b14;
+  margin-top: 10px;
+  display: block;
+}
+.results-viz,
+.results-highlights,
+.results-downloads { margin-top: 14px; }
+.viz-placeholder { min-height: 200px; }
+.table-scroll { overflow-x: auto; }
+
+.empty-state {
+  margin-top: 14px;
+  padding: 40px 24px;
+  text-align: center;
+  color: var(--fb-muted);
+}
+.empty-state a.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  min-height: 40px;
+  padding: 0 20px;
+  background: var(--fb-navy);
+  color: #fff;
+  border-radius: 6px;
+  font-weight: 800;
+  text-decoration: none;
+  margin-top: 16px;
+}
+
+/* Shared form */
+label {
+  display: grid;
+  gap: 5px;
+  color: var(--fb-muted);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 10px;
+}
+input, select {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--fb-line);
+  border-radius: 6px;
+  padding: 7px 9px;
+  color: var(--fb-ink);
+  background: #fff;
+  font: inherit;
+}
+input:focus, select:focus {
+  outline: 0;
+  border-color: var(--fb-sky);
+  box-shadow: 0 0 0 3px rgba(0,210,91,.18);
+}
+button.btn-primary, a.btn-primary, input[type=submit].btn-primary {
+  background: var(--fb-navy);
+  color: #fff;
+  border-color: var(--fb-blue);
+}
+button {
+  width: 100%;
+  min-height: 40px;
+  border: 1px solid var(--fb-green);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--fb-navy);
+  font-weight: 800;
+  cursor: pointer;
+  font: inherit;
+}
+button:disabled { opacity: .5; cursor: not-allowed; }
+.toggle {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--fb-line);
+  border-radius: 6px;
+  padding: 7px 8px;
+  margin: 0;
+  color: var(--fb-ink);
+  background: #fff;
+}
+.toggle input { width: auto; min-height: 0; accent-color: var(--fb-green); }
+.triple { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; }
+.muted { color: var(--fb-muted); }
+a { color: var(--fb-navy); text-underline-offset: 2px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+  .home-nav-grid { grid-template-columns: 1fr; }
+  .triple { grid-template-columns: 1fr; }
+  .playback-frame { min-height: 420px; }
+}
+@media (max-width: 640px) {
+  .topbar-nav { display: none; }
+  .video-field { grid-template-columns: 1fr; }
+  .video-field .btn-browse { width: 100%; }
+  .video-selected { align-items: flex-start; flex-direction: column; gap: 2px; }
+  table { display: block; overflow-x: auto; white-space: nowrap; }
+}
+"""
+
+
+# ---------------------------------------------------------------------------
+# JavaScript (analyze page)
+# ---------------------------------------------------------------------------
+
+def _analyze_js() -> str:
+    return r"""
+/* Clip selector */
+function applyClip() {
+  var sel = document.getElementById('clip_id');
+  var clip = (window.FB_CLIPS || []).find(function(c){ return c.clip_id === sel.value; });
+  var pathInput = document.getElementById('video_path');
+  if (!clip) {
+    updateSelectedVideoName(pathInput ? pathInput.value : '');
+    return;
+  }
+  pathInput.value = clip.video_path || '';
+  document.getElementById('start_frame').value = clip.start_frame;
+  document.getElementById('end_frame').value = clip.end_frame;
+  document.getElementById('stride').value = clip.stride;
+  updateSelectedVideoName(clip.video_path || '');
+  if (clip.video_path) fetchVideoMeta(clip.video_path);
+}
+var clipSel = document.getElementById('clip_id');
+if (clipSel) clipSel.addEventListener('change', applyClip);
+
+/* Video metadata */
+var vpInput = document.getElementById('video_path');
+if (vpInput) {
+  var _metaTimer = null;
+  vpInput.addEventListener('input', function() {
+    clearTimeout(_metaTimer);
+    updateSelectedVideoName(vpInput.value.trim());
+    syncClipSelectWithPath(vpInput.value.trim());
+    _metaTimer = setTimeout(function() { fetchVideoMeta(vpInput.value.trim()); }, 600);
+  });
+  updateSelectedVideoName(vpInput.value.trim());
+  if (vpInput.value) fetchVideoMeta(vpInput.value.trim());
+}
+function basename(path) {
+  if (!path) return 'Sin video seleccionado';
+  return String(path).split(/[\/\\]/).filter(Boolean).pop() || path;
+}
+function updateSelectedVideoName(path) {
+  var el = document.getElementById('video_selected_name');
+  if (el) el.textContent = basename(path);
+}
+function syncClipSelectWithPath(path) {
+  var sel = document.getElementById('clip_id');
+  if (!sel) return;
+  var match = (window.FB_CLIPS || []).find(function(c){ return c.video_path === path; });
+  sel.value = match ? match.clip_id : 'nuevo';
+}
+function fetchVideoMeta(path) {
+  if (!path) return;
+  fetch('/playback/video-info?path=' + encodeURIComponent(path))
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      var meta = document.getElementById('video_meta');
+      if (!meta) return;
+      if (d.error) { meta.textContent = ''; return; }
+      meta.textContent = d.fps.toFixed(2) + ' fps  ·  ' + d.width + '×' + d.height + '  ·  ' + d.total_frames + ' frames  (' + d.duration_s.toFixed(1) + 's)';
+      document.getElementById('end_frame').value = Math.max(0, d.total_frames - 1);
+    }).catch(function(){});
+}
+
+/* File browser */
+window.fbOpen = function() {
+  var ov = document.getElementById('fb-overlay');
+  if (ov) { ov.hidden = false; fbLoad(''); }
+};
+window.fbClose = function() {
+  var ov = document.getElementById('fb-overlay');
+  if (ov) ov.hidden = true;
+};
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') fbClose(); });
+function fbLoad(dir) {
+  fetch('/playback/browse?dir=' + encodeURIComponent(dir || ''))
+    .then(function(r){ return r.json(); })
+    .then(function(d) {
+      document.getElementById('fb-path').textContent = d.current || '';
+      var list = document.getElementById('fb-list');
+      list.innerHTML = '';
+      if (d.parent !== undefined && d.parent !== null && d.parent !== '') {
+        var up = document.createElement('button');
+        up.className = 'fb-item up'; up.type = 'button';
+        up.textContent = '↑ ..';
+        up.onclick = function(){ fbLoad(d.parent); };
+        list.appendChild(up);
+      }
+      (d.dirs || []).forEach(function(item) {
+        var btn = document.createElement('button');
+        btn.className = 'fb-item dir'; btn.type = 'button';
+        btn.textContent = '📁 ' + item.name;
+        btn.onclick = function(){ fbLoad(item.path); };
+        list.appendChild(btn);
+      });
+      (d.files || []).forEach(function(item) {
+        var btn = document.createElement('button');
+        btn.className = 'fb-item file'; btn.type = 'button';
+        btn.textContent = '🎬 ' + item.name + ' — ' + item.size_mb.toFixed(1) + ' MB';
+        btn.onclick = function(){ fbSelectFile(item.path); };
+        list.appendChild(btn);
+      });
+      if (!d.dirs.length && !d.files.length) {
+        var em = document.createElement('p');
+        em.className = 'fb-empty'; em.textContent = 'Sin videos en esta carpeta.';
+        list.appendChild(em);
+      }
+    }).catch(function(){ });
+}
+function fbSelectFile(path) {
+  var inp = document.getElementById('video_path');
+  if (inp) {
+    inp.value = path;
+    updateSelectedVideoName(path);
+    syncClipSelectWithPath(path);
+    fetchVideoMeta(path);
+  }
+  fbClose();
+}
+
+/* SSE progress */
+(function() {
+  var panel = document.getElementById('progress-panel');
+  var logEl  = document.getElementById('log-output');
+  var cta    = document.getElementById('results-cta');
+  if (!panel) return;
+  var statusAttr = document.body.getAttribute('data-product-flow');
+  /* Only start SSE if panel is visible (running state) */
+  if (panel.hidden) return;
+  var es = new EventSource('/analyze-progress');
+  es.onmessage = function(e) {
+    var msg = JSON.parse(e.data);
+    if (msg.line) {
+      var line = document.createTextNode(msg.line + '\n');
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    if (msg.stage) updateStage(msg.stage);
+    if (msg.stage === 'complete' || msg.stage === 'error') {
+      es.close();
+      if (cta) cta.removeAttribute('hidden');
+    }
+  };
+  es.onerror = function() { es.close(); };
+  function updateStage(s) {
+    var steps = ['segmentation', 'analysis', 'complete'];
+    steps.forEach(function(step) {
+      var el = document.getElementById('stage-' + step);
+      if (!el) return;
+      var num = el.querySelector('.stage-num');
+      if (s === 'complete') {
+        el.querySelector('.stage-num') && setClass(el, 'done');
+      } else if (step === s) {
+        setClass(el, 'active');
+      }
+    });
+  }
+  function setClass(el, cls) {
+    el.classList.remove('pending', 'active', 'done', 'error');
+    el.classList.add(cls);
+  }
+})();
+"""
+
+
+# ---------------------------------------------------------------------------
+# Server
+# ---------------------------------------------------------------------------
 
 def resolve_artifact_path(root: Path, requested_path: str) -> Path:
     root_resolved = root.resolve()
@@ -421,15 +1328,16 @@ def resolve_artifact_path(root: Path, requested_path: str) -> Path:
 def serve_local_app(root: Path, config_path: Path, experiment_dir: Path, host: str, port: int) -> None:
     config = load_config(root / config_path)
     clips = clip_options_from_config(config)
-    handler = make_handler(root, config_path, experiment_dir, clips)
+    state = AppState()
+    handler = make_handler(root, config_path, experiment_dir, clips, state)
     server = ThreadingHTTPServer((host, port), handler)
     actual_host, actual_port = server.server_address
     display_host = host if host != "0.0.0.0" else actual_host
-    print(f"FutBotMX local app: http://{display_host}:{actual_port}", flush=True)
+    print(f"FutBotMX: http://{display_host}:{actual_port}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        print("Stopping FutBotMX local app", flush=True)
+        print("Stopping FutBotMX", flush=True)
     finally:
         server.server_close()
 
@@ -439,45 +1347,104 @@ def make_handler(
     config_path: Path,
     experiment_dir: Path,
     clips: list[ClipOption],
+    state: AppState,
 ) -> type[BaseHTTPRequestHandler]:
-    class LocalAppHandler(BaseHTTPRequestHandler):
-        server_version = "FutBotMXLocalApp/0.1"
+    config = load_config(root / config_path)
+    playback_config = live_playback_config_from_project(root, config, DEFAULT_LIVE_PLAYBACK_EXPERIMENT_DIR)
+    playback_context = build_live_playback_context(root, playback_config)
+    playback_context["config_path"] = config_path
+    LivePlaybackHandler = make_live_playback_handler(root, playback_context, route_prefix="/playback")
+
+    class AppHandler(LivePlaybackHandler):
+        server_version = "FutBotMXApp/1.0"
 
         def do_GET(self) -> None:
             parsed = urlparse(self.path)
-            if parsed.path == "/health":
+            path = parsed.path
+
+            if path == "/playback" or path.startswith("/playback/"):
+                super().do_GET()
+                return
+            if path == "/health":
                 self._send_text("ok\n", "text/plain; charset=utf-8")
                 return
-            if parsed.path == "/artifact":
+            if path == "/artifact":
                 self._send_artifact(parsed.query)
                 return
-            if parsed.path != "/":
-                self.send_error(404)
+            if path.startswith("/files/"):
+                self._send_file_path(unquote(path[len("/files/"):]))
                 return
-            self._send_html(render_index(root, config_path, experiment_dir, clips))
+            if path == "/analyze-progress":
+                self._stream_progress()
+                return
+            if path == "/analyze":
+                self._send_html(render_analyze(root, clips, state))
+                return
+            if path == "/results":
+                self._send_html(render_results(root, state))
+                return
+            if path in ("/", "/index.html"):
+                self._send_html(render_home(root, state))
+                return
+            self.send_error(404)
 
         def do_POST(self) -> None:
             parsed = urlparse(self.path)
+            if parsed.path == "/playback" or parsed.path.startswith("/playback/"):
+                super().do_POST()
+                return
             length = int(self.headers.get("Content-Length", "0") or "0")
             body = self.rfile.read(length).decode("utf-8")
             form = parse_qs(body)
-            if parsed.path == "/run-analysis":
-                try:
-                    request = analysis_request_from_form(form, clips)
-                    result = run_light_analysis(root, config_path, experiment_dir, request)
-                    self._send_html(render_index(root, config_path, experiment_dir, clips, result=result))
-                except Exception as exc:
-                    self._send_html(render_index(root, config_path, experiment_dir, clips, error=str(exc)))
-            elif parsed.path == "/run-pipeline":
-                try:
-                    self._send_html(run_pipeline_page(root, form))
-                except Exception as exc:
-                    self._send_html(render_index(root, config_path, experiment_dir, clips, error=str(exc)))
+            if parsed.path == "/start-analysis":
+                self._start_analysis(form)
             else:
                 self.send_error(404)
 
         def log_message(self, format: str, *args: Any) -> None:
-            sys.stderr.write("local_app: " + format % args + "\n")
+            sys.stderr.write("app: " + format % args + "\n")
+
+        def _start_analysis(self, form: dict[str, list[str]]) -> None:
+            if state.snapshot()["status"] == "running":
+                self.send_response(409)
+                self.send_header("Content-Type", "text/plain; charset=utf-8")
+                self.end_headers()
+                self.wfile.write(b"pipeline already running\n")
+                return
+            request = pipeline_request_from_form(form, clips)
+            if not request.video_path:
+                self._send_html(render_analyze(root, clips, state))
+                return
+            _launch_pipeline(root, request, state)
+            self.send_response(303)
+            self.send_header("Location", "/analyze")
+            self.end_headers()
+
+        def _stream_progress(self) -> None:
+            self.send_response(200)
+            self.send_header("Content-Type", "text/event-stream")
+            self.send_header("Cache-Control", "no-cache")
+            self.send_header("Connection", "keep-alive")
+            self.end_headers()
+            sent = 0
+            try:
+                while True:
+                    snap = state.snapshot()
+                    log = state.log_snapshot()
+                    for line in log[sent:]:
+                        stage = _classify_stage(line)
+                        msg = json.dumps({"line": line, "stage": stage}, ensure_ascii=True)
+                        self.wfile.write(f"data: {msg}\n\n".encode())
+                        sent += 1
+                    self.wfile.flush()
+                    if snap["status"] in ("complete", "error") and sent >= len(log):
+                        final = {"stage": snap["status"], "experiment_dir": snap["experiment_dir"]}
+                        self.wfile.write(f"data: {json.dumps(final)}\n\n".encode())
+                        self.wfile.flush()
+                        break
+                    time.sleep(0.25)
+            except (BrokenPipeError, ConnectionResetError, OSError):
+                pass
 
         def _send_html(self, payload: str) -> None:
             self._send_text(payload, "text/html; charset=utf-8")
@@ -493,6 +1460,9 @@ def make_handler(
         def _send_artifact(self, query: str) -> None:
             params = parse_qs(query)
             requested = _first(params, "path", "")
+            self._send_file_path(requested)
+
+        def _send_file_path(self, requested: str) -> None:
             try:
                 artifact = resolve_artifact_path(root, requested)
             except (FileNotFoundError, ValueError) as exc:
@@ -506,10 +1476,23 @@ def make_handler(
             self.end_headers()
             self.wfile.write(body)
 
-    return LocalAppHandler
+    return AppHandler
 
 
-def _clips_from_level2_closure(config: dict[str, Any]) -> list[ClipOption]:
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def _classify_stage(line: str) -> str:
+    lower = line.lower()
+    if any(k in lower for k in ("grounded", "owlv2", "sam", "segment", "mask", "detection")):
+        return "segmentation"
+    if any(k in lower for k in ("tracking", "level3", "voronoi", "interaction", "highlight", "event", "dashboard", "reel", "tactical")):
+        return "analysis"
+    return ""
+
+
+def _clips_from_legacy_closure(config: dict[str, Any]) -> list[ClipOption]:
     closure = config.get("level2_closure", {})
     raw_clips = closure.get("clips", []) if isinstance(closure, dict) else []
     clips = []
@@ -519,24 +1502,22 @@ def _clips_from_level2_closure(config: dict[str, Any]) -> list[ClipOption]:
         width = _coerce_int(raw.get("width"), 0, minimum=0)
         height = _coerce_int(raw.get("height"), 0, minimum=0)
         roi = _tuple_roi(raw.get("roi"), width, height)
-        clips.append(
-            ClipOption(
-                clip_id=str(raw.get("clip_id", "clip")),
-                role=str(raw.get("role", "")),
-                video_path=str(raw.get("video", "")),
-                start_frame=_coerce_int(raw.get("start_frame"), 0, minimum=0),
-                end_frame=_coerce_int(raw.get("end_frame"), 180, minimum=0),
-                stride=_coerce_int(raw.get("stride"), 1, minimum=1),
-                roi=roi,
-                width=width,
-                height=height,
-                fps=float(raw.get("fps", 0.0) or 0.0),
-            )
-        )
+        clips.append(ClipOption(
+            clip_id=str(raw.get("clip_id", "clip")),
+            role=str(raw.get("role", "")),
+            video_path=str(raw.get("video", "")),
+            start_frame=_coerce_int(raw.get("start_frame"), 0, minimum=0),
+            end_frame=_coerce_int(raw.get("end_frame"), 180, minimum=0),
+            stride=_coerce_int(raw.get("stride"), 1, minimum=1),
+            roi=roi,
+            width=width,
+            height=height,
+            fps=float(raw.get("fps", 0.0) or 0.0),
+        ))
     return clips
 
 
-def _clips_from_level2_multiclip(config: dict[str, Any]) -> list[ClipOption]:
+def _clips_from_legacy_multiclip(config: dict[str, Any]) -> list[ClipOption]:
     multiclip = config.get("level2_multiclip", {})
     raw_clips = multiclip.get("clips", []) if isinstance(multiclip, dict) else []
     clips = []
@@ -545,20 +1526,18 @@ def _clips_from_level2_multiclip(config: dict[str, Any]) -> list[ClipOption]:
             continue
         width = _coerce_int(raw.get("width"), 0, minimum=0)
         height = _coerce_int(raw.get("height"), 0, minimum=0)
-        clips.append(
-            ClipOption(
-                clip_id=str(raw.get("clip_id", "clip")),
-                role=str(raw.get("role", "")),
-                video_path=str(raw.get("video", "")),
-                start_frame=0,
-                end_frame=180,
-                stride=1,
-                roi=_tuple_roi(raw.get("roi"), width, height),
-                width=width,
-                height=height,
-                fps=float(raw.get("fps", 0.0) or 0.0),
-            )
-        )
+        clips.append(ClipOption(
+            clip_id=str(raw.get("clip_id", "clip")),
+            role=str(raw.get("role", "")),
+            video_path=str(raw.get("video", "")),
+            start_frame=0,
+            end_frame=180,
+            stride=1,
+            roi=_tuple_roi(raw.get("roi"), width, height),
+            width=width,
+            height=height,
+            fps=float(raw.get("fps", 0.0) or 0.0),
+        ))
     return clips
 
 
@@ -566,279 +1545,6 @@ def _tuple_roi(value: Any, width: int, height: int) -> tuple[int, int, int, int]
     if isinstance(value, (list, tuple)) and len(value) == 4:
         return tuple(_coerce_int(part, 0, minimum=0) for part in value)  # type: ignore[return-value]
     return (0, 0, width, height)
-
-
-def _roi_from_form(form: dict[str, list[str]], clip: ClipOption) -> tuple[int, int, int, int]:
-    mode = _first(form, "roi_mode", "preset")
-    if mode == "full":
-        return (0, 0, clip.width, clip.height)
-    if mode == "preset":
-        return clip.roi
-    x1 = _coerce_int(_first(form, "roi_x1", str(clip.roi[0])), clip.roi[0], minimum=0)
-    y1 = _coerce_int(_first(form, "roi_y1", str(clip.roi[1])), clip.roi[1], minimum=0)
-    x2 = _coerce_int(_first(form, "roi_x2", str(clip.roi[2])), clip.roi[2], minimum=x1 + 1)
-    y2 = _coerce_int(_first(form, "roi_y2", str(clip.roi[3])), clip.roi[3], minimum=y1 + 1)
-    if clip.width:
-        x2 = min(x2, clip.width)
-    if clip.height:
-        y2 = min(y2, clip.height)
-    return (x1, y1, x2, y2)
-
-
-def _run_command(root: Path, name: str, command: list[str]) -> CommandStatus:
-    started = time.monotonic()
-    env = os.environ.copy()
-    env.setdefault("MPLCONFIGDIR", "/tmp/matplotlib")
-    try:
-        result = subprocess.run(command, cwd=root, env=env, capture_output=True, text=True, timeout=180)
-        output = (result.stdout + "\n" + result.stderr).strip()
-        status = "pass" if result.returncode == 0 else "fail"
-        notes = output.splitlines()[-1] if output else f"returncode={result.returncode}"
-    except (FileNotFoundError, subprocess.SubprocessError) as exc:
-        status = "fail"
-        notes = str(exc)
-    return CommandStatus(name, status, " ".join(command), notes[-500:], time.monotonic() - started)
-
-
-def _request_from_clip(clip: ClipOption) -> AnalysisRequest:
-    return AnalysisRequest(
-        clip.clip_id,
-        clip.video_path,
-        clip.start_frame,
-        clip.end_frame,
-        clip.stride,
-        clip.roi,
-    )
-
-
-def _header(result: AnalysisResult | None) -> str:
-    state = "listo" if result is None else result.status
-    return f"""
-<header class="topbar">
-  <div>
-    <p>FutBotMX Local</p>
-    <h1>Interfaz local de ejecucion</h1>
-  </div>
-  <span class="pill {state}">{_esc(state)}</span>
-</header>"""
-
-
-def _input_panel(clips: list[ClipOption], current: AnalysisRequest) -> str:
-    options = []
-    for clip in clips:
-        selected = " selected" if clip.clip_id == current.clip_id else ""
-        label = f"{clip.clip_id} | {clip.role}" if clip.role else clip.clip_id
-        options.append(f'<option value="{_esc(clip.clip_id)}"{selected}>{_esc(label)}</option>')
-    return f"""
-<section class="panel">
-  <h2>Entrada</h2>
-  <label>Video</label>
-  <select name="clip_id" id="clip_id">{"".join(options)}</select>
-  <label>Clip ID</label>
-  <input name="clip_display" id="clip_display" value="{_esc(current.clip_id)}" readonly>
-  <label>Ruta local</label>
-  <input name="video_path" id="video_path" value="{_esc(current.video_path)}">
-</section>"""
-
-
-def _control_panel(current: AnalysisRequest) -> str:
-    roi = current.roi
-    return f"""
-<section class="panel">
-  <h2>Controles</h2>
-  <div class="triple">
-    <label>Frame inicial<input type="number" name="start_frame" id="start_frame" min="0" value="{current.start_frame}"></label>
-    <label>Frame final<input type="number" name="end_frame" id="end_frame" min="0" value="{current.end_frame}"></label>
-    <label>Stride<input type="number" name="stride" id="stride" min="1" value="{current.stride}"></label>
-  </div>
-  <div class="segmented">
-    <label><input type="radio" name="roi_mode" value="preset" checked> ROI clip</label>
-    <label><input type="radio" name="roi_mode" value="full"> Full frame</label>
-    <label><input type="radio" name="roi_mode" value="custom"> Custom</label>
-  </div>
-  <div class="quad">
-    <label>x1<input type="number" name="roi_x1" id="roi_x1" min="0" value="{roi[0]}"></label>
-    <label>y1<input type="number" name="roi_y1" id="roi_y1" min="0" value="{roi[1]}"></label>
-    <label>x2<input type="number" name="roi_x2" id="roi_x2" min="1" value="{roi[2]}"></label>
-    <label>y2<input type="number" name="roi_y2" id="roi_y2" min="1" value="{roi[3]}"></label>
-  </div>
-</section>"""
-
-
-def _action_panel(current: AnalysisRequest) -> str:
-    dashboard_checked = " checked" if current.run_dashboard else ""
-    reel_checked = " checked" if current.run_reel else ""
-    return f"""
-<section class="panel actions">
-  <h2>Analisis</h2>
-  <label class="toggle"><input type="checkbox" name="run_dashboard"{dashboard_checked}> Dashboard</label>
-  <label class="toggle"><input type="checkbox" name="run_reel"{reel_checked}> Reel demo</label>
-  <button type="submit">Ejecutar analisis</button>
-  <hr style="margin:12px 0;border-color:#2a2e2a">
-  <p style="font-size:.85em;color:#8a9688;margin:0 0 8px">Pipeline completo: Grounded-SAM + tracking + Level3 + visualizacion en vivo</p>
-  <button type="submit" formaction="/run-pipeline" style="background:#1a4a2a">Pipeline Completo (Grounded-SAM)</button>
-</section>"""
-
-
-def run_pipeline_page(root: Path, form: dict[str, list[str]]) -> str:
-    video_path = _first(form, "video_path", "").strip()
-    clip_id = _first(form, "clip_id", "clip").strip() or "clip"
-    start_frame = _first(form, "start_frame", "0").strip()
-    end_frame = _first(form, "end_frame", "180").strip()
-    stride = _first(form, "stride", "1").strip()
-
-    if not video_path:
-        return _pipeline_page_html("Error", "Ingresa la ruta al video en el campo 'Ruta local'.", "", [], "")
-
-    script = root / "scripts" / "run_unified_analysis.py"
-    cmd = [
-        sys.executable, str(script),
-        "--video", video_path,
-        "--clip-id", clip_id,
-        "--start-frame", start_frame,
-        "--end-frame", end_frame,
-        "--stride", stride,
-        "--no-browser",
-        "--no-serve",
-    ]
-    t0 = time.monotonic()
-    proc = subprocess.run(cmd, capture_output=True, text=True, cwd=str(root))
-    elapsed = time.monotonic() - t0
-
-    logs = (proc.stdout or "") + (proc.stderr or "")
-    status = "Completado" if proc.returncode == 0 else f"Terminó con código {proc.returncode}"
-    playback_cmd = (
-        f"python scripts/run_live_playback_app.py "
-        f"--video &quot;{html.escape(video_path)}&quot; "
-        f"--clip-id {html.escape(clip_id)}"
-    )
-    return _pipeline_page_html(status, f"Duración: {elapsed:.1f}s", playback_cmd, logs.splitlines(), video_path)
-
-
-def _pipeline_page_html(status: str, subtitle: str, playback_cmd: str, log_lines: list[str], video_path: str) -> str:
-    log_html = "\n".join(html.escape(line) for line in log_lines[-200:])
-    playback_section = f"""
-<section class="panel span2">
-  <h2>Siguiente paso: Live Playback</h2>
-  <p>Ejecuta en la terminal para ver los resultados:</p>
-  <pre style="background:#0d100d;padding:10px;overflow-x:auto"><code>{playback_cmd}</code></pre>
-  <p>O abre: <a href="http://127.0.0.1:8766" target="_blank">http://127.0.0.1:8766</a> si ya está corriendo.</p>
-</section>""" if playback_cmd else ""
-    return f"""<!doctype html>
-<html lang="es"><head><meta charset="utf-8"><title>FutBotMX — Pipeline</title>
-<style>body{{background:#0d100d;color:#c8d4c4;font-family:monospace;margin:0;padding:16px}}
-.panel{{background:#141914;border:1px solid #2a2e2a;border-radius:4px;padding:16px;margin-bottom:12px}}
-.span2{{grid-column:span 2}}pre{{white-space:pre-wrap;word-break:break-all;font-size:.8em;color:#8a9688}}
-a{{color:#48a6ff}}h1,h2{{color:#c8d4c4;margin-top:0}}
-</style></head><body>
-<h1>FutBotMX — Pipeline Completo</h1>
-<section class="panel">
-  <h2>{html.escape(status)}</h2>
-  <p>{html.escape(subtitle)}</p>
-  <a href="/">Volver al inicio</a>
-</section>
-{playback_section}
-<section class="panel span2">
-  <h2>Log de ejecucion</h2>
-  <pre>{log_html}</pre>
-</section>
-</body></html>"""
-
-
-def _result_panel(result: AnalysisResult | None, artifacts: list[ArtifactRow], checks: list[CheckRow]) -> str:
-    return f"""
-<section class="results">
-  <div class="panel span2">
-    <h2>Resultados</h2>
-    {_command_table(result)}
-    {_artifact_table(artifacts)}
-  </div>
-  <div class="panel">
-    <h2>Checks</h2>
-    {_checks_table(checks)}
-  </div>
-</section>"""
-
-
-def _command_table(result: AnalysisResult | None) -> str:
-    if not result:
-        return '<p class="muted">Sin ejecucion local en esta sesion.</p>'
-    rows = []
-    for command in result.commands:
-        rows.append(
-            "<tr>"
-            f"<td>{_esc(command.name)}</td>"
-            f'<td><span class="status {command.status}">{_esc(command.status)}</span></td>'
-            f"<td>{command.duration_sec:.2f}s</td>"
-            f"<td>{_esc(command.notes)}</td>"
-            "</tr>"
-        )
-    return '<table><thead><tr><th>Comando</th><th>Estado</th><th>Tiempo</th><th>Notas</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>"
-
-
-def _artifact_table(artifacts: list[ArtifactRow]) -> str:
-    rows = []
-    for artifact in artifacts:
-        label = _artifact_link(artifact)
-        state = "presente" if artifact.exists else "pendiente"
-        rows.append(
-            "<tr>"
-            f"<td>{_esc(artifact.label)}</td>"
-            f'<td><span class="status {state}">{state}</span></td>'
-            f"<td>{label}</td>"
-            f"<td>{artifact.size_bytes}</td>"
-            "</tr>"
-        )
-    return '<table><thead><tr><th>Artefacto</th><th>Estado</th><th>Ruta</th><th>Bytes</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>"
-
-
-def _checks_table(checks: list[CheckRow]) -> str:
-    rows = []
-    for check in checks:
-        rows.append(
-            "<tr>"
-            f"<td>{_esc(check.check_id)}</td>"
-            f'<td><span class="status {check.status}">{_esc(check.status)}</span></td>'
-            f"<td>{_esc(check.notes)}</td>"
-            "</tr>"
-        )
-    return '<table><thead><tr><th>ID</th><th>Estado</th><th>Notas</th></tr></thead><tbody>' + "".join(rows) + "</tbody></table>"
-
-
-def _artifact_link(artifact: ArtifactRow) -> str:
-    if not artifact.exists:
-        return _esc(artifact.path)
-    href = "/artifact?path=" + quote(artifact.path)
-    return f'<a href="{href}" target="_blank" rel="noreferrer">{_esc(artifact.path)}</a>'
-
-
-def _error_html(error: str | None) -> str:
-    if not error:
-        return ""
-    return f'<section class="error">{_esc(error)}</section>'
-
-
-def _manifest_row(asset_id: str, asset_type: str, path: str, source_artifact: str, is_versioned: bool, role: str, notes: str) -> dict[str, str]:
-    return {
-        "asset_id": asset_id,
-        "asset_type": asset_type,
-        "path": path,
-        "source_artifact": source_artifact,
-        "is_versioned": str(is_versioned).lower(),
-        "role": role,
-        "notes": notes,
-    }
-
-
-def _rel_to_experiment(path: str, experiment_dir: Path) -> str:
-    try:
-        return Path(os.path.relpath(Path(path), start=experiment_dir)).as_posix()
-    except ValueError:
-        return path
-
-
-def _asset_id(label: str) -> str:
-    return label.lower().replace(" ", "_").replace("/", "_")
 
 
 def _coerce_int(value: Any, default: int, minimum: int | None = None) -> int:
@@ -862,239 +1568,13 @@ def _first(form: dict[str, list[str]], key: str, default: str) -> str:
     return str(values[0]) if values else default
 
 
-def _timestamp() -> str:
-    return time.strftime("%Y-%m-%dT%H:%M:%S%z")
-
-
 def _esc(value: Any) -> str:
     return html.escape(str(value), quote=True)
 
 
-def _css() -> str:
-    return """
-:root {
-  --ink: #1b211d;
-  --muted: #61706a;
-  --line: #c8d5ce;
-  --panel: #ffffff;
-  --page: #f7faf7;
-  --green: #2d6f4d;
-  --blue: #315d9b;
-  --amber: #9b6a1f;
-  --red: #a03c34;
-}
-* { box-sizing: border-box; }
-body {
-  margin: 0;
-  background: var(--page);
-  color: var(--ink);
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-}
-.shell {
-  width: min(1220px, calc(100vw - 28px));
-  margin: 0 auto;
-  padding: 22px 0 34px;
-}
-.topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  border-bottom: 2px solid var(--line);
-  padding-bottom: 14px;
-}
-.topbar p {
-  margin: 0 0 4px;
-  color: var(--green);
-  font-size: 13px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-h1 {
-  margin: 0;
-  font-size: 32px;
-  line-height: 1.1;
-  letter-spacing: 0;
-}
-h2 {
-  margin: 0 0 12px;
-  font-size: 18px;
-  letter-spacing: 0;
-}
-.layout,
-.results {
-  display: grid;
-  grid-template-columns: minmax(280px, 1fr) minmax(360px, 1.3fr) minmax(220px, .75fr);
-  gap: 12px;
-  margin-top: 16px;
-}
-.panel {
-  background: var(--panel);
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  padding: 14px;
-  min-width: 0;
-}
-.span2 {
-  grid-column: span 2;
-}
-label {
-  display: grid;
-  gap: 5px;
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 700;
-  margin-bottom: 10px;
-}
-input,
-select {
-  width: 100%;
-  min-height: 36px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 7px 9px;
-  color: var(--ink);
-  background: #fbfdfb;
-  font: inherit;
-}
-.triple,
-.quad {
-  display: grid;
-  gap: 8px;
-}
-.triple {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-.quad {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-.segmented {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 6px;
-  margin: 4px 0 10px;
-}
-.segmented label,
-.toggle {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  padding: 7px 8px;
-  margin: 0;
-  color: var(--ink);
-}
-.segmented input,
-.toggle input {
-  width: auto;
-  min-height: 0;
-}
-button {
-  width: 100%;
-  min-height: 40px;
-  margin-top: 12px;
-  border: 1px solid #1f5337;
-  border-radius: 6px;
-  background: var(--green);
-  color: #fff;
-  font-weight: 800;
-  cursor: pointer;
-}
-table {
-  width: 100%;
-  border-collapse: collapse;
-  margin-top: 8px;
-  table-layout: fixed;
-}
-th,
-td {
-  border-bottom: 1px solid #e2e9e5;
-  padding: 8px 6px;
-  text-align: left;
-  vertical-align: top;
-  font-size: 13px;
-  overflow-wrap: anywhere;
-}
-th {
-  color: var(--muted);
-  font-size: 12px;
-  text-transform: uppercase;
-}
-.pill,
-.status {
-  display: inline-flex;
-  align-items: center;
-  min-height: 24px;
-  border-radius: 999px;
-  padding: 3px 9px;
-  font-size: 12px;
-  font-weight: 800;
-}
-.pill,
-.pass,
-.presente {
-  background: #e1f3e8;
-  color: var(--green);
-}
-.fail,
-.missing {
-  background: #f9e5e2;
-  color: var(--red);
-}
-.pendiente {
-  background: #f8efd7;
-  color: var(--amber);
-}
-.muted {
-  color: var(--muted);
-}
-.error {
-  margin-top: 14px;
-  border: 1px solid #e1a8a3;
-  background: #fff0ef;
-  color: var(--red);
-  border-radius: 8px;
-  padding: 10px 12px;
-}
-a {
-  color: var(--blue);
-  text-underline-offset: 2px;
-}
-@media (max-width: 900px) {
-  .layout,
-  .results {
-    grid-template-columns: 1fr;
-  }
-  .span2 {
-    grid-column: auto;
-  }
-  .triple,
-  .quad,
-  .segmented {
-    grid-template-columns: 1fr;
-  }
-}
-"""
+def _file_href(path: str) -> str:
+    return "/files/" + quote(path, safe="/")
 
 
-def _js() -> str:
-    return """
-function byId(id) { return document.getElementById(id); }
-function applyClip() {
-  const selected = byId("clip_id").value;
-  const clip = (window.FUTBOT_CLIPS || []).find((item) => item.clip_id === selected);
-  if (!clip) return;
-  byId("clip_display").value = clip.clip_id;
-  byId("video_path").value = clip.video_path || "";
-  byId("start_frame").value = clip.start_frame;
-  byId("end_frame").value = clip.end_frame;
-  byId("stride").value = clip.stride;
-  byId("roi_x1").value = clip.roi[0];
-  byId("roi_y1").value = clip.roi[1];
-  byId("roi_x2").value = clip.roi[2];
-  byId("roi_y2").value = clip.roi[3];
-}
-const select = byId("clip_id");
-if (select) select.addEventListener("change", applyClip);
-"""
+def _timestamp() -> str:
+    return time.strftime("%Y-%m-%dT%H:%M:%S%z")

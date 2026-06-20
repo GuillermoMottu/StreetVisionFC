@@ -9,6 +9,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from futbotmx.artifact_names import ADVANCED_EVENTS_JSON, HIGHLIGHTS_CSV, SPATIAL_TRACKS_CSV, TACTICAL_METRICS_CSV, VISUALIZATIONS_DIR
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.level3 import (
     LEVEL3_VISUALIZATIONS_RULE_VERSION,
@@ -18,12 +19,12 @@ from futbotmx.level3 import (
 )
 
 
-DEFAULT_OUTPUT_DIR = Path("experiments/test_023_level3_visualizations")
+DEFAULT_OUTPUT_DIR = Path("experiments/test_023_visualizations")
 
 
 def write_config(config: dict[str, Any], output_dir: Path, visualization_config: Level3VisualizationConfig) -> None:
     snapshot = copy.deepcopy(config)
-    snapshot["level3_visualizations"] = {
+    snapshot["tactical_visualizations"] = {
         "rule_version": LEVEL3_VISUALIZATIONS_RULE_VERSION,
         **visualization_config_to_dict(visualization_config),
         "outputs": [
@@ -48,7 +49,7 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
     asset_ids = Counter(str(row["asset_id"]).split("_")[0] for row in manifest)
     versioned = sum(1 for row in manifest if str(row["is_versioned"]) == "true")
     lines = [
-        "# Visualizaciones Avanzadas Nivel 3",
+        "# Visualizaciones tacticas avanzadas",
         "",
         "## Resultado",
         "",
@@ -73,10 +74,10 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
             "## Cobertura",
             "",
             "- Voronoi se renderiza en mini-mapa para frames representativos de `voronoi_frames.csv`.",
-            "- Cuando existe overlay ligero Nivel 2 y homografia, tambien se genera `voronoi_original_frame_*.png` sobre esa referencia.",
+            "- Cuando existe overlay ligero de referencia y homografia, tambien se genera `voronoi_original_frame_*.png` sobre esa referencia.",
             "- El grafo diferencia posesion, disputa, presion y proximidad con color y grosor por duracion/frecuencia.",
             "- Los mini-mapas de highlights muestran trails, zona de actividad y etiqueta del evento.",
-            "- El storyboard combina referencia de frame Nivel 2, mini-mapa y texto conservador.",
+            "- El storyboard combina referencia de frame, mini-mapa y texto conservador.",
             "",
             "## Limitaciones",
             "",
@@ -99,7 +100,7 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
             "## Comando",
             "",
             "```bash",
-            ".venv/bin/python scripts/run_level3_visualizations.py",
+            ".venv/bin/python scripts/run_tactical_visualizations.py",
             "```",
         ]
     )
@@ -117,17 +118,17 @@ def run_visualizations(config_path: str | Path, visualization_config: Level3Visu
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate Level 3 advanced visualization assets.")
+    parser = argparse.ArgumentParser(description="Generate advanced tactical visualization assets.")
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--experiment", default=str(DEFAULT_OUTPUT_DIR))
-    parser.add_argument("--tracks", default="experiments/test_020_level3_spatial_model/level3_tracks.csv")
-    parser.add_argument("--calibration", default="experiments/test_020_level3_spatial_model/field_calibration.json")
-    parser.add_argument("--spatial-control", default="experiments/test_021_level3_tactical_metrics/spatial_control.csv")
-    parser.add_argument("--voronoi-frames", default="experiments/test_021_level3_tactical_metrics/voronoi_frames.csv")
-    parser.add_argument("--interaction-graph", default="experiments/test_021_level3_tactical_metrics/interaction_graph.json")
-    parser.add_argument("--interaction-edges", default="experiments/test_021_level3_tactical_metrics/interaction_edges.csv")
-    parser.add_argument("--highlights", default="experiments/test_022_level3_advanced_events/level3_highlights.csv")
-    parser.add_argument("--events", default="experiments/test_022_level3_advanced_events/level3_events.json")
+    parser.add_argument("--tracks", default=f"experiments/test_020_spatial_model/{SPATIAL_TRACKS_CSV}")
+    parser.add_argument("--calibration", default="experiments/test_020_spatial_model/field_calibration.json")
+    parser.add_argument("--spatial-control", default="experiments/test_021_tactical_metrics/spatial_control.csv")
+    parser.add_argument("--voronoi-frames", default="experiments/test_021_tactical_metrics/voronoi_frames.csv")
+    parser.add_argument("--interaction-graph", default="experiments/test_021_tactical_metrics/interaction_graph.json")
+    parser.add_argument("--interaction-edges", default="experiments/test_021_tactical_metrics/interaction_edges.csv")
+    parser.add_argument("--highlights", default=f"experiments/test_022_advanced_events/{HIGHLIGHTS_CSV}")
+    parser.add_argument("--events", default=f"experiments/test_022_advanced_events/{ADVANCED_EVENTS_JSON}")
     parser.add_argument("--level2-root", default="experiments/test_017_level2_closure")
     parser.add_argument("--top-highlights", type=int, default=4)
     args = parser.parse_args()
@@ -146,7 +147,7 @@ def main() -> int:
         top_highlights=args.top_highlights,
     )
     outputs = run_visualizations(args.config, visualization_config)
-    print(f"Wrote Level 3 visualizations to {args.experiment} ({len(outputs['manifest'])} assets)")
+    print(f"Wrote tactical visualizations to {args.experiment} ({len(outputs['manifest'])} assets)")
     return 0
 
 

@@ -6,6 +6,23 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Iterable
 
+from futbotmx.artifact_names import (
+    ADVANCED_EVENTS_JSON,
+    HIGHLIGHTS_CSV,
+    LEGACY_ADVANCED_EVENTS_JSON,
+    LEGACY_HIGHLIGHTS_CSV,
+    LEGACY_NARRATIVE_MD,
+    LEGACY_SPATIAL_TRACKS_CSV,
+    LEGACY_TACTICAL_METRICS_CSV,
+    LEGACY_TACTICAL_METRICS_JSON,
+    LEGACY_VISUALIZATION_MANIFEST_CSV,
+    NARRATIVE_MD,
+    SPATIAL_TRACKS_CSV,
+    TACTICAL_METRICS_CSV,
+    TACTICAL_METRICS_JSON,
+    VISUALIZATION_MANIFEST_CSV,
+)
+
 
 LEVEL3_TRACKS_FIELDS = (
     "clip_id",
@@ -118,6 +135,7 @@ class ArtifactSchema:
     producer_stage: str
     consumer_stage: str
     notes: str = ""
+    legacy_names: tuple[str, ...] = ()
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
@@ -125,25 +143,27 @@ class ArtifactSchema:
         return data
 
 
-LEVEL3_ARTIFACT_SCHEMAS = (
+TACTICAL_ARTIFACT_SCHEMAS = (
     ArtifactSchema(
-        "level3_tracks.csv",
+        SPATIAL_TRACKS_CSV,
         "csv",
         LEVEL3_TRACKS_FIELDS,
-        "Tracks heredados de Nivel 2 con coordenadas rectificadas/fallback y metadatos de calibracion.",
-        "Actividad 2 - Rectificacion Espacial Y Mini-Mapa",
+        "Tracks con coordenadas rectificadas/fallback y metadatos de calibracion.",
+        "Modelo espacial y mini-mapa",
         "Metricas tacticas, eventos avanzados, mini-mapa, Voronoi y dashboard.",
+        legacy_names=(LEGACY_SPATIAL_TRACKS_CSV,),
     ),
     ArtifactSchema(
-        "level3_metrics.csv",
+        TACTICAL_METRICS_CSV,
         "csv",
         LEVEL3_METRICS_FIELDS,
         "Metricas tacticas atomicas y comparables por clip, robot, equipo o evento.",
-        "Actividad 3 - Metricas Tacticas Avanzadas",
-        "Dashboard, comparacion multi-clip y cierre Nivel 3.",
+        "Metricas tacticas avanzadas",
+        "Dashboard, comparacion multi-clip y cierre tecnico.",
+        legacy_names=(LEGACY_TACTICAL_METRICS_CSV,),
     ),
     ArtifactSchema(
-        "level3_metrics.json",
+        TACTICAL_METRICS_JSON,
         "json",
         (
             "rule_version",
@@ -157,46 +177,53 @@ LEVEL3_ARTIFACT_SCHEMAS = (
             "limitations",
         ),
         "Resumen legible de metricas tacticas y limitaciones por clip.",
-        "Actividad 3 - Metricas Tacticas Avanzadas",
-        "Dashboard, README y resumen final Nivel 3.",
+        "Metricas tacticas avanzadas",
+        "Dashboard, README y resumen final.",
+        legacy_names=(LEGACY_TACTICAL_METRICS_JSON,),
     ),
     ArtifactSchema(
-        "level3_events.json",
+        ADVANCED_EVENTS_JSON,
         "json",
         LEVEL3_EVENTS_FIELDS,
         "Eventos avanzados: cadenas de pases, highlights, presion e interacciones.",
-        "Actividad 4 - Eventos Avanzados Nivel 3",
+        "Eventos avanzados",
         "Narrativa, overlays, storyboard, dashboard y reel.",
+        legacy_names=(LEGACY_ADVANCED_EVENTS_JSON,),
     ),
     ArtifactSchema(
-        "level3_highlights.csv",
+        HIGHLIGHTS_CSV,
         "csv",
         LEVEL3_HIGHLIGHTS_FIELDS,
         "Ranking de jugadas destacadas con score, confianza y razon.",
-        "Actividad 4 - Eventos Avanzados Nivel 3",
+        "Eventos avanzados",
         "Storyboard, reel final, dashboard y validacion humana.",
+        legacy_names=(LEGACY_HIGHLIGHTS_CSV,),
     ),
     ArtifactSchema(
-        "level3_narrative.md",
+        NARRATIVE_MD,
         "markdown",
         ("title", "clip_id", "event_sections", "limitations"),
         "Narrativa deportiva generada por reglas, con lenguaje conservador.",
-        "Actividad 4 - Eventos Avanzados Nivel 3",
+        "Eventos avanzados",
         "Dashboard, reel final y README.",
         "Markdown no usa columnas CSV; los campos representan secciones obligatorias.",
+        legacy_names=(LEGACY_NARRATIVE_MD,),
     ),
     ArtifactSchema(
-        "level3_visualization_manifest.csv",
+        VISUALIZATION_MANIFEST_CSV,
         "csv",
         LEVEL3_VISUALIZATION_MANIFEST_FIELDS,
-        "Indice de PNG/GIF/video local asociado a visualizaciones Nivel 3.",
+        "Indice de PNG/GIF/video local asociado a visualizaciones tacticas.",
         "Actividades 5, 6 y 7",
-        "Dashboard, cierre Nivel 3 y control anti-archivos-pesados.",
+        "Dashboard, cierre tecnico y control anti-archivos-pesados.",
+        legacy_names=(LEGACY_VISUALIZATION_MANIFEST_CSV,),
     ),
 )
 
+LEVEL3_ARTIFACT_SCHEMAS = TACTICAL_ARTIFACT_SCHEMAS
 
-def schema_manifest_rows(schemas: Iterable[ArtifactSchema] = LEVEL3_ARTIFACT_SCHEMAS) -> list[dict[str, str]]:
+
+def schema_manifest_rows(schemas: Iterable[ArtifactSchema] = TACTICAL_ARTIFACT_SCHEMAS) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     for schema in schemas:
         rows.append(
@@ -217,11 +244,11 @@ def validate_required_fields(row: dict[str, Any], required_fields: Iterable[str]
     return [field for field in required_fields if field not in row]
 
 
-def schema_for_artifact(artifact_name: str, schemas: Iterable[ArtifactSchema] = LEVEL3_ARTIFACT_SCHEMAS) -> ArtifactSchema:
+def schema_for_artifact(artifact_name: str, schemas: Iterable[ArtifactSchema] = TACTICAL_ARTIFACT_SCHEMAS) -> ArtifactSchema:
     for schema in schemas:
-        if schema.artifact_name == artifact_name:
+        if artifact_name == schema.artifact_name or artifact_name in schema.legacy_names:
             return schema
-    raise KeyError(f"Unknown Level 3 artifact schema: {artifact_name}")
+    raise KeyError(f"Unknown tactical artifact schema: {artifact_name}")
 
 
 def write_csv_artifact(path: str | Path, artifact_name: str, rows: Iterable[dict[str, Any]]) -> None:
@@ -248,7 +275,7 @@ def read_csv_artifact(path: str | Path) -> list[dict[str, str]]:
         return list(csv.DictReader(handle))
 
 
-def write_schema_manifest(path: str | Path, schemas: Iterable[ArtifactSchema] = LEVEL3_ARTIFACT_SCHEMAS) -> None:
+def write_schema_manifest(path: str | Path, schemas: Iterable[ArtifactSchema] = TACTICAL_ARTIFACT_SCHEMAS) -> None:
     rows = schema_manifest_rows(schemas)
     fieldnames = ("artifact_name", "artifact_format", "required_fields", "purpose", "producer_stage", "consumer_stage", "notes")
     with Path(path).open("w", newline="", encoding="utf-8") as handle:
@@ -257,9 +284,9 @@ def write_schema_manifest(path: str | Path, schemas: Iterable[ArtifactSchema] = 
         writer.writerows(rows)
 
 
-def write_schema_json(path: str | Path, schemas: Iterable[ArtifactSchema] = LEVEL3_ARTIFACT_SCHEMAS) -> None:
+def write_schema_json(path: str | Path, schemas: Iterable[ArtifactSchema] = TACTICAL_ARTIFACT_SCHEMAS) -> None:
     payload = {
-        "rule_version": "level3_data_contract_v0.1",
+        "rule_version": "tactical_data_contract_v0.2",
         "schemas": [schema.to_dict() for schema in schemas],
     }
     Path(path).write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")

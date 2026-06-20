@@ -24,6 +24,7 @@ from futbotmx.level3.spatial import (
     solve_homography,
 )
 from futbotmx.tracking import read_tracks_csv
+from futbotmx.ui import shared_css, ui_body_attrs
 
 
 RULE_VERSION = "manual_field_calibration_v0.1"
@@ -241,9 +242,9 @@ def render_calibration_editor_html(context: CalibrationEditorContext) -> str:
             "<title>FutBotMX Calibracion Manual</title>",
             f"<style>{_css()}</style>",
             "</head>",
-            "<body>",
-            '<main class="shell">',
-            "<header>",
+            f'<body {ui_body_attrs("review", "calibration-page")}>',
+            '<main class="shell fb-shell">',
+            '<header class="fb-topbar">',
             "<div>",
             "<p>FutBotMX Nivel 3</p>",
             "<h1>Calibracion manual de cancha</h1>",
@@ -256,9 +257,11 @@ def render_calibration_editor_html(context: CalibrationEditorContext) -> str:
             '<select id="clipSelect"></select>',
             '<div id="clipMeta" class="meta"></div>',
             '<div class="buttons">',
-            '<button type="button" id="resetBtn">Reset</button>',
-            '<button type="button" id="downloadBtn">Descargar JSON</button>',
-            '<button type="button" id="saveBtn">Guardar</button>',
+            '<div class="button-row">',
+            '<button type="button" id="downloadBtn" class="btn-secondary">Descargar JSON</button>',
+            '<button type="button" id="saveBtn" class="btn-primary">Guardar</button>',
+            "</div>",
+            '<button type="button" id="resetBtn" class="btn-danger">Reset puntos</button>',
             "</div>",
             '<ol id="pointList"></ol>',
             '<p id="saveStatus" class="muted"></p>',
@@ -505,21 +508,27 @@ def _esc(value: Any) -> str:
 
 
 def _css() -> str:
-    return """
+    return shared_css() + """
 :root {
-  --ink: #1d221f;
-  --muted: #63706a;
-  --line: #c6d5cc;
-  --field: #e8f4e8;
+  --ink: #05261d;
+  --muted: #52665d;
+  --line: #c7e2d1;
+  --field: #e9ffd8;
   --panel: #ffffff;
-  --page: #f7faf7;
-  --green: #2e6f4e;
-  --blue: #315d9b;
+  --page: #f5f9ef;
+  --green: #00d25b;
+  --blue: #00c853;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--page);
+  background:
+    linear-gradient(90deg, rgba(0,200,83,.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(0,75,58,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183,243,0,.18) 0 24%, transparent 24%),
+    radial-gradient(circle at 84% 0%, rgba(0,75,58,.14), transparent 30%),
+    var(--page);
+  background-size: 52px 52px, 52px 52px, auto, auto, auto;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -533,12 +542,16 @@ header {
   justify-content: space-between;
   align-items: center;
   gap: 14px;
-  border-bottom: 2px solid var(--line);
-  padding-bottom: 14px;
+  border: 1px solid var(--line);
+  border-bottom: 4px solid #b7f300;
+  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #004b3a, #00c853);
+  color: #ffffff;
 }
 header p {
   margin: 0 0 4px;
-  color: var(--green);
+  color: #eaffd6;
   font-size: 13px;
   font-weight: 800;
   text-transform: uppercase;
@@ -548,6 +561,7 @@ h1 {
   font-size: 32px;
   line-height: 1.1;
   letter-spacing: 0;
+  color: inherit;
 }
 h2 {
   margin: 0 0 10px;
@@ -556,7 +570,7 @@ h2 {
 }
 .workspace {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr);
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr);
   gap: 12px;
   margin-top: 16px;
 }
@@ -580,18 +594,33 @@ select {
 button {
   cursor: pointer;
   font-weight: 800;
-  background: var(--green);
-  color: #fff;
-  border-color: #24583d;
+  background: #fff;
+  color: var(--green);
+  border-color: var(--line);
 }
 .buttons {
   display: grid;
   gap: 8px;
   margin-top: 12px;
 }
-.buttons button:first-child {
-  background: #fff;
-  color: var(--green);
+.button-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.btn-primary {
+  background: var(--green);
+  color: #fff;
+  border-color: #008f43;
+}
+.btn-secondary {
+  color: var(--blue);
+  border-color: #93c4ef;
+}
+.btn-danger {
+  color: #b7f300;
+  border-color: #f3a9bd;
+  background: #fff2f5;
 }
 .meta,
 .muted,
@@ -607,6 +636,7 @@ li {
 }
 .canvasPanel {
   overflow: auto;
+  min-height: 520px;
 }
 canvas {
   width: 100%;
@@ -620,6 +650,14 @@ a {
 }
 @media (max-width: 900px) {
   .workspace {
+    grid-template-columns: 1fr;
+  }
+  .canvasPanel {
+    min-height: 0;
+  }
+}
+@media (max-width: 540px) {
+  .button-row {
     grid-template-columns: 1fr;
   }
 }

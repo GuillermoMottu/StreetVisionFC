@@ -37,6 +37,8 @@ class HighlightReviewTests(unittest.TestCase):
             validation_rows = read_csv(output / "human_review_validation.csv")
             html = (output / "human_review_panel.html").read_text(encoding="utf-8")
 
+            self.assertIn('data-ui-shell="futbotmx-ui-v1"', html)
+            self.assertIn('data-product-flow="review"', html)
             self.assertEqual(len(review_rows), 2)
             self.assertEqual(review_rows[0]["review_status"], "confiable")
             self.assertEqual(review_rows[1]["review_status"], "provisional")

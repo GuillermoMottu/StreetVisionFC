@@ -11,6 +11,11 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from futbotmx.artifact_names import (
+    LEGACY_SPATIAL_TRACKS_CSV,
+    SPATIAL_TRACKS_CSV,
+    mirror_legacy_file,
+)
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.level3 import (
     LEVEL3_SPATIAL_RULE_VERSION,
@@ -27,14 +32,14 @@ from futbotmx.level3 import (
     solve_homography,
     write_calibration_comparison_csv,
     write_calibration_json,
-    write_level3_tracks,
+    write_spatial_tracks,
     write_spatial_validation_csv,
 )
 from futbotmx.tracking import read_tracks_csv
 
 
 DEFAULT_SOURCE_DIR = Path("experiments/test_017_level2_closure")
-DEFAULT_OUTPUT_DIR = Path("experiments/test_020_level3_spatial_model")
+DEFAULT_OUTPUT_DIR = Path("experiments/test_020_spatial_model")
 DEFAULT_CLIPS = ("video_595", "video_667")
 
 
@@ -80,7 +85,7 @@ def write_spatial_config(
     manual_calibration_path: Path | None,
 ) -> None:
     snapshot = copy.deepcopy(config)
-    snapshot["level3_spatial_model"] = {
+    snapshot["spatial_model"] = {
         "rule_version": LEVEL3_SPATIAL_RULE_VERSION,
         "source_experiment": source_dir.as_posix(),
         "output_dir": output_dir.as_posix(),
@@ -101,7 +106,7 @@ def write_spatial_config(
         },
         "outputs": [
             "field_calibration.json",
-            "level3_tracks.csv",
+            SPATIAL_TRACKS_CSV,
             "minimap_base.png",
             "minimap_tracks.png",
             "overlay_comparison.csv",
@@ -177,13 +182,13 @@ def write_overlay_comparison_csv(path: Path, source_dir: Path, clips: tuple[str,
                     "frame": frame,
                     "original_overlay": overlay.as_posix(),
                     "minimap_reference": "minimap_tracks.png",
-                    "level3_tracks": "level3_tracks.csv",
+                    "spatial_tracks": SPATIAL_TRACKS_CSV,
                     "assessment": "consistent_trace_reference",
-                    "notes": "Original overlay is reused from Level 2 closure; Level 3 preserves frame, ID, x/y and adds x_norm/y_norm for the same track rows.",
+                    "notes": "Original overlay is reused from historical closure artifacts; the spatial model preserves frame, ID, x/y and adds x_norm/y_norm for the same track rows.",
                 }
             )
 
-    fieldnames = ["clip_id", "frame", "original_overlay", "minimap_reference", "level3_tracks", "assessment", "notes"]
+    fieldnames = ["clip_id", "frame", "original_overlay", "minimap_reference", "spatial_tracks", "assessment", "notes"]
     with path.open("w", newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames, lineterminator="\n")
         writer.writeheader()
@@ -199,13 +204,13 @@ def write_spatial_manifest(
 ) -> list[dict[str, Any]]:
     rows = [
         _manifest_row("config", "yaml", "config.yaml", "configs/default.yaml", True, "configuration", "Configuration snapshot."),
-        _manifest_row("field_calibration", "json", "field_calibration.json", "level2 tracks and optional manual calibration", True, "calibration", "Selected calibration by clip."),
-        _manifest_row("level3_tracks", "csv", "level3_tracks.csv", "tracks_level2.csv", True, "tracks", "Rectified or fallback tracks."),
+        _manifest_row("field_calibration", "json", "field_calibration.json", "tracks and optional manual calibration", True, "calibration", "Selected calibration by clip."),
+        _manifest_row("spatial_tracks", "csv", SPATIAL_TRACKS_CSV, "tracking/tracks.csv", True, "tracks", "Rectified or fallback tracks."),
         _manifest_row("minimap_base", "png", "minimap_base.png", "field model", True, "visual_validation", "Base normalized pitch."),
-        _manifest_row("minimap_tracks", "png", "minimap_tracks.png", "level3_tracks.csv", True, "visual_validation", "Tracks projected to minimap."),
+        _manifest_row("minimap_tracks", "png", "minimap_tracks.png", SPATIAL_TRACKS_CSV, True, "visual_validation", "Tracks projected to minimap."),
         _manifest_row("overlay_comparison", "csv", "overlay_comparison.csv", source_dir.as_posix(), True, "visual_validation", "Original overlays used for comparison."),
         _manifest_row("calibration_comparison", "csv", "calibration_comparison.csv", "automatic vs manual calibration", True, "calibration_validation", "Automatic/manual comparison."),
-        _manifest_row("spatial_validation", "csv", "spatial_validation.csv", "level3_tracks.csv", True, "validation", "Row and confidence summary."),
+        _manifest_row("spatial_validation", "csv", "spatial_validation.csv", SPATIAL_TRACKS_CSV, True, "validation", "Row and confidence summary."),
         _manifest_row("summary", "md", "summary.md", "spatial_validation.csv", True, "summary", "Spatial model summary."),
     ]
     if manual_calibration_path:
@@ -275,13 +280,13 @@ def write_summary(
     automatic_rows = [row for row in comparison_rows if row["method_used"] == "automatic"]
 
     lines = [
-        "# Rectificacion Espacial Y Mini-Mapa Nivel 3",
+        "# Rectificacion espacial y mini-mapa",
         "",
         "## Resultado",
         "",
         f"- Estado: `{'usable' if primary_ok else 'provisional'}`.",
         f"- Regla: `{LEVEL3_SPATIAL_RULE_VERSION}`.",
-        f"- Fuente Nivel 2: `{source_dir.as_posix()}`.",
+        f"- Fuente de tracks: `{source_dir.as_posix()}`.",
         f"- Clips procesados: `{', '.join(clips)}`.",
         f"- Filas exportadas: `{total_rows}`.",
         f"- Filas rectificadas por homografia: `{total_rectified}`.",
@@ -294,7 +299,7 @@ def write_summary(
         "- Coordenadas: `x_norm` y `y_norm` en rango `[0, 1]` sobre la cancha visible aproximada.",
         "- Origen: esquina superior izquierda de la cancha visible calibrada.",
         "- Direccion: `x_norm` crece de izquierda a derecha; `y_norm` crece de arriba hacia abajo.",
-        "- Zonas tacticas: `defensive_third`, `middle_third`, `attacking_third` calculadas sobre `y_norm`, conservando la direccion de `zone_axis: y` de Nivel 2.",
+        "- Zonas tacticas: `defensive_third`, `middle_third`, `attacking_third` calculadas sobre `y_norm`, conservando la direccion configurada de `zone_axis: y`.",
         "- Porterias relativas: lineas centradas en `y_norm=0` y `y_norm=1`, con ancho normalizado `0.22`.",
         "",
         "## Calibracion",
@@ -323,8 +328,8 @@ def write_summary(
             "- `minimap_tracks.png` dibuja trayectorias rectificadas de robots y balon por clip.",
             "- `spatial_validation.csv` resume rangos, filas rectificadas, fallback y calidad por clip.",
             "- `calibration_comparison.csv` compara la calibracion automatica contra la seleccion usada.",
-            f"- `overlay_comparison.csv` referencia `{len(overlay_rows)}` overlays originales ligeros de Nivel 2 para comparar frames seleccionados.",
-            "- No se abrieron videos completos ni se genero overlay pesado nuevo; `level3_tracks.csv` conserva `x`, `y`, bboxes, frames e IDs para trazabilidad contra los overlays Nivel 2.",
+            f"- `overlay_comparison.csv` referencia `{len(overlay_rows)}` overlays originales ligeros cuando existen para comparar frames seleccionados.",
+            f"- No se abrieron videos completos ni se genero overlay pesado nuevo; `{SPATIAL_TRACKS_CSV}` conserva `x`, `y`, bboxes, frames e IDs para trazabilidad contra overlays de referencia.",
             "",
             "## Comparacion Automatica Vs Manual",
             "",
@@ -349,7 +354,7 @@ def write_summary(
             "",
             "- `config.yaml`",
             "- `field_calibration.json`",
-            "- `level3_tracks.csv`",
+            f"- `{SPATIAL_TRACKS_CSV}`",
             "- `minimap_base.png`",
             "- `minimap_tracks.png`",
             "- `overlay_comparison.csv`",
@@ -365,7 +370,7 @@ def write_summary(
             "## Comando",
             "",
             "```bash",
-            ".venv/bin/python scripts/run_level3_spatial_model.py",
+            ".venv/bin/python scripts/run_spatial_model.py",
             "```",
         ]
     )
@@ -387,14 +392,14 @@ def run_spatial_model(
     field_model = FieldModel(zone_axis=str(config.get("level2_events", {}).get("zone_axis", "y")))
     manual_calibrations = load_manual_calibrations(manual_calibration_path, specs)
 
-    all_level3_rows: list[dict[str, Any]] = []
+    spatial_rows: list[dict[str, Any]] = []
     source_rows_by_clip: dict[str, list[dict[str, Any]]] = {}
     automatic_calibrations: dict[str, ClipCalibration] = {}
     calibrations: dict[str, ClipCalibration] = {}
     for clip_id in clips:
         tracks_path = source_dir / clip_id / "tracks_level2.csv"
         if not tracks_path.exists():
-            raise FileNotFoundError(f"Missing Level 2 tracks for {clip_id}: {tracks_path}")
+            raise FileNotFoundError(f"Missing source tracks for {clip_id}: {tracks_path}")
         rows = read_tracks_csv(tracks_path)
         source_rows_by_clip[clip_id] = rows
         spec = specs[clip_id]
@@ -411,17 +416,18 @@ def run_spatial_model(
         spec = specs[clip_id]
         calibration = manual_calibrations.get(clip_id) or automatic_calibrations[clip_id]
         calibrations[clip_id] = calibration
-        all_level3_rows.extend(rectify_track_rows(clip_id, rows, spec, calibration, field_model))
+        spatial_rows.extend(rectify_track_rows(clip_id, rows, spec, calibration, field_model))
 
-    validation_rows = summarize_rectified_tracks(all_level3_rows, calibrations)
+    validation_rows = summarize_rectified_tracks(spatial_rows, calibrations)
     comparison_rows = compare_calibrations(automatic_calibrations, calibrations, manual_calibrations)
     write_spatial_config(config, output_dir, source_dir, clips, min_field_confidence, min_field_coverage, manual_calibration_path)
     write_calibration_json(output_dir / "field_calibration.json", field_model, calibrations.values())
-    write_level3_tracks(output_dir / "level3_tracks.csv", all_level3_rows)
+    write_spatial_tracks(output_dir / SPATIAL_TRACKS_CSV, spatial_rows)
+    mirror_legacy_file(output_dir / SPATIAL_TRACKS_CSV, output_dir / LEGACY_SPATIAL_TRACKS_CSV)
     write_spatial_validation_csv(output_dir / "spatial_validation.csv", validation_rows)
     write_calibration_comparison_csv(output_dir / "calibration_comparison.csv", comparison_rows)
     draw_minimap_base(output_dir / "minimap_base.png", field_model)
-    draw_minimap_tracks(all_level3_rows, output_dir / "minimap_tracks.png", field_model)
+    draw_minimap_tracks(spatial_rows, output_dir / "minimap_tracks.png", field_model)
     overlay_rows = write_overlay_comparison_csv(output_dir / "overlay_comparison.csv", source_dir, clips)
     manifest_rows = write_spatial_manifest(output_dir / "spatial_manifest.csv", output_dir, source_dir, manual_calibration_path)
     write_summary(
@@ -438,10 +444,74 @@ def run_spatial_model(
     return validation_rows
 
 
+def run_spatial_model_from_tracks(
+    config_path: str | Path,
+    tracks_path: Path,
+    output_dir: Path,
+    clip_id: str,
+    fps: float,
+    width: int,
+    height: int,
+    min_field_confidence: float,
+    min_field_coverage: float,
+    manual_calibration_path: Path | None = None,
+) -> list[dict[str, Any]]:
+    config = load_config(config_path)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    field_model = FieldModel(zone_axis=str(config.get("level2_events", {}).get("zone_axis", "y")))
+    spec = ClipSpatialSpec(clip_id=clip_id, width=width, height=height, fps=fps, role="current_analysis")
+    specs = {clip_id: spec}
+    manual_calibrations = load_manual_calibrations(manual_calibration_path, specs)
+
+    rows = read_tracks_csv(tracks_path)
+    automatic_calibration = build_calibration_from_tracks(
+        clip_id,
+        rows,
+        spec,
+        min_field_confidence=min_field_confidence,
+        min_field_coverage=min_field_coverage,
+    )
+    calibration = manual_calibrations.get(clip_id) or automatic_calibration
+    calibrations = {clip_id: calibration}
+    automatic_calibrations = {clip_id: automatic_calibration}
+    spatial_rows = rectify_track_rows(clip_id, rows, spec, calibration, field_model)
+    validation_rows = summarize_rectified_tracks(spatial_rows, calibrations)
+    comparison_rows = compare_calibrations(automatic_calibrations, calibrations, manual_calibrations)
+
+    source_dir = tracks_path.parent
+    write_spatial_config(config, output_dir, source_dir, (clip_id,), min_field_confidence, min_field_coverage, manual_calibration_path)
+    write_calibration_json(output_dir / "field_calibration.json", field_model, calibrations.values())
+    write_spatial_tracks(output_dir / SPATIAL_TRACKS_CSV, spatial_rows)
+    mirror_legacy_file(output_dir / SPATIAL_TRACKS_CSV, output_dir / LEGACY_SPATIAL_TRACKS_CSV)
+    write_spatial_validation_csv(output_dir / "spatial_validation.csv", validation_rows)
+    write_calibration_comparison_csv(output_dir / "calibration_comparison.csv", comparison_rows)
+    draw_minimap_base(output_dir / "minimap_base.png", field_model)
+    draw_minimap_tracks(spatial_rows, output_dir / "minimap_tracks.png", field_model)
+    overlay_rows = write_overlay_comparison_csv(output_dir / "overlay_comparison.csv", source_dir, (clip_id,))
+    manifest_rows = write_spatial_manifest(output_dir / "spatial_manifest.csv", output_dir, source_dir, manual_calibration_path)
+    write_summary(
+        output_dir / "summary.md",
+        source_dir,
+        (clip_id,),
+        calibrations,
+        validation_rows,
+        overlay_rows,
+        comparison_rows,
+        manual_calibration_path,
+        manifest_rows,
+    )
+    return validation_rows
+
+
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate Level 3 spatial rectification and minimap evidence.")
+    parser = argparse.ArgumentParser(description="Generate spatial rectification and minimap evidence.")
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--source-dir", default=str(DEFAULT_SOURCE_DIR))
+    parser.add_argument("--tracks", default="", help="Direct tracks CSV for the current clip; bypasses --source-dir/<clip>/tracks_level2.csv.")
+    parser.add_argument("--clip-id", default="", help="Clip id used with --tracks.")
+    parser.add_argument("--fps", type=float, default=0.0, help="Clip FPS used with --tracks.")
+    parser.add_argument("--width", type=int, default=0, help="Frame width used with --tracks.")
+    parser.add_argument("--height", type=int, default=0, help="Frame height used with --tracks.")
     parser.add_argument("--experiment", default=str(DEFAULT_OUTPUT_DIR))
     parser.add_argument("--clips", nargs="+", default=list(DEFAULT_CLIPS))
     parser.add_argument("--calibration-json", default=None)
@@ -449,17 +519,33 @@ def main() -> int:
     parser.add_argument("--min-field-coverage", type=float, default=0.35)
     args = parser.parse_args()
 
-    validation_rows = run_spatial_model(
-        args.config,
-        Path(args.source_dir),
-        Path(args.experiment),
-        tuple(args.clips),
-        min_field_confidence=args.min_field_confidence,
-        min_field_coverage=args.min_field_coverage,
-        manual_calibration_path=Path(args.calibration_json) if args.calibration_json else None,
-    )
+    if args.tracks:
+        if not args.clip_id or args.fps <= 0 or args.width <= 0 or args.height <= 0:
+            parser.error("--tracks requires --clip-id, --fps, --width and --height")
+        validation_rows = run_spatial_model_from_tracks(
+            args.config,
+            Path(args.tracks),
+            Path(args.experiment),
+            args.clip_id,
+            fps=args.fps,
+            width=args.width,
+            height=args.height,
+            min_field_confidence=args.min_field_confidence,
+            min_field_coverage=args.min_field_coverage,
+            manual_calibration_path=Path(args.calibration_json) if args.calibration_json else None,
+        )
+    else:
+        validation_rows = run_spatial_model(
+            args.config,
+            Path(args.source_dir),
+            Path(args.experiment),
+            tuple(args.clips),
+            min_field_confidence=args.min_field_confidence,
+            min_field_coverage=args.min_field_coverage,
+            manual_calibration_path=Path(args.calibration_json) if args.calibration_json else None,
+        )
     usable = sum(1 for row in validation_rows if row["calibration_status"] == "usable")
-    print(f"Wrote Level 3 spatial model to {args.experiment} ({usable}/{len(validation_rows)} clips usable)")
+    print(f"Wrote spatial model to {args.experiment} ({usable}/{len(validation_rows)} clips usable)")
     return 0
 
 

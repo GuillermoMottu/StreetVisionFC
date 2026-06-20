@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any
 
 
+UNKNOWN_TEAMS = {"", "unknown", "neutral", "none"}
+
+
 def _read_tracks(path: str | Path) -> list[dict[str, Any]]:
     with Path(path).open("r", newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
@@ -172,8 +175,11 @@ def detect_level1_events(
     for previous, current in zip(possession_runs, possession_runs[1:]):
         _, previous_end, previous_start_robot, previous_start_ball, previous_end_robot, previous_end_ball = previous
         current_start, current_end, current_start_robot, current_start_ball, current_end_robot, current_end_ball = current
+        previous_team = str(previous_end_robot.get("team", "unknown"))
+        current_team = str(current_start_robot.get("team", "unknown"))
         if (
-            previous_end_robot.get("team") == current_start_robot.get("team")
+            previous_team == current_team
+            and previous_team.lower() not in UNKNOWN_TEAMS
             and previous_end_robot["track_id"] != current_start_robot["track_id"]
         ):
             events.append(

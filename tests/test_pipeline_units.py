@@ -39,6 +39,7 @@ from scripts.clean_detections import parse_top_k
 from scripts.check_level2_readiness import ReadinessCheck
 from scripts.check_level2_closure import docs_are_current
 from scripts.check_level3_readiness import ClipSelection, ReadinessCheck as Level3ReadinessCheck, write_report
+from scripts.run_segment_video import mask_quality_summary
 from scripts.run_level2_multiclip import ClipSpec, clip_row, clip_specs_from_config, sports_frames
 from scripts.run_event_validation import ball_speed_rows, nearest_robot_rows
 from scripts.run_tracking_comparison import (
@@ -116,6 +117,25 @@ class PipelineUnitTests(unittest.TestCase):
         self.assertEqual(len(cleaned[0].detections), 2)
         self.assertEqual(sum(1 for item in cleaned[0].detections if item.class_name == "ball"), 1)
         self.assertEqual(cleaned[0].detections[0].class_name, "ball")
+
+    def test_mask_quality_summary_exempts_field_but_requires_object_masks(self) -> None:
+        frames = [
+            FrameDetections(
+                frame=1,
+                detections=(
+                    Detection("green_soccer_field", (0, 0, 100, 100), (50, 50), 0.9),
+                    Detection("small_robot", (10, 10, 20, 20), (15, 15), 0.8, mask_path="robot.png"),
+                    Detection("ball", (30, 30, 35, 35), (32, 32), 0.7),
+                ),
+            )
+        ]
+
+        summary = mask_quality_summary(frames)
+
+        self.assertEqual(summary["total"], 3)
+        self.assertEqual(summary["required"], 2)
+        self.assertEqual(summary["with_masks"], 1)
+        self.assertAlmostEqual(float(summary["ratio"]), 0.5)
 
     def test_temporal_stability_frame_selection(self) -> None:
         self.assertEqual(select_frames(120, 130, 5), [120, 125, 130])
@@ -610,6 +630,36 @@ class PipelineUnitTests(unittest.TestCase):
             self.assertTrue(any(event["event_type"] == "possession" for event in events))
             self.assertTrue(any(event["event_type"] == "activity_zone" for event in events))
             self.assertEqual(events[0]["evidence"]["tracks_file"], "tracks.csv")
+
+    def test_level1_does_not_emit_pass_for_neutral_teams(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            tracks_path = Path(tmp) / "tracks.csv"
+            write_tracks_csv(
+                [
+                    TrackRow(1, "ball_01", "ball", 10, 10, 8, 8, 12, 12, 0.9, "neutral"),
+                    TrackRow(1, "robot_01", "small_robot", 11, 10, 6, 5, 16, 15, 0.9, "neutral"),
+                    TrackRow(2, "ball_01", "ball", 50, 10, 48, 8, 52, 12, 0.9, "neutral"),
+                    TrackRow(2, "robot_02", "small_robot", 51, 10, 46, 5, 56, 15, 0.9, "neutral"),
+                ],
+                tracks_path,
+            )
+
+            events = detect_level1_events(
+                tracks_path,
+                fps=10,
+                field_width=100,
+                field_height=50,
+                config={
+                    "rule_version": "events_v0.1",
+                    "possession_distance_px": 5,
+                    "possession_min_frames": 1,
+                    "collision_distance_px": 1,
+                    "collision_min_frames": 2,
+                    "shot_min_ball_speed_px_per_sec": 999,
+                },
+            )
+
+        self.assertFalse(any(event["event_type"] == "pass" for event in events))
 
 
 if __name__ == "__main__":

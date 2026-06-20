@@ -8,6 +8,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from futbotmx.artifact_names import TEAM_TRACKS_CSV
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.level3 import (
     TEAM_ASSIGNMENT_RULE_VERSION,
@@ -18,7 +19,7 @@ from futbotmx.level3 import (
 )
 
 
-DEFAULT_SOURCE_TRACKS = Path("experiments/test_020_level3_spatial_model/level3_tracks.csv")
+DEFAULT_SOURCE_TRACKS = Path("experiments/test_020_spatial_model/spatial_tracks.csv")
 DEFAULT_OUTPUT_DIR = Path("experiments/test_031_team_assignment")
 
 
@@ -31,7 +32,7 @@ def write_config(config: dict[str, Any], output_dir: Path, team_config: TeamAssi
             "team_assignment.csv",
             "team_assignment_validation.csv",
             "strategy_evaluation.csv",
-            "level3_tracks_with_teams.csv",
+            TEAM_TRACKS_CSV,
             "team_assignment_summary.json",
             "team_assignment_manifest.csv",
             "summary.md",
@@ -41,7 +42,7 @@ def write_config(config: dict[str, Any], output_dir: Path, team_config: TeamAssi
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate approximate team assignments for Level 3 tracks.")
+    parser = argparse.ArgumentParser(description="Generate approximate team assignments for spatial tracks.")
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--tracks", default=str(DEFAULT_SOURCE_TRACKS))
     parser.add_argument("--manual-assignment", default="")

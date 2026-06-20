@@ -10,6 +10,14 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from futbotmx.artifact_names import (
+    LEGACY_TACTICAL_METRICS_CSV,
+    LEGACY_TACTICAL_METRICS_JSON,
+    SPATIAL_TRACKS_CSV,
+    TACTICAL_METRICS_CSV,
+    TACTICAL_METRICS_JSON,
+    mirror_legacy_file,
+)
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.level3 import (
     LEVEL3_TACTICAL_RULE_VERSION,
@@ -24,13 +32,13 @@ from futbotmx.level3 import (
 )
 
 
-DEFAULT_SOURCE_TRACKS = Path("experiments/test_020_level3_spatial_model/level3_tracks.csv")
-DEFAULT_OUTPUT_DIR = Path("experiments/test_021_level3_tactical_metrics")
+DEFAULT_SOURCE_TRACKS = Path("experiments/test_020_spatial_model/spatial_tracks.csv")
+DEFAULT_OUTPUT_DIR = Path("experiments/test_021_tactical_metrics")
 
 
 def write_tactical_config(config: dict[str, Any], output_dir: Path, tactical_config: TacticalConfig) -> None:
     snapshot = copy.deepcopy(config)
-    snapshot["level3_tactical_metrics"] = {
+    snapshot["tactical_metrics"] = {
         "rule_version": LEVEL3_TACTICAL_RULE_VERSION,
         "source_tracks": tactical_config.source_tracks,
         "output_dir": output_dir.as_posix(),
@@ -47,8 +55,8 @@ def write_tactical_config(config: dict[str, Any], output_dir: Path, tactical_con
             "min_track_confidence": tactical_config.min_track_confidence,
         },
         "outputs": [
-            "level3_metrics.csv",
-            "level3_metrics.json",
+            TACTICAL_METRICS_CSV,
+            TACTICAL_METRICS_JSON,
             "spatial_control.csv",
             "voronoi_frames.csv",
             "interaction_metrics.csv",
@@ -83,7 +91,7 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
     top_edges = sorted(edge_rows, key=lambda row: float(row["weight"]), reverse=True)[:5]
 
     lines = [
-        "# Metricas Tacticas Avanzadas Nivel 3",
+        "# Metricas tacticas avanzadas",
         "",
         "## Resultado",
         "",
@@ -140,21 +148,21 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
             "",
             "## Comparabilidad",
             "",
-            "- `video_595` y `video_667` usan el mismo contrato `level3_tracks.csv`, la misma grilla y los mismos umbrales normalizados.",
+            f"- `video_595` y `video_667` usan el mismo contrato `{SPATIAL_TRACKS_CSV}`, la misma grilla y los mismos umbrales normalizados.",
             "- Si `team_assignment.csv` ya fue aplicado, se exportan metricas por equipo ademas del fallback por robot.",
-            "- Cada fila de `level3_metrics.csv`, `interaction_metrics.csv` e `interaction_edges.csv` incluye confianza o confiabilidad provisional.",
+            f"- Cada fila de `{TACTICAL_METRICS_CSV}`, `interaction_metrics.csv` e `interaction_edges.csv` incluye confianza o confiabilidad provisional.",
             "",
             "## Limitaciones",
             "",
-            "- Control, Voronoi y presion son aproximaciones tacticas sobre homografia Nivel 3, no mediciones oficiales.",
+            "- Control, Voronoi y presion son aproximaciones tacticas sobre homografia, no mediciones oficiales.",
             "- La posesion se conserva como candidato por proximidad; contacto fisico y reglas oficiales quedan fuera del alcance.",
             "- El grafo pondera duracion, distancia y confianza para comparacion interna de la demo.",
             "",
             "## Artefactos",
             "",
             "- `config.yaml`",
-            "- `level3_metrics.csv`",
-            "- `level3_metrics.json`",
+            f"- `{TACTICAL_METRICS_CSV}`",
+            f"- `{TACTICAL_METRICS_JSON}`",
             "- `spatial_control.csv`",
             "- `voronoi_frames.csv`",
             "- `interaction_metrics.csv`",
@@ -165,7 +173,7 @@ def write_summary(path: Path, outputs: dict[str, Any]) -> None:
             "## Comando",
             "",
             "```bash",
-            ".venv/bin/python scripts/run_level3_tactical_metrics.py",
+            ".venv/bin/python scripts/run_tactical_metrics.py",
             "```",
             "",
             "## Grafo",
@@ -187,9 +195,9 @@ def build_tactical_metrics(
     output_dir.mkdir(parents=True, exist_ok=True)
     outputs = compute_tactical_outputs(tracks_path, tactical_config)
     write_tactical_config(config, output_dir, tactical_config)
-    write_level3_metrics_csv(output_dir / "level3_metrics.csv", outputs["metric_rows"])
+    write_level3_metrics_csv(output_dir / TACTICAL_METRICS_CSV, outputs["metric_rows"])
     write_level3_metrics_json(
-        output_dir / "level3_metrics.json",
+        output_dir / TACTICAL_METRICS_JSON,
         outputs["metric_rows"],
         tactical_config,
         outputs["control_aggregate"],
@@ -199,6 +207,8 @@ def build_tactical_metrics(
         outputs["edge_rows"],
         outputs["team_control_aggregate"],
     )
+    mirror_legacy_file(output_dir / TACTICAL_METRICS_CSV, output_dir / LEGACY_TACTICAL_METRICS_CSV)
+    mirror_legacy_file(output_dir / TACTICAL_METRICS_JSON, output_dir / LEGACY_TACTICAL_METRICS_JSON)
     write_spatial_control_csv(output_dir / "spatial_control.csv", outputs["control_rows"])
     write_voronoi_frames_csv(output_dir / "voronoi_frames.csv", outputs["voronoi_frames"])
     write_interaction_metrics(output_dir / "interaction_metrics.csv", outputs["interaction_samples"])
@@ -209,7 +219,7 @@ def build_tactical_metrics(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Compute Level 3 tactical metrics from rectified tracks.")
+    parser = argparse.ArgumentParser(description="Compute tactical metrics from rectified tracks.")
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--tracks", default=str(DEFAULT_SOURCE_TRACKS))
     parser.add_argument("--experiment", default=str(DEFAULT_OUTPUT_DIR))
@@ -235,7 +245,7 @@ def main() -> int:
     )
     outputs = build_tactical_metrics(args.config, tracks_path, Path(args.experiment), tactical_config)
     print(
-        "Wrote Level 3 tactical metrics to "
+        "Wrote tactical metrics to "
         f"{args.experiment} ({len(outputs['metric_rows'])} metrics, {len(outputs['edge_rows'])} graph edges)"
     )
     return 0

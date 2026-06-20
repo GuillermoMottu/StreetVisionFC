@@ -8,6 +8,7 @@ import sys
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from futbotmx.artifact_names import HIGHLIGHTS_CSV, SPATIAL_TRACKS_CSV
 from futbotmx.level3 import (
     LEVEL3_HIGHLIGHTS_FIELDS,
     LEVEL3_TRACKS_FIELDS,
@@ -33,8 +34,8 @@ class Level3ContractTests(unittest.TestCase):
     def test_schema_writers_are_roundtrippable(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             output_dir = Path(tmp)
-            manifest_path = output_dir / "level3_schema_manifest.csv"
-            json_path = output_dir / "level3_schema.json"
+            manifest_path = output_dir / "tactical_schema_manifest.csv"
+            json_path = output_dir / "tactical_schema.json"
 
             write_schema_manifest(manifest_path)
             write_schema_json(json_path)
@@ -44,12 +45,12 @@ class Level3ContractTests(unittest.TestCase):
             payload = json_path.read_text(encoding="utf-8")
 
             self.assertGreaterEqual(len(rows), 7)
-            self.assertIn("level3_tracks.csv", {row["artifact_name"] for row in rows})
-            self.assertIn("level3_data_contract_v0.1", payload)
+            self.assertIn(SPATIAL_TRACKS_CSV, {row["artifact_name"] for row in rows})
+            self.assertIn("tactical_data_contract_v0.2", payload)
 
     def test_csv_artifact_writer_validates_and_roundtrips_level3_tracks(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "level3_tracks.csv"
+            path = Path(tmp) / SPATIAL_TRACKS_CSV
             row = {
                 field: ""
                 for field in LEVEL3_TRACKS_FIELDS
@@ -71,7 +72,7 @@ class Level3ContractTests(unittest.TestCase):
                 }
             )
 
-            write_csv_artifact(path, "level3_tracks.csv", [row])
+            write_csv_artifact(path, SPATIAL_TRACKS_CSV, [row])
             loaded = read_csv_artifact(path)
 
             self.assertEqual(loaded[0]["clip_id"], "video_595")
@@ -80,7 +81,7 @@ class Level3ContractTests(unittest.TestCase):
 
     def test_csv_artifact_writer_roundtrips_level3_highlights(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            path = Path(tmp) / "level3_highlights.csv"
+            path = Path(tmp) / HIGHLIGHTS_CSV
             row = {field: "" for field in LEVEL3_HIGHLIGHTS_FIELDS}
             row.update(
                 {
@@ -102,7 +103,7 @@ class Level3ContractTests(unittest.TestCase):
                 }
             )
 
-            write_csv_artifact(path, "level3_highlights.csv", [row])
+            write_csv_artifact(path, HIGHLIGHTS_CSV, [row])
             loaded = read_csv_artifact(path)
 
             self.assertEqual(loaded[0]["highlight_id"], "lvl3_evt_000001")

@@ -8,6 +8,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from futbotmx.artifact_names import ADVANCED_EVENTS_JSON, HIGHLIGHTS_CSV, NARRATIVE_MD, TACTICAL_METRICS_CSV, TACTICAL_METRICS_JSON, VISUALIZATION_MANIFEST_CSV
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.level3 import (
     LEVEL3_DASHBOARD_RULE_VERSION,
@@ -17,12 +18,12 @@ from futbotmx.level3 import (
 )
 
 
-DEFAULT_OUTPUT_DIR = Path("experiments/test_024_level3_dashboard")
+DEFAULT_OUTPUT_DIR = Path("experiments/test_024_dashboard")
 
 
 def write_config(config: dict[str, Any], output_dir: Path, dashboard_config: Level3DashboardConfig) -> None:
     snapshot = copy.deepcopy(config)
-    snapshot["level3_dashboard"] = {
+    snapshot["tactical_dashboard"] = {
         "rule_version": LEVEL3_DASHBOARD_RULE_VERSION,
         "format": "static_html",
         "architecture": "local_file_no_backend",
@@ -44,7 +45,7 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
     manifest = context["manifest"]
     missing_assets = [name for name, asset in visual_assets.items() if not asset]
     lines = [
-        "# Dashboard Ligero Nivel 3",
+        "# Dashboard tactico ligero",
         "",
         "## Resultado",
         "",
@@ -89,7 +90,7 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
             "",
             "## Limitaciones",
             "",
-            "- El dashboard presenta analisis aproximado Nivel 3, no arbitraje oficial ni reproduccion de video completo.",
+            "- El dashboard presenta analisis tactico aproximado, no arbitraje oficial ni reproduccion de video completo.",
             "- Los links dependen de la estructura relativa de `experiments/` versionada en el repositorio.",
             "- Las visualizaciones se muestran como capturas estaticas para mantener el paquete liviano.",
             "",
@@ -103,7 +104,7 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
             "## Comando",
             "",
             "```bash",
-            ".venv/bin/python scripts/run_level3_dashboard.py",
+            ".venv/bin/python scripts/run_tactical_dashboard.py",
             "```",
         ]
     )
@@ -125,17 +126,17 @@ def run_dashboard(config_path: str | Path, dashboard_config: Level3DashboardConf
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate the static Level 3 dashboard.")
+    parser = argparse.ArgumentParser(description="Generate the static tactical dashboard.")
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--experiment", default=str(DEFAULT_OUTPUT_DIR))
-    parser.add_argument("--metrics-csv", default="experiments/test_021_level3_tactical_metrics/level3_metrics.csv")
-    parser.add_argument("--metrics-json", default="experiments/test_021_level3_tactical_metrics/level3_metrics.json")
-    parser.add_argument("--interaction-edges", default="experiments/test_021_level3_tactical_metrics/interaction_edges.csv")
-    parser.add_argument("--highlights", default="experiments/test_022_level3_advanced_events/level3_highlights.csv")
-    parser.add_argument("--events", default="experiments/test_022_level3_advanced_events/level3_events.json")
-    parser.add_argument("--narrative", default="experiments/test_022_level3_advanced_events/level3_narrative.md")
-    parser.add_argument("--visualizations-dir", default="experiments/test_023_level3_visualizations")
-    parser.add_argument("--visualization-manifest", default="experiments/test_023_level3_visualizations/visualization_manifest.csv")
+    parser.add_argument("--metrics-csv", default=f"experiments/test_021_tactical_metrics/{TACTICAL_METRICS_CSV}")
+    parser.add_argument("--metrics-json", default=f"experiments/test_021_tactical_metrics/{TACTICAL_METRICS_JSON}")
+    parser.add_argument("--interaction-edges", default="experiments/test_021_tactical_metrics/interaction_edges.csv")
+    parser.add_argument("--highlights", default=f"experiments/test_022_advanced_events/{HIGHLIGHTS_CSV}")
+    parser.add_argument("--events", default=f"experiments/test_022_advanced_events/{ADVANCED_EVENTS_JSON}")
+    parser.add_argument("--narrative", default=f"experiments/test_022_advanced_events/{NARRATIVE_MD}")
+    parser.add_argument("--visualizations-dir", default="experiments/test_023_visualizations")
+    parser.add_argument("--visualization-manifest", default=f"experiments/test_023_visualizations/{VISUALIZATION_MANIFEST_CSV}")
     parser.add_argument("--human-review", default="")
     parser.add_argument("--top-highlights", type=int, default=6)
     parser.add_argument("--top-edges", type=int, default=5)
@@ -157,7 +158,7 @@ def main() -> int:
     )
     context = run_dashboard(args.config, dashboard_config)
     print(
-        "Wrote Level 3 dashboard to "
+        "Wrote tactical dashboard to "
         f"{args.experiment} ({len(context['manifest'])} manifest rows, {len(context['top_highlights'])} highlights shown)"
     )
     return 0

@@ -124,6 +124,7 @@ from futbotmx.level3.spatial import (
     normalized_zone,
     polygon_area,
     read_level3_tracks,
+    read_spatial_tracks,
     rectify_track_rows,
     solve_homography,
     summarize_rectified_tracks,
@@ -131,6 +132,7 @@ from futbotmx.level3.spatial import (
     transform_point_with_calibration,
     write_calibration_json,
     write_level3_tracks,
+    write_spatial_tracks,
     write_spatial_validation_csv,
 )
 from futbotmx.level3.tactical import (
@@ -309,6 +311,7 @@ __all__ = [
     "possession_segments",
     "read_csv_artifact",
     "read_level3_tracks",
+    "read_spatial_tracks",
     "rectify_track_rows",
     "reel_config_to_dict",
     "reel_manifest_rows",
@@ -353,6 +356,7 @@ __all__ = [
     "write_level3_metrics_csv",
     "write_level3_metrics_json",
     "write_level3_tracks",
+    "write_spatial_tracks",
     "write_multiclip_comparison",
     "write_multiclip_manifest",
     "write_narrative",

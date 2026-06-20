@@ -8,6 +8,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
 
+from futbotmx.artifact_names import ADVANCED_EVENTS_DIR, ADVANCED_EVENTS_JSON, HIGHLIGHTS_CSV, NARRATIVE_MD, VISUALIZATION_MANIFEST_CSV, VISUALIZATIONS_DIR
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.level3 import (
     LEVEL3_REEL_RULE_VERSION,
@@ -17,12 +18,12 @@ from futbotmx.level3 import (
 )
 
 
-DEFAULT_OUTPUT_DIR = Path("experiments/test_025_level3_reel")
+DEFAULT_OUTPUT_DIR = Path("experiments/test_025_reel")
 
 
 def write_config(config: dict[str, Any], output_dir: Path, reel_config: Level3ReelConfig) -> None:
     snapshot = copy.deepcopy(config)
-    snapshot["level3_reel"] = {
+    snapshot["tactical_reel"] = {
         "rule_version": LEVEL3_REEL_RULE_VERSION,
         "format": "static_demo_plus_local_render_plan",
         "mp4_policy": "local_only_not_versioned",
@@ -49,7 +50,7 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
     manifest = context["manifest"]
     summary = context["summary"]
     lines = [
-        "# Reel Final Y Demo De Presentacion Nivel 3",
+        "# Reel final y demo de presentacion",
         "",
         "## Resultado",
         "",
@@ -80,7 +81,7 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
             "## Narrativa",
             "",
             "- Cada thumbnail combina overlay de evento, mini-mapa y texto breve.",
-            "- Los overlays muestran IDs/trails cuando existen en la evidencia Nivel 3.",
+            "- Los overlays muestran IDs/trails cuando existen en la evidencia tactica.",
             "- Si existe `human_review.csv`, los highlights descartados no entran al reel.",
             "- El lenguaje queda como highlight/proximidad/posesion candidata; no afirma goles ni decisiones oficiales.",
             "",
@@ -117,7 +118,7 @@ def write_summary(path: Path, context: dict[str, Any]) -> None:
             "## Comando De Generacion",
             "",
             "```bash",
-            ".venv/bin/python scripts/run_level3_reel.py",
+            ".venv/bin/python scripts/run_tactical_reel.py",
             "```",
         ]
     )
@@ -135,19 +136,19 @@ def run_reel(config_path: str | Path, reel_config: Level3ReelConfig) -> dict[str
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Generate Level 3 final reel demo package.")
+    parser = argparse.ArgumentParser(description="Generate final tactical reel demo package.")
     parser.add_argument("--config", default="configs/default.yaml")
     parser.add_argument("--experiment", default=str(DEFAULT_OUTPUT_DIR))
-    parser.add_argument("--highlights", default="experiments/test_022_level3_advanced_events/level3_highlights.csv")
-    parser.add_argument("--events", default="experiments/test_022_level3_advanced_events/level3_events.json")
-    parser.add_argument("--overlay-validation", default="experiments/test_022_level3_advanced_events/overlay_validation.csv")
-    parser.add_argument("--advanced-events-dir", default="experiments/test_022_level3_advanced_events")
-    parser.add_argument("--visualization-manifest", default="experiments/test_023_level3_visualizations/visualization_manifest.csv")
-    parser.add_argument("--storyboard-manifest", default="experiments/test_023_level3_visualizations/highlight_storyboard_manifest.csv")
-    parser.add_argument("--visualizations-dir", default="experiments/test_023_level3_visualizations")
-    parser.add_argument("--dashboard-html", default="experiments/test_024_level3_dashboard/dashboard.html")
+    parser.add_argument("--highlights", default=f"experiments/test_022_advanced_events/{HIGHLIGHTS_CSV}")
+    parser.add_argument("--events", default=f"experiments/test_022_advanced_events/{ADVANCED_EVENTS_JSON}")
+    parser.add_argument("--overlay-validation", default="experiments/test_022_advanced_events/overlay_validation.csv")
+    parser.add_argument("--advanced-events-dir", default=f"experiments/test_022_advanced_events")
+    parser.add_argument("--visualization-manifest", default=f"experiments/test_023_visualizations/{VISUALIZATION_MANIFEST_CSV}")
+    parser.add_argument("--storyboard-manifest", default="experiments/test_023_visualizations/highlight_storyboard_manifest.csv")
+    parser.add_argument("--visualizations-dir", default="experiments/test_023_visualizations")
+    parser.add_argument("--dashboard-html", default="experiments/test_024_dashboard/dashboard.html")
     parser.add_argument("--human-review", default="")
-    parser.add_argument("--local-reel-path", default="local_outputs/level3_reel/futbotmx_level3_reel.mp4")
+    parser.add_argument("--local-reel-path", default="local_outputs/tactical_reel/futbotmx_tactical_reel.mp4")
     parser.add_argument("--segment-count", type=int, default=4)
     parser.add_argument("--segment-duration-sec", type=float, default=3.0)
     parser.add_argument("--min-confidence", type=float, default=0.8)
@@ -171,7 +172,7 @@ def main() -> int:
     )
     context = run_reel(args.config, reel_config)
     print(
-        "Wrote Level 3 reel package to "
+        "Wrote tactical reel package to "
         f"{args.experiment} ({len(context['segments'])} segments, {len(context['manifest'])} manifest rows)"
     )
     return 0

@@ -64,6 +64,8 @@ class Level3DashboardTests(unittest.TestCase):
 
             html = render_dashboard_html(context)
 
+            self.assertIn('data-ui-shell="futbotmx-ui-v1"', html)
+            self.assertIn('data-product-flow="report"', html)
             self.assertIn("Dashboard tactico avanzado", html)
             self.assertIn("storyboard.png", html)
             self.assertIn("level3_metrics.csv", html)

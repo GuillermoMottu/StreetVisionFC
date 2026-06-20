@@ -12,8 +12,23 @@ from dataclasses import asdict, dataclass
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import Any
-from urllib.parse import parse_qs, unquote, urlparse
+from urllib.parse import parse_qs, quote, unquote, urlparse
 
+from futbotmx.artifact_names import (
+    ADVANCED_EVENTS_DIR,
+    ADVANCED_EVENTS_JSON,
+    HIGHLIGHTS_CSV,
+    LEGACY_ADVANCED_EVENTS_DIR,
+    LEGACY_ADVANCED_EVENTS_JSON,
+    LEGACY_HIGHLIGHTS_CSV,
+    LEGACY_SPATIAL_DIR,
+    LEGACY_SPATIAL_TRACKS_CSV,
+    LEGACY_VISUALIZATIONS_DIR,
+    SPATIAL_DIR,
+    SPATIAL_TRACKS_CSV,
+    VISUALIZATIONS_DIR,
+    first_existing,
+)
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.live_playback_contract import (
     LIVE_HIGHLIGHT_FIELDS,
@@ -32,21 +47,28 @@ from futbotmx.live_playback_contract import (
     write_live_highlights_csv,
     write_live_tracks_csv,
 )
+from futbotmx.ui import shared_css, ui_body_attrs
 
 
 RULE_VERSION = "live_playback_app_v0.1"
 DEFAULT_EXPERIMENT_DIR = Path("experiments/test_039_live_playback")
 DEFAULT_TRACKS_CANDIDATES = (
-    Path("experiments/test_034_full_analysis/level3_spatial/level3_tracks.csv"),
-    Path("experiments/test_020_level3_spatial_model/level3_tracks.csv"),
+    Path("experiments/test_034_full_analysis") / SPATIAL_DIR / SPATIAL_TRACKS_CSV,
+    Path("experiments/test_034_full_analysis") / LEGACY_SPATIAL_DIR / LEGACY_SPATIAL_TRACKS_CSV,
+    Path("experiments/test_020_spatial_model") / SPATIAL_TRACKS_CSV,
+    Path("experiments/test_020_level3_spatial_model") / LEGACY_SPATIAL_TRACKS_CSV,
 )
 DEFAULT_EVENTS_CANDIDATES = (
-    Path("experiments/test_034_full_analysis/level3_events/level3_events.json"),
-    Path("experiments/test_022_level3_advanced_events/level3_events.json"),
+    Path("experiments/test_034_full_analysis") / ADVANCED_EVENTS_DIR / ADVANCED_EVENTS_JSON,
+    Path("experiments/test_034_full_analysis") / LEGACY_ADVANCED_EVENTS_DIR / LEGACY_ADVANCED_EVENTS_JSON,
+    Path("experiments/test_022_advanced_events") / ADVANCED_EVENTS_JSON,
+    Path("experiments/test_022_level3_advanced_events") / LEGACY_ADVANCED_EVENTS_JSON,
 )
 DEFAULT_HIGHLIGHTS_CANDIDATES = (
-    Path("experiments/test_034_full_analysis/level3_events/level3_highlights.csv"),
-    Path("experiments/test_022_level3_advanced_events/level3_highlights.csv"),
+    Path("experiments/test_034_full_analysis") / ADVANCED_EVENTS_DIR / HIGHLIGHTS_CSV,
+    Path("experiments/test_034_full_analysis") / LEGACY_ADVANCED_EVENTS_DIR / LEGACY_HIGHLIGHTS_CSV,
+    Path("experiments/test_022_advanced_events") / HIGHLIGHTS_CSV,
+    Path("experiments/test_022_level3_advanced_events") / LEGACY_HIGHLIGHTS_CSV,
 )
 MANIFEST_FIELDS = ["asset_id", "asset_type", "path", "source_artifact", "is_versioned", "role", "notes"]
 DEFAULT_TRAIL_LENGTH = 16
@@ -88,6 +110,34 @@ STREAM_LATENCY_FIELDS = [
     "gpu_memory_metric",
     "overlay_ready",
 ]
+
+
+def normalize_route_prefix(route_prefix: str = "") -> str:
+    prefix = (route_prefix or "").strip()
+    if not prefix or prefix == "/":
+        return ""
+    if not prefix.startswith("/"):
+        prefix = "/" + prefix
+    return prefix.rstrip("/")
+
+
+def mounted_path(route_prefix: str, path: str) -> str:
+    prefix = normalize_route_prefix(route_prefix)
+    suffix = path if path.startswith("/") else "/" + path
+    if not prefix:
+        return suffix
+    return prefix + suffix
+
+
+def strip_route_prefix(path: str, route_prefix: str) -> str | None:
+    prefix = normalize_route_prefix(route_prefix)
+    if not prefix:
+        return path
+    if path == prefix:
+        return "/"
+    if path.startswith(prefix + "/"):
+        return path[len(prefix) :]
+    return None
 
 
 @dataclass(frozen=True)
@@ -388,7 +438,7 @@ def inference_mode_profiles(playback_config: LivePlaybackConfig) -> list[Inferen
             expected_latency_ms=0.65,
             latency_budget_ms=latency_budget,
             gpu_memory_metric="not_applicable",
-            quality_note="Usa artefactos SAM 3/Level 3 ya generados; recomendado para demo fluida.",
+            quality_note="Usa artefactos SAM 3 y tacticos ya generados; recomendado para demo fluida.",
             limitation="No mejora ni corrige detecciones durante playback; depende de la calidad offline.",
         ),
         InferenceModeProfile(
@@ -819,31 +869,32 @@ def sse_stream_text(messages: list[dict[str, Any]]) -> str:
     return "retry: 3000\n\n" + "".join(sse_format_message(message) for message in messages)
 
 
-def backend_endpoint_manifest(context: dict[str, Any]) -> dict[str, Any]:
+def backend_endpoint_manifest(context: dict[str, Any], route_prefix: str = "") -> dict[str, Any]:
     config: LivePlaybackConfig = context["config"]
     video_metadata: VideoMetadata = context["video_metadata"]
+    endpoint = lambda path: mounted_path(route_prefix, path)
     endpoints = [
-        _endpoint_row("/health", "text/plain", "status", "Backend health check."),
-        _endpoint_row("/playback.html", "text/html", "ui", "Playback UI with video and canvas overlay."),
-        _endpoint_row("/data.json", "application/json", "combined_data", "Combined payload for simple clients."),
-        _endpoint_row("/manifest.json", "application/json", "manifest", "Endpoint and artifact manifest."),
-        _endpoint_row("/stream", "text/event-stream", "stream", "SSE channel for session_status, frame_result, event_update, latency_metrics and warning messages."),
-        _endpoint_row("/stream-summary.json", "application/json", "stream_summary", "SSE message counts, latency summary and transport decision."),
-        _endpoint_row("/stream-messages.jsonl", "application/x-ndjson", "stream_log", "Lightweight log of emitted SSE messages."),
-        _endpoint_row("/live_tracks.jsonl", "application/x-ndjson", "live_tracks_log", "Downloadable live track snapshots for debug review."),
-        _endpoint_row("/stream_events.jsonl", "application/x-ndjson", "stream_events_log", "Downloadable streaming event updates for debug review."),
-        _endpoint_row("/stream-latency.csv", "text/csv", "stream_metrics", "Latency metrics emitted by the SSE channel."),
-        _endpoint_row("/frame-loop-summary.json", "application/json", "frame_loop", "Online frame loop status, controls and performance summary."),
-        _endpoint_row("/frame-loop-metrics.csv", "text/csv", "frame_loop_metrics", "Per-frame stage timings from the online frame loop."),
-        _endpoint_row("/inference-modes.json", "application/json", "inference_modes", "Configurable inference mode catalog and selected profile."),
-        _endpoint_row("/debug-panel.json", "application/json", "debug_panel", "Debug panel coverage, indicators and downloadable artifacts."),
-        _endpoint_row("/tracks.csv", "text/csv", "tracks", "Normalized live tracks."),
-        _endpoint_row("/events.json", "application/json", "events", "Normalized live events."),
-        _endpoint_row("/highlights.csv", "text/csv", "highlights", "Normalized live highlights."),
-        _endpoint_row("/minimap.json?frame=120", "application/json", "minimap", "Frame-specific minimap payload."),
-        _endpoint_row("/calibration.json", "application/json", "calibration", "Calibration status inferred from normalized tracks."),
-        _endpoint_row("/video-metadata.json", "application/json", "video_metadata", "Configured video metadata."),
-        _endpoint_row(f"/video?clip_id={config.clip_id}", "video/*", "local_video", "Configured local video; heavy file is not versioned."),
+        _endpoint_row(endpoint("/health"), "text/plain", "status", "Backend health check."),
+        _endpoint_row(endpoint("/playback.html"), "text/html", "ui", "Playback UI with video and canvas overlay."),
+        _endpoint_row(endpoint("/data.json"), "application/json", "combined_data", "Combined payload for simple clients."),
+        _endpoint_row(endpoint("/manifest.json"), "application/json", "manifest", "Endpoint and artifact manifest."),
+        _endpoint_row(endpoint("/stream"), "text/event-stream", "stream", "SSE channel for session_status, frame_result, event_update, latency_metrics and warning messages."),
+        _endpoint_row(endpoint("/stream-summary.json"), "application/json", "stream_summary", "SSE message counts, latency summary and transport decision."),
+        _endpoint_row(endpoint("/stream-messages.jsonl"), "application/x-ndjson", "stream_log", "Lightweight log of emitted SSE messages."),
+        _endpoint_row(endpoint("/live_tracks.jsonl"), "application/x-ndjson", "live_tracks_log", "Downloadable live track snapshots for debug review."),
+        _endpoint_row(endpoint("/stream_events.jsonl"), "application/x-ndjson", "stream_events_log", "Downloadable streaming event updates for debug review."),
+        _endpoint_row(endpoint("/stream-latency.csv"), "text/csv", "stream_metrics", "Latency metrics emitted by the SSE channel."),
+        _endpoint_row(endpoint("/frame-loop-summary.json"), "application/json", "frame_loop", "Online frame loop status, controls and performance summary."),
+        _endpoint_row(endpoint("/frame-loop-metrics.csv"), "text/csv", "frame_loop_metrics", "Per-frame stage timings from the online frame loop."),
+        _endpoint_row(endpoint("/inference-modes.json"), "application/json", "inference_modes", "Configurable inference mode catalog and selected profile."),
+        _endpoint_row(endpoint("/debug-panel.json"), "application/json", "debug_panel", "Debug panel coverage, indicators and downloadable artifacts."),
+        _endpoint_row(endpoint("/tracks.csv"), "text/csv", "tracks", "Normalized live tracks."),
+        _endpoint_row(endpoint("/events.json"), "application/json", "events", "Normalized live events."),
+        _endpoint_row(endpoint("/highlights.csv"), "text/csv", "highlights", "Normalized live highlights."),
+        _endpoint_row(endpoint("/minimap.json?frame=120"), "application/json", "minimap", "Frame-specific minimap payload."),
+        _endpoint_row(endpoint("/calibration.json"), "application/json", "calibration", "Calibration status inferred from normalized tracks."),
+        _endpoint_row(endpoint("/video-metadata.json"), "application/json", "video_metadata", "Configured video metadata."),
+        _endpoint_row(endpoint(f"/video?clip_id={config.clip_id}"), "video/*", "local_video", "Configured local video; heavy file is not versioned."),
     ]
     return {
         "rule_version": RULE_VERSION,
@@ -1150,7 +1201,8 @@ _ANALYSIS_LOCK = threading.Lock()
 def _find_experiment_visualizations(root: Path, tracks_csv: str) -> dict[str, Any]:
     """Discover visualization PNGs from the experiment that produced tracks_csv.
 
-    Expects tracks_csv = .../experiment/level3_spatial/level3_tracks.csv
+    Expects tracks_csv = .../experiment/spatial_model/spatial_tracks.csv,
+    with fallback support for historical experiment folders.
     Returns paths relative to root (for /artifact?path=... endpoint).
     """
     root_abs = root.resolve()
@@ -1158,15 +1210,15 @@ def _find_experiment_visualizations(root: Path, tracks_csv: str) -> dict[str, An
     if not p.is_absolute():
         p = (root_abs / p).resolve()
     parts = p.parts
-    if len(parts) >= 2 and parts[-2] == "level3_spatial":
+    if len(parts) >= 2 and parts[-2] in {SPATIAL_DIR, LEGACY_SPATIAL_DIR}:
         exp = p.parents[1]
-    elif len(parts) >= 3 and parts[-3] == "level3_spatial":
+    elif len(parts) >= 3 and parts[-3] in {SPATIAL_DIR, LEGACY_SPATIAL_DIR}:
         exp = p.parents[2]
     else:
         exp = p.parent
-    viz = exp / "level3_visualizations"
-    spatial = exp / "level3_spatial"
-    events_dir = exp / "level3_events"
+    viz = first_existing(exp / VISUALIZATIONS_DIR, exp / LEGACY_VISUALIZATIONS_DIR)
+    spatial = first_existing(exp / SPATIAL_DIR, exp / LEGACY_SPATIAL_DIR)
+    events_dir = first_existing(exp / ADVANCED_EVENTS_DIR, exp / LEGACY_ADVANCED_EVENTS_DIR)
 
     def rel(path: Path) -> str | None:
         try:
@@ -1233,9 +1285,9 @@ def _run_analysis_async(
                     exp_dir = line.split("Experimento:")[-1].strip()
                     break
             if exp_dir:
-                new_tracks = str(Path(exp_dir) / "level3_spatial" / "level3_tracks.csv")
-                new_events = str(Path(exp_dir) / "level3_events" / "level3_events.json")
-                new_highlights = str(Path(exp_dir) / "level3_events" / "level3_highlights.csv")
+                new_tracks = str(Path(exp_dir) / SPATIAL_DIR / SPATIAL_TRACKS_CSV)
+                new_events = str(Path(exp_dir) / ADVANCED_EVENTS_DIR / ADVANCED_EVENTS_JSON)
+                new_highlights = str(Path(exp_dir) / ADVANCED_EVENTS_DIR / HIGHLIGHTS_CSV)
                 new_output = str(Path(exp_dir) / "live_playback")
                 from futbotmx.live_playback import LivePlaybackConfig, build_live_playback_package
                 import cv2
@@ -1275,9 +1327,12 @@ def _run_analysis_async(
             })
 
 
-def render_playback_html(context: dict[str, Any]) -> str:
+def render_playback_html(context: dict[str, Any], route_prefix: str = "") -> str:
+    route_prefix = normalize_route_prefix(route_prefix)
     config: LivePlaybackConfig = context["config"]
-    payload = client_payload(context)
+    endpoint = lambda path: mounted_path(route_prefix, path)
+    artifact_url = lambda path: endpoint("/artifact?path=" + quote(path, safe="/"))
+    payload = client_payload(context, route_prefix=route_prefix)
     payload_json = json.dumps(payload, ensure_ascii=True, separators=(",", ":"))
     summary = context["summary"]
     viz = context.get("visualizations", {})
@@ -1290,16 +1345,16 @@ def render_playback_html(context: dict[str, Any]) -> str:
     n_frames = summary.get("available_frame_count", 0)
     teams = {r.get("team", "") for r in context["tracks"] if r.get("team") not in ("", "unknown", "neutral")}
 
-    def stat_card(label: str, value: str, color: str = "") -> str:
-        style = f'style="border-top:3px solid {color}"' if color else ""
-        return f'<div class="stat-card" {style}><div class="stat-val">{_esc(value)}</div><div class="stat-lbl">{_esc(label)}</div></div>'
+    def stat_card(label: str, value: str, tone: str = "") -> str:
+        tone_class = f" stat-{tone}" if tone else ""
+        return f'<div class="stat-card{tone_class}"><div class="stat-val">{_esc(value)}</div><div class="stat-lbl">{_esc(label)}</div></div>'
 
     stat_row = "".join([
-        stat_card("Robots", str(n_robots), "#005eb8"),
-        stat_card("Balón", str(n_ball), "#f59e0b"),
-        stat_card("Eventos", str(n_events), "#006847"),
-        stat_card("Frames", str(n_frames), "#7B1A3E"),
-        stat_card("Equipos", str(len(teams)) if teams else "—", "#CE1126" if teams else ""),
+        stat_card("Robots", str(n_robots), "blue"),
+        stat_card("Balón", str(n_ball), "ball"),
+        stat_card("Eventos", str(n_events), "action"),
+        stat_card("Frames", str(n_frames), "brand"),
+        stat_card("Equipos", str(len(teams)) if teams else "—", "red" if teams else ""),
         stat_card("Clip", config.clip_id),
     ])
 
@@ -1313,6 +1368,7 @@ def render_playback_html(context: dict[str, Any]) -> str:
         _toggle("layerTrails", "Trails", True),
         _toggle("layerGoalpost", "Portería", True),
         _toggle("layerField", "Campo", False),
+        _toggle("layerMinimap", "Minimapa", True),
         _toggle("layerEvents", "Eventos", True),
     ])
 
@@ -1320,23 +1376,23 @@ def render_playback_html(context: dict[str, Any]) -> str:
     def img_gallery(paths: list[str], cls: str = "") -> str:
         if not paths:
             return '<p class="empty">Sin imágenes disponibles. Ejecuta el pipeline primero.</p>'
-        imgs = "".join(f'<img src="/artifact?path={_esc(p)}" alt="{_esc(p.split("/")[-1])}" loading="lazy">' for p in paths)
+        imgs = "".join(f'<img src="{_esc(artifact_url(p))}" alt="{_esc(p.split("/")[-1])}" loading="lazy">' for p in paths)
         return f'<div class="gallery {cls}">{imgs}</div>'
 
     voronoi_tab = img_gallery(viz.get("voronoi_frames", []))
     voronoi_orig_tab = img_gallery(viz.get("voronoi_orig_frames", []))
     graph_tab = (
-        f'<img src="/artifact?path={_esc(viz["interaction_graph"])}" class="full-img" alt="Grafo de interacciones">'
+        f'<img src="{_esc(artifact_url(viz["interaction_graph"]))}" class="full-img" alt="Grafo de interacciones">'
         if viz.get("interaction_graph") else
         '<p class="empty">Grafo no disponible. Ejecuta el pipeline.</p>'
     )
     storyboard_tab = (
-        f'<img src="/artifact?path={_esc(viz["storyboard"])}" class="full-img" alt="Storyboard">'
+        f'<img src="{_esc(artifact_url(viz["storyboard"]))}" class="full-img" alt="Storyboard">'
         if viz.get("storyboard") else ""
     )
     highlights_tab = img_gallery(viz.get("highlights", []), "highlights-gallery")
     minimap_tab = "".join([
-        f'<img src="/artifact?path={_esc(p)}" class="full-img" alt="{label}">'
+        f'<img src="{_esc(artifact_url(p))}" class="full-img" alt="{label}">'
         for p, label in [
             (viz.get("minimap_tracks", ""), "Tracks en campo"),
             (viz.get("minimap_base", ""), "Campo base"),
@@ -1344,11 +1400,11 @@ def render_playback_html(context: dict[str, Any]) -> str:
     ]) or '<p class="empty">Minimapa no disponible.</p>'
 
     dashboard_link = (
-        f'<a href="/artifact?path={_esc(viz["dashboard"])}" target="_blank" class="btn-link">Abrir dashboard completo</a>'
+        f'<a href="{_esc(artifact_url(viz["dashboard"]))}" target="_blank" class="btn-link">Abrir dashboard completo</a>'
         if viz.get("dashboard") else ""
     )
 
-    video_src = f"/video?clip_id={_esc(config.clip_id)}"
+    video_src = endpoint(f"/video?clip_id={quote(config.clip_id)}")
 
     # Video selector datalist from .env
     available_videos = context.get("available_videos", {})
@@ -1371,15 +1427,15 @@ def render_playback_html(context: dict[str, Any]) -> str:
 <title>FutBotMX — {_esc(config.clip_id)}</title>
 <style>{_css()}</style>
 </head>
-<body>
+<body {ui_body_attrs("playback", "fb-playback-page")}>
 <div class="mx-stripe"><div></div><div></div><div></div></div>
 <header>
   <div class="header-inner">
     <div class="header-brand">
-      <div class="brand-icons">⚽&nbsp;🤖</div>
+      <div class="brand-mark">26</div>
       <div class="brand-titles">
-        <span class="brand-name">Copa FutBotMX</span>
-        <span class="brand-sub">Análisis de fútbol robótico · México</span>
+        <span class="brand-name">FutBotMX Match Lab</span>
+        <span class="brand-sub">Replay tactico y analisis deportivo</span>
       </div>
     </div>
     <div class="brand-divider"></div>
@@ -1391,40 +1447,46 @@ def render_playback_html(context: dict[str, Any]) -> str:
   </div>
 </header>
 
-<section class="analyze-bar">
-  {datalist_html}
-  <form id="analyzeForm" action="/analyze" method="post" class="analyze-form">
-    <div class="field-group field-path">
-      <label>Video</label>
-      <div class="path-row">
-        <input id="inpVideoPath" name="video_path" class="inp-path" value="{default_video}" placeholder="/ruta/al/video.mp4"{list_attr} required autocomplete="off">
-        <button type="button" id="btnBrowse" class="btn-browse" title="Explorar carpetas" onclick="window._fbOpen&&window._fbOpen()">📁</button>
+<details class="analyze-bar">
+  <summary class="analyze-summary">
+    <span>Analizar otro video</span>
+    <strong>Configura clip, rango y stride</strong>
+  </summary>
+  <div class="analyze-content">
+    {datalist_html}
+    <form id="analyzeForm" action="{_esc(endpoint('/analyze'))}" method="post" class="analyze-form">
+      <div class="field-group field-path">
+        <label>Video</label>
+        <div class="path-row">
+          <input id="inpVideoPath" name="video_path" class="inp-path" value="{default_video}" placeholder="/ruta/al/video.mp4"{list_attr} required autocomplete="off">
+          <button type="button" id="btnBrowse" class="btn-browse" title="Explorar carpetas" onclick="window._fbOpen&&window._fbOpen()">📁</button>
+        </div>
       </div>
-    </div>
-    <div class="field-group">
-      <label>Clip ID</label>
-      <input id="inpClipId" name="clip_id" class="inp-short" placeholder="nombre" value="{default_clip}">
-    </div>
-    <div class="field-group">
-      <label>Inicio</label>
-      <input id="inpStartFrame" type="number" name="start_frame" class="inp-num" value="0" placeholder="0" min="0">
-    </div>
-    <div class="field-group">
-      <label>Fin</label>
-      <input id="inpEndFrame" type="number" name="end_frame" class="inp-num" value="0" placeholder="fin" min="0">
-    </div>
-    <div class="field-group">
-      <label>Stride</label>
-      <input type="number" name="stride" class="inp-num" value="1" placeholder="1" min="1">
-    </div>
-    <button type="submit" class="btn-analyze">▶ Analizar</button>
-  </form>
-  <div id="videoInfoRow" class="video-info-row" style="display:none"></div>
-  <div id="analyzeStatus" class="analyze-status hidden"></div>
-</section>
+      <div class="field-group">
+        <label>Clip ID</label>
+        <input id="inpClipId" name="clip_id" class="inp-short" placeholder="nombre" value="{default_clip}">
+      </div>
+      <div class="field-group">
+        <label>Inicio</label>
+        <input id="inpStartFrame" type="number" name="start_frame" class="inp-num" value="0" placeholder="0" min="0">
+      </div>
+      <div class="field-group">
+        <label>Fin</label>
+        <input id="inpEndFrame" type="number" name="end_frame" class="inp-num" value="0" placeholder="fin" min="0">
+      </div>
+      <div class="field-group">
+        <label>Stride</label>
+        <input type="number" name="stride" class="inp-num" value="1" placeholder="1" min="1">
+      </div>
+      <button type="submit" class="btn-analyze">▶ Analizar</button>
+    </form>
+    <div id="videoInfoRow" class="video-info-row hidden"></div>
+    <div id="analyzeStatus" class="analyze-status hidden"></div>
+  </div>
+</details>
 
 <!-- File browser overlay -->
-<div id="fbOverlay" class="fb-overlay" style="display:none">
+<div id="fbOverlay" class="fb-overlay hidden">
   <div class="fb-panel">
     <div class="fb-head">
       <span class="fb-title">📁 Seleccionar video</span>
@@ -1451,7 +1513,7 @@ def render_playback_html(context: dict[str, Any]) -> str:
   </div>
 
   <aside class="side-panel">
-    <div class="minimap-panel">
+    <div id="minimapPanel" class="minimap-panel">
       <h3>Minimapa</h3>
       <canvas id="minimapCanvas" class="minimap-canvas"></canvas>
     </div>
@@ -1481,9 +1543,9 @@ def render_playback_html(context: dict[str, Any]) -> str:
     <div class="panel-section downloads">
       <h3>Descargas</h3>
       {dashboard_link}
-      <a href="/tracks.csv" download class="dl-link">tracks.csv</a>
-      <a href="/events.json" download class="dl-link">events.json</a>
-      <a href="/highlights.csv" download class="dl-link">highlights.csv</a>
+      <a href="{_esc(endpoint('/tracks.csv'))}" download class="dl-link">tracks.csv</a>
+      <a href="{_esc(endpoint('/events.json'))}" download class="dl-link">events.json</a>
+      <a href="{_esc(endpoint('/highlights.csv'))}" download class="dl-link">highlights.csv</a>
     </div>
   </aside>
 </section>
@@ -1510,12 +1572,12 @@ def render_playback_html(context: dict[str, Any]) -> str:
   <div id="eventList" class="event-list"></div>
 </section>
 
-<script>window.FUTBOT_PLAYBACK_DATA={payload_json};{_js()}</script>
+<script>window.FUTBOT_PLAYBACK_DATA={payload_json};{_js(route_prefix)}</script>
 <script>
 const HAS_CONTOURS = {'true' if has_contours else 'false'};
 let MASK_CONTOURS = {{}};
 if (HAS_CONTOURS) {{
-  fetch('/masks-contours.json').then(r=>r.json()).then(d=>{{MASK_CONTOURS=d;}}).catch(()=>{{}});
+  fetch({_js_string(endpoint('/masks-contours.json'))}).then(r=>r.json()).then(d=>{{MASK_CONTOURS=d;}}).catch(()=>{{}});
 }}
 document.addEventListener('DOMContentLoaded',()=>{{
   const firstBtn = document.querySelector('.tab-btn');
@@ -1527,8 +1589,13 @@ document.addEventListener('DOMContentLoaded',()=>{{
 """
 
 
-def client_payload(context: dict[str, Any]) -> dict[str, Any]:
+def client_payload(context: dict[str, Any], route_prefix: str = "") -> dict[str, Any]:
     config: LivePlaybackConfig = context["config"]
+    endpoint = lambda path: mounted_path(route_prefix, path)
+    debug_panel = dict(context["debug_panel"])
+    debug_panel["download_endpoints"] = {
+        key: endpoint(path) for key, path in context["debug_panel"].get("download_endpoints", {}).items()
+    }
     return {
         "rule_version": context["rule_version"],
         "config": {
@@ -1547,27 +1614,27 @@ def client_payload(context: dict[str, Any]) -> dict[str, Any]:
         "stream_summary": context["stream_summary"],
         "frame_loop": context["frame_loop"]["summary"],
         "inference_modes": context["inference_modes"],
-        "debug_panel": context["debug_panel"],
+        "debug_panel": debug_panel,
         "endpoints": {
-            "manifest": "/manifest.json",
-            "stream": "/stream",
-            "stream_summary": "/stream-summary.json",
-            "stream_messages": "/stream-messages.jsonl",
-            "session_log": "/stream-messages.jsonl",
-            "live_tracks_jsonl": "/live_tracks.jsonl",
-            "stream_events_jsonl": "/stream_events.jsonl",
-            "stream_latency": "/stream-latency.csv",
-            "frame_loop_summary": "/frame-loop-summary.json",
-            "frame_loop_metrics": "/frame-loop-metrics.csv",
-            "inference_modes": "/inference-modes.json",
-            "debug_panel": "/debug-panel.json",
-            "tracks": "/tracks.csv",
-            "events": "/events.json",
-            "highlights": "/highlights.csv",
-            "minimap": "/minimap.json",
-            "calibration": "/calibration.json",
-            "video_metadata": "/video-metadata.json",
-            "video": f"/video?clip_id={config.clip_id}",
+            "manifest": endpoint("/manifest.json"),
+            "stream": endpoint("/stream"),
+            "stream_summary": endpoint("/stream-summary.json"),
+            "stream_messages": endpoint("/stream-messages.jsonl"),
+            "session_log": endpoint("/stream-messages.jsonl"),
+            "live_tracks_jsonl": endpoint("/live_tracks.jsonl"),
+            "stream_events_jsonl": endpoint("/stream_events.jsonl"),
+            "stream_latency": endpoint("/stream-latency.csv"),
+            "frame_loop_summary": endpoint("/frame-loop-summary.json"),
+            "frame_loop_metrics": endpoint("/frame-loop-metrics.csv"),
+            "inference_modes": endpoint("/inference-modes.json"),
+            "debug_panel": endpoint("/debug-panel.json"),
+            "tracks": endpoint("/tracks.csv"),
+            "events": endpoint("/events.json"),
+            "highlights": endpoint("/highlights.csv"),
+            "minimap": endpoint("/minimap.json"),
+            "calibration": endpoint("/calibration.json"),
+            "video_metadata": endpoint("/video-metadata.json"),
+            "video": endpoint(f"/video?clip_id={quote(config.clip_id)}"),
         },
         "tracks": context["tracks"],
         "events": context["events"],
@@ -1731,7 +1798,7 @@ def write_live_playback_summary(root: Path, playback_config: LivePlaybackConfig,
         "## Modos De Inferencia",
         "",
         "- Modo seleccionado por configuracion: `precomputed`, `sam3_sampling` o `lightweight_detector`.",
-        "- Recomendado para demo fluida: `precomputed`, porque carga detecciones SAM 3/Level 3 ya generadas y sincroniza por frame o frame cercano.",
+        "- Recomendado para demo fluida: `precomputed`, porque carga detecciones SAM 3 y artefactos tacticos ya generados y sincroniza por frame o frame cercano.",
         "- `sam3_sampling`: ejecuta SAM 3 solo cada N frames cuando exista GPU MSI autorizada; entre muestras reusa detecciones y registra latencia/VRAM cuando este disponible.",
         "- `lightweight_detector`: hook experimental mas rapido para robots y balon; mantiene compatibilidad con tracker incremental pero documenta degradacion frente a SAM 3 offline.",
         "- Evidencia: `inference_modes.json` y endpoint `/inference-modes.json`.",
@@ -1845,93 +1912,99 @@ def serve_live_playback_app(
         server.server_close()
 
 
-def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHandler]:
+def make_handler(root: Path, context: dict[str, Any], route_prefix: str = "") -> type[BaseHTTPRequestHandler]:
+    route_prefix = normalize_route_prefix(route_prefix)
+
     class LivePlaybackHandler(BaseHTTPRequestHandler):
         server_version = "FutBotMXLivePlayback/0.1"
 
         def do_GET(self) -> None:
             parsed = urlparse(self.path)
-            if parsed.path == "/health":
+            route_path = strip_route_prefix(parsed.path, route_prefix)
+            if route_path is None:
+                self.send_error(404)
+                return
+            if route_path == "/health":
                 self._send_text("ok\n", "text/plain; charset=utf-8")
                 return
-            if parsed.path == "/data.json":
-                self._send_json(client_payload(context))
+            if route_path == "/data.json":
+                self._send_json(client_payload(context, route_prefix=route_prefix))
                 return
-            if parsed.path == "/manifest.json":
-                self._send_json(backend_endpoint_manifest(context))
+            if route_path == "/manifest.json":
+                self._send_json(backend_endpoint_manifest(context, route_prefix=route_prefix))
                 return
-            if parsed.path == "/stream":
+            if route_path == "/stream":
                 self._send_sse_stream()
                 return
-            if parsed.path == "/stream-summary.json":
+            if route_path == "/stream-summary.json":
                 self._send_json(context["stream_summary"])
                 return
-            if parsed.path == "/stream-messages.jsonl":
+            if route_path == "/stream-messages.jsonl":
                 self._send_text(stream_messages_jsonl(context["stream_messages"]), "application/x-ndjson; charset=utf-8")
                 return
-            if parsed.path == "/live_tracks.jsonl":
+            if route_path == "/live_tracks.jsonl":
                 self._send_text(live_tracks_jsonl(context["tracks"]), "application/x-ndjson; charset=utf-8")
                 return
-            if parsed.path == "/stream_events.jsonl":
+            if route_path == "/stream_events.jsonl":
                 self._send_text(stream_events_jsonl(context["stream_messages"]), "application/x-ndjson; charset=utf-8")
                 return
-            if parsed.path == "/stream-latency.csv":
+            if route_path == "/stream-latency.csv":
                 self._send_text(stream_latency_metrics_csv(context["stream_messages"]), "text/csv; charset=utf-8")
                 return
-            if parsed.path == "/frame-loop-summary.json":
+            if route_path == "/frame-loop-summary.json":
                 self._send_json(context["frame_loop"]["summary"])
                 return
-            if parsed.path == "/frame-loop-metrics.csv":
+            if route_path == "/frame-loop-metrics.csv":
                 self._send_text(frame_loop_metrics_csv(context["frame_loop"]), "text/csv; charset=utf-8")
                 return
-            if parsed.path == "/inference-modes.json":
+            if route_path == "/inference-modes.json":
                 self._send_json(context["inference_modes"])
                 return
-            if parsed.path == "/debug-panel.json":
+            if route_path == "/debug-panel.json":
                 self._send_json(context["debug_panel"])
                 return
-            if parsed.path == "/tracks.csv":
+            if route_path == "/tracks.csv":
                 self._send_text(csv_response_text(context["tracks"], LIVE_TRACK_FIELDS), "text/csv; charset=utf-8")
                 return
-            if parsed.path == "/events.json":
+            if route_path == "/events.json":
                 self._send_json(context["events"])
                 return
-            if parsed.path == "/highlights.csv":
+            if route_path == "/highlights.csv":
                 self._send_text(csv_response_text(context["highlights"], LIVE_HIGHLIGHT_FIELDS), "text/csv; charset=utf-8")
                 return
-            if parsed.path == "/minimap.json":
+            if route_path == "/minimap.json":
                 params = parse_qs(parsed.query)
                 frame = _coerce_int(_first(params, "frame", ""), 0) if "frame" in params else None
                 self._send_json(minimap_payload_for_frame(context, frame=frame))
                 return
-            if parsed.path == "/calibration.json":
+            if route_path == "/calibration.json":
                 self._send_json(calibration_payload(context))
                 return
-            if parsed.path == "/video-metadata.json":
+            if route_path == "/video-metadata.json":
                 self._send_json(asdict(context["video_metadata"]))
                 return
-            if parsed.path == "/video":
+            if route_path == "/video":
                 self._send_video(parsed.query)
                 return
-            if parsed.path in {"/", "/playback.html"}:
-                self._send_text(render_playback_html(context), "text/html; charset=utf-8")
+            if route_path in {"/", "/playback.html"}:
+                self._send_text(render_playback_html(context, route_prefix=route_prefix), "text/html; charset=utf-8")
                 return
-            if parsed.path == "/artifact":
+            if route_path == "/artifact":
                 self._send_artifact(parsed.query)
                 return
-            if parsed.path == "/masks-contours.json":
+            if route_path == "/masks-contours.json":
                 masks_path = context.get("masks_contours_path")
                 if masks_path and Path(masks_path).exists():
                     self._send_text(Path(masks_path).read_text("utf-8"), "application/json; charset=utf-8")
                 else:
                     self._send_json({})
                 return
-            if parsed.path == "/analyze-status":
+            if route_path == "/analyze-status":
                 with _ANALYSIS_LOCK:
                     state_copy = dict(_ANALYSIS_STATE)
                 self._send_json(state_copy)
                 return
-            if parsed.path == "/browse":
+            if route_path == "/browse":
                 import os as _os_browse
                 params = parse_qs(parsed.query)
                 req_dir = params.get("dir", [""])[0].strip() or str(Path.home())
@@ -1957,7 +2030,7 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
                 parent = str(target.parent) if target != target.parent else ""
                 self._send_json({"current": str(target), "parent": parent, "dirs": dirs, "files": files})
                 return
-            if parsed.path == "/video-info":
+            if route_path == "/video-info":
                 params = parse_qs(parsed.query)
                 vpath = params.get("path", [""])[0].strip()
                 if not vpath or not Path(vpath).exists():
@@ -1980,7 +2053,11 @@ def make_handler(root: Path, context: dict[str, Any]) -> type[BaseHTTPRequestHan
 
         def do_POST(self) -> None:
             parsed = urlparse(self.path)
-            if parsed.path == "/analyze":
+            route_path = strip_route_prefix(parsed.path, route_prefix)
+            if route_path is None:
+                self.send_error(404)
+                return
+            if route_path == "/analyze":
                 length = int(self.headers.get("Content-Length", 0))
                 body = self.rfile.read(length).decode("utf-8")
                 params = parse_qs(body)
@@ -2182,88 +2259,110 @@ def _toggle(element_id: str, label: str, checked: bool) -> str:
 
 
 def _css() -> str:
-    return """
+    return shared_css() + """
 :root{
-  --bg:#f4f5f7;--bg2:#ffffff;--panel:#ffffff;--panel2:#f8f9fb;
-  --line:#dde2e8;--line2:#b8c4cf;
-  --text:#18100e;--muted:#6b7a8d;
-  --brand:#7B1A3E;--brand2:#9a2150;
-  --action:#006847;--action2:#008558;
-  --wc-green:#009a44;--wc-blue:#005eb8;--wc-magenta:#e6007e;--wc-sky:#00b5e2;
-  --mx-red:#CE1126;--ball:#f59e0b;
+  --bg:#f5f9ef;--bg2:#ffffff;--panel:#ffffff;--panel2:#ecffd8;
+  --line:#c7e2d1;--line2:#90dca7;
+  --text:#05261d;--muted:#52665d;
+  --brand:#004b3a;--brand2:#00c853;
+  --action:#00d25b;--action2:#008f43;
+  --wc-green:#00d25b;--wc-blue:#00c853;--wc-magenta:#b7f300;--wc-sky:#b7f300;
+  --mx-red:#b7f300;--ball:#d6ad38;
+  --shadow:0 14px 34px rgba(0,75,58,.16);
   font-size:15px
 }
 *{box-sizing:border-box;margin:0;padding:0}
-body{background:var(--bg);color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+body{background:
+  linear-gradient(90deg,rgba(0,200,83,.09) 1px,transparent 1px),
+  linear-gradient(180deg,rgba(0,75,58,.07) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(183,243,0,.2) 0 24%,transparent 24%),
+  radial-gradient(circle at 12% 0%,rgba(183,243,0,.28),transparent 30%),
+  radial-gradient(circle at 86% 0%,rgba(0,75,58,.18),transparent 32%),
+  var(--bg);background-size:54px 54px,54px 54px,auto,auto,auto,auto;color:var(--text);font-family:Inter,'Segoe UI',system-ui,sans-serif;min-height:100vh;display:flex;flex-direction:column}
 /* ── tricolor stripe ── */
 .mx-stripe{display:flex;height:4px;width:100%}
 .mx-stripe>div{flex:1}
 .mx-stripe>div:nth-child(1){background:var(--action)}
-.mx-stripe>div:nth-child(2){background:#fff;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
-.mx-stripe>div:nth-child(3){background:var(--mx-red)}
+.mx-stripe>div:nth-child(2){background:var(--mx-red)}
+.mx-stripe>div:nth-child(3){background:var(--brand)}
 /* ── header ── */
-header{background:var(--bg2);box-shadow:0 1px 4px rgba(0,0,0,.1);position:sticky;top:0;z-index:100;border-bottom:3px solid var(--brand)}
+header{background:linear-gradient(90deg,rgba(183,243,0,.22) 0 24%,transparent 24%),linear-gradient(135deg,rgba(0,75,58,.98),rgba(0,200,83,.88));box-shadow:var(--shadow);position:sticky;top:0;z-index:100;border-bottom:4px solid var(--mx-red);color:#ffffff}
 .header-inner{display:flex;align-items:center;gap:16px;padding:8px 20px}
 .header-brand{display:flex;align-items:center;gap:10px;flex-shrink:0}
-.brand-icons{font-size:20px;display:flex;align-items:center;gap:2px}
+.brand-mark{display:grid;place-items:center;width:36px;height:36px;border-radius:6px;background:#ffffff;color:var(--brand);font-weight:950;font-size:20px;line-height:1}
 .brand-titles{display:flex;flex-direction:column}
-.brand-name{font-weight:900;font-size:18px;letter-spacing:-.5px;color:var(--brand);line-height:1.15}
-.brand-sub{font-size:10px;color:var(--muted);display:none}
+.brand-name{font-weight:900;font-size:18px;letter-spacing:0;color:#ffffff;line-height:1.15}
+.brand-sub{font-size:10px;color:#eaffd6;display:none}
 @media(min-width:800px){.brand-sub{display:block}}
-.brand-divider{width:1px;height:30px;background:var(--line2)}
+.brand-divider{width:1px;height:30px;background:rgba(255,255,255,.28)}
 .header-center{display:flex;gap:8px;flex:1;justify-content:center;flex-wrap:wrap}
-.clip-badge{background:rgba(123,26,62,.08);border:1px solid rgba(123,26,62,.3);border-radius:20px;padding:3px 12px;font-size:12px;color:var(--brand);font-weight:700}
-.frames-badge{background:rgba(0,104,71,.08);border:1px solid rgba(0,104,71,.3);border-radius:20px;padding:3px 12px;font-size:12px;color:var(--action);font-weight:600}
-.sync-badge{border:1px solid var(--line2);border-radius:20px;padding:3px 12px;font-size:11px;color:var(--muted);white-space:nowrap}
+.clip-badge{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.32);border-radius:20px;padding:3px 12px;font-size:12px;color:#ffffff;font-weight:700}
+.frames-badge{background:rgba(183,243,0,.18);border:1px solid rgba(183,243,0,.45);border-radius:20px;padding:3px 12px;font-size:12px;color:#f2ffe7;font-weight:600}
+.sync-badge{border:1px solid rgba(255,255,255,.32);border-radius:20px;padding:3px 12px;font-size:11px;color:#eaffd6;white-space:nowrap}
 /* ── analyze bar ── */
-.analyze-bar{background:#ffffff;border-top:4px solid #7B1A3E;border-bottom:2px solid #dde2e8;padding:14px 20px;display:flex;flex-direction:column;gap:10px}
+.analyze-bar{background:#ffffff;border-top:4px solid var(--mx-red);border-bottom:1px solid var(--line);box-shadow:0 8px 18px rgba(0,75,58,.08)}
+.analyze-summary{display:flex;align-items:center;gap:12px;padding:10px 20px;cursor:pointer;list-style:none}
+.analyze-summary::-webkit-details-marker{display:none}
+.analyze-summary span{color:var(--brand);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:0}
+.analyze-summary strong{color:var(--muted);font-size:12px;font-weight:600}
+.analyze-summary:after{content:"+";margin-left:auto;color:var(--brand);font-size:18px;font-weight:800;line-height:1}
+.analyze-bar[open] .analyze-summary{border-bottom:1px solid var(--line)}
+.analyze-bar[open] .analyze-summary:after{content:"-"}
+.analyze-content{display:flex;flex-direction:column;gap:10px;padding:12px 20px 14px}
 .analyze-form{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
 .field-group{display:flex;flex-direction:column;gap:4px}
-.field-group label{font-size:10px;color:#7B1A3E;text-transform:uppercase;letter-spacing:.8px;font-weight:800;display:block}
+.field-group label{font-size:10px;color:var(--brand);text-transform:uppercase;letter-spacing:0;font-weight:800;display:block}
 .field-group.field-path{flex:1;min-width:220px}
 .path-row{display:flex;gap:6px}
-input[type=text],.inp-path,.inp-short,.inp-num{background:#ffffff;border:2px solid #94a3b8;color:#18100e;padding:8px 10px;border-radius:6px;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;display:block}
+input[type=text],.inp-path,.inp-short,.inp-num{background:#ffffff;border:2px solid #90dca7;color:#05261d;padding:8px 10px;border-radius:6px;font-size:13px;outline:none;transition:border-color .2s,box-shadow .2s;display:block}
 .inp-path{flex:1;min-width:0}
 .inp-short{width:130px}
 .inp-num{width:80px;font-variant-numeric:tabular-nums}
-input:focus{border-color:#006847;box-shadow:0 0 0 3px rgba(0,104,71,.15)}
-.btn-browse{background:#ffffff;border:2px solid #94a3b8;color:#7B1A3E;border-radius:6px;padding:8px 12px;font-size:17px;cursor:pointer;line-height:1;transition:all .2s}
-.btn-browse:hover{border-color:#7B1A3E;background:#fdf4f6}
-.btn-analyze{background:#006847;color:#ffffff;border:none;border-radius:6px;padding:9px 24px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;align-self:flex-end;box-shadow:0 2px 6px rgba(0,104,71,.4);transition:filter .2s}
+input:focus{border-color:var(--action);box-shadow:0 0 0 3px rgba(0,210,91,.18)}
+.btn-browse{background:#ffffff;border:2px solid #90dca7;color:var(--brand);border-radius:6px;padding:8px 12px;font-size:17px;cursor:pointer;line-height:1;transition:all .2s}
+.btn-browse:hover{border-color:var(--brand);background:#f2ffe7}
+.btn-analyze{background:var(--brand);color:#ffffff;border:none;border-radius:6px;padding:9px 24px;font-weight:700;font-size:13px;cursor:pointer;white-space:nowrap;align-self:flex-end;box-shadow:0 6px 16px rgba(0,75,58,.24);transition:filter .2s}
 .btn-analyze:hover{filter:brightness(1.1)}
 .video-info-row{font-size:11px;color:#6b7a8d;padding:2px 0;font-variant-numeric:tabular-nums}
-.video-info-row span{color:#006847;font-weight:600}
-.analyze-status{font-size:12px;color:#7B1A3E;padding:4px 0}
+.video-info-row span{color:var(--action);font-weight:600}
+.video-info-row.hidden{display:none}
+.analyze-status{font-size:12px;color:var(--brand);padding:4px 0}
 .analyze-status.hidden{display:none}
+.analyze-status.is-log{white-space:pre-wrap}
 /* ── stat cards ── */
-.stats-row{display:flex;gap:8px;padding:10px 20px;background:var(--bg2);overflow-x:auto;border-bottom:1px solid var(--line);flex-shrink:0}
-.stat-card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:10px 16px;min-width:90px;text-align:center;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.05);border-top:3px solid transparent}
+.stats-row{display:flex;gap:8px;padding:10px 20px;background:rgba(255,255,255,.92);overflow-x:auto;border-bottom:1px solid var(--line);flex-shrink:0}
+.stat-card{background:linear-gradient(180deg,#ffffff,#f6fff2);border:1px solid var(--line);border-radius:8px;padding:10px 16px;min-width:90px;text-align:center;flex-shrink:0;box-shadow:0 8px 18px rgba(0,75,58,.08);border-top:4px solid transparent}
+.stat-card.stat-blue{border-top-color:var(--wc-blue)}
+.stat-card.stat-ball{border-top-color:var(--ball)}
+.stat-card.stat-action{border-top-color:var(--action)}
+.stat-card.stat-brand{border-top-color:var(--brand)}
+.stat-card.stat-red{border-top-color:var(--mx-red)}
 .stat-val{font-size:22px;font-weight:800;line-height:1;font-variant-numeric:tabular-nums}
-.stat-lbl{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:.8px}
+.stat-lbl{font-size:10px;color:var(--muted);margin-top:4px;text-transform:uppercase;letter-spacing:0}
 /* ── workbench ── */
-.workbench{display:grid;grid-template-columns:1fr 300px;gap:0;background:#111;min-height:0}
-@media(max-width:960px){.workbench{grid-template-columns:1fr}}
-.stage-wrap{display:flex;align-items:flex-start;justify-content:center;background:#000;overflow:hidden}
-.stage{position:relative;width:min(100%,calc(65vh * var(--vid-w,16) / var(--vid-h,9)));flex-shrink:0;aspect-ratio:var(--vid-w,16)/var(--vid-h,9)}
+.workbench{display:grid;grid-template-columns:minmax(0,1fr) minmax(280px,320px);gap:12px;background:transparent;padding:12px 20px;min-height:0;align-items:start}
+.stage-wrap{display:flex;align-items:flex-start;justify-content:center;background:linear-gradient(135deg,#031b14,#020d09);overflow:hidden;border:1px solid rgba(0,75,58,.55);border-radius:8px;box-shadow:var(--shadow)}
+.stage{position:relative;width:min(100%,calc(70vh * var(--vid-w,16) / var(--vid-h,9)));flex-shrink:0;aspect-ratio:var(--vid-w,16)/var(--vid-h,9)}
 video{display:block;width:100%;height:100%;background:#000;object-fit:contain}
-canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+.stage canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .video-missing{position:absolute;bottom:10px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.88);border:1px solid rgba(255,255,255,.15);border-radius:6px;padding:8px 14px;font-size:12px;color:#aaa;white-space:nowrap}
 .video-missing.hidden{display:none}
 /* ── side panel ── */
-.side-panel{background:var(--panel);border-left:1px solid var(--line);display:flex;flex-direction:column;overflow-y:auto;max-height:65vh}
+.side-panel{background:linear-gradient(180deg,#ffffff,#f6fff2);border:1px solid var(--line);border-top:4px solid var(--brand);border-radius:8px;display:flex;flex-direction:column;overflow-y:auto;max-height:70vh;box-shadow:0 10px 24px rgba(0,75,58,.1)}
 .panel-section{padding:11px 14px;border-bottom:1px solid var(--line)}
-.panel-section h3{font-size:10px;color:var(--brand);text-transform:uppercase;letter-spacing:1px;font-weight:800;margin-bottom:8px;border-left:3px solid var(--brand);padding-left:7px}
+.panel-section h3{font-size:10px;color:var(--brand);text-transform:uppercase;letter-spacing:0;font-weight:800;margin-bottom:8px;border-left:4px solid var(--mx-red);padding-left:7px}
 .readout-grid{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:12px;font-variant-numeric:tabular-nums}
 .readout-grid span{color:var(--muted)}
 .readout-grid strong{color:var(--text);text-align:right;font-weight:700}
 .toggles{display:grid;grid-template-columns:1fr 1fr;gap:5px}
 .tog{display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text);padding:5px 7px;border-radius:5px;border:1px solid var(--line);user-select:none;transition:all .15s}
-.tog:hover{border-color:var(--action);background:rgba(0,104,71,.04)}
+.tog:hover{border-color:var(--wc-sky);background:rgba(183,243,0,.14)}
 .tog input{accent-color:var(--action)}
 /* ── minimap sidebar ── */
 .minimap-panel{padding:10px 14px 12px;border-bottom:1px solid var(--line)}
-.minimap-panel h3{font-size:10px;color:var(--action);text-transform:uppercase;letter-spacing:1px;font-weight:800;margin-bottom:8px;border-left:3px solid var(--action);padding-left:7px}
-.minimap-canvas{width:100%;height:130px;border-radius:6px;border:1px solid var(--line2);display:block;background:#050f05}
+.minimap-panel.is-hidden{display:none}
+.minimap-panel h3{font-size:10px;color:var(--action2);text-transform:uppercase;letter-spacing:0;font-weight:800;margin-bottom:8px;border-left:4px solid var(--action);padding-left:7px}
+.minimap-canvas{position:static;width:100%;height:130px;border-radius:6px;border:1px solid var(--line2);display:block;background:#052a17}
 /* ── legend ── */
 .legend{display:flex;flex-direction:column;gap:7px;font-size:12px;color:var(--muted)}
 .legend div{display:flex;align-items:center;gap:8px}
@@ -2272,24 +2371,25 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 /* ── downloads ── */
 .downloads{display:flex;flex-direction:column;gap:5px}
 .dl-link,.btn-link{display:block;font-size:12px;color:var(--wc-blue);text-decoration:none;padding:5px 8px;border:1px solid var(--line);border-radius:5px;text-align:center;transition:all .15s}
-.dl-link:hover,.btn-link:hover{border-color:var(--wc-blue);background:rgba(0,93,184,.05)}
+.dl-link:hover,.btn-link:hover{border-color:var(--wc-blue);background:rgba(0,200,83,.07)}
 /* ── analytics tabs ── */
-.analytics{background:var(--bg2);border-top:1px solid var(--line)}
-.tab-nav{display:flex;gap:0;border-bottom:2px solid var(--brand);overflow-x:auto;background:var(--bg2);padding:0 16px}
+.analytics{background:rgba(255,255,255,.94);border-top:1px solid var(--line)}
+.tab-nav{display:flex;gap:0;border-bottom:3px solid var(--brand);overflow-x:auto;background:var(--bg2);padding:0 16px}
 .tab-btn{background:none;border:none;border-bottom:3px solid transparent;color:var(--muted);padding:10px 16px;font-size:13px;cursor:pointer;white-space:nowrap;font-family:inherit;margin-bottom:-2px;transition:all .15s;font-weight:500}
 .tab-btn:hover{color:var(--brand)}
-.tab-btn.active{color:var(--brand);border-bottom-color:var(--brand);font-weight:700}
+.tab-btn.active{color:var(--brand);border-bottom-color:var(--mx-red);font-weight:700}
 .tab-panel{padding:16px;display:flex;flex-direction:column;gap:12px;min-height:180px;overflow-x:auto}
 .tab-panel.hidden{display:none}
 .gallery{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-start;align-items:flex-start}
-.gallery img,.full-img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--line);box-shadow:0 1px 4px rgba(0,0,0,.08)}
+.gallery img,.full-img{max-width:100%;height:auto;border-radius:8px;border:1px solid var(--line);box-shadow:0 8px 18px rgba(0,75,58,.1)}
 .gallery img{max-height:260px;object-fit:contain;flex:1 1 280px;min-width:0}
 .full-img{max-height:380px;object-fit:contain;display:block;margin:0 auto}
 .highlights-gallery img{max-height:200px}
 .empty{color:var(--muted);font-size:13px;padding:24px;text-align:center;background:var(--panel2);border-radius:8px;border:1px dashed var(--line2)}
 /* ── file browser ── */
-.fb-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:flex-start;justify-content:center;padding-top:60px;backdrop-filter:blur(3px)}
-.fb-panel{background:var(--panel);border:1px solid var(--line2);border-top:3px solid var(--brand);border-radius:12px;width:min(700px,96vw);max-height:70vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.fb-overlay{display:flex;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;align-items:flex-start;justify-content:center;padding-top:60px;backdrop-filter:blur(3px)}
+.fb-overlay.hidden{display:none}
+.fb-panel{background:var(--panel);border:1px solid var(--line2);border-top:3px solid var(--brand);border-radius:8px;width:min(700px,96vw);max-height:70vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25)}
 .fb-head{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--line);flex-shrink:0}
 .fb-title{font-size:14px;font-weight:700;color:var(--brand)}
 .fb-path-label{font-size:11px;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -2297,7 +2397,7 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .fb-close:hover{color:var(--brand);border-color:var(--brand)}
 .fb-list{overflow-y:auto;flex:1;padding:6px 0}
 .fb-item{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;font-size:13px;border-left:3px solid transparent;transition:all .1s}
-.fb-item:hover{background:rgba(123,26,62,.04);border-left-color:var(--brand)}
+.fb-item:hover{background:rgba(183,243,0,.14);border-left-color:var(--brand)}
 .fb-item.fb-dir{color:var(--wc-blue)}
 .fb-item.fb-file{color:var(--text)}
 .fb-item.fb-up{color:var(--muted);font-style:italic}
@@ -2306,24 +2406,50 @@ canvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
 .fb-empty{padding:24px;text-align:center;color:var(--muted);font-size:13px}
 /* ── events section ── */
 .events-section{padding:14px 20px;background:var(--bg);border-top:1px solid var(--line)}
-.events-section h3{font-size:10px;color:var(--brand);text-transform:uppercase;letter-spacing:1px;font-weight:800;margin-bottom:10px;border-left:3px solid var(--brand);padding-left:7px;display:inline-block}
+.events-section h3{font-size:10px;color:var(--brand);text-transform:uppercase;letter-spacing:0;font-weight:800;margin-bottom:10px;border-left:3px solid var(--brand);padding-left:7px;display:inline-block}
 .event-list{display:flex;flex-direction:column;gap:6px;max-height:180px;overflow-y:auto}
 .ev-card{background:var(--panel);border:1px solid var(--line);border-left:3px solid var(--ball);border-radius:6px;padding:8px 12px;font-size:12px}
 .ev-card .ev-label{font-weight:600;color:var(--text)}
 .ev-card .ev-meta{color:var(--muted);margin-top:2px}
 .ev-card.highlight{border-left-color:var(--mx-red)}
 .ev-empty{color:var(--muted);font-size:13px;font-style:italic}
+@media(max-width:960px){
+  .header-inner{padding:8px 12px;gap:10px;flex-wrap:wrap}
+  .brand-divider{display:none}
+  .header-center{justify-content:flex-start}
+  .analyze-summary{padding:10px 12px}
+  .analyze-content{padding:12px}
+  .analyze-form{display:grid;grid-template-columns:1fr 1fr;align-items:end}
+  .field-group.field-path{grid-column:1/-1;min-width:0}
+  .btn-analyze{width:100%}
+  .workbench{grid-template-columns:1fr;padding:10px 12px}
+  .stage{width:100%}
+  .side-panel{max-height:none}
+}
+@media(max-width:620px){
+  .analyze-form{grid-template-columns:1fr}
+  .inp-short,.inp-num{width:100%}
+  .stats-row{padding:8px 12px}
+  .tab-nav{padding:0 10px}
+  .tab-btn{padding:10px 12px}
+  .events-section{padding:12px}
+}
 """
 
 
-def _js() -> str:
-    return """
-const data=window.FUTBOT_PLAYBACK_DATA;
+def _js(route_prefix: str = "") -> str:
+    prefix_json = json.dumps(normalize_route_prefix(route_prefix), ensure_ascii=True)
+    return (
+        "const data=window.FUTBOT_PLAYBACK_DATA;\n"
+        f"const PLAYBACK_ROUTE_PREFIX={prefix_json};\n"
+        "function playbackEndpoint(path){return (PLAYBACK_ROUTE_PREFIX||'')+path;}\n"
+        """
 const video=document.getElementById('video');
 const canvas=document.getElementById('overlay');
 const ctx=canvas.getContext('2d');
 const minimapCanvas=document.getElementById('minimapCanvas');
 const minimapCtx=minimapCanvas?.getContext('2d');
+const minimapPanel=document.getElementById('minimapPanel');
 const syncState=document.getElementById('syncState');
 const frameReadout=document.getElementById('frameReadout');
 const timeReadout=document.getElementById('timeReadout');
@@ -2338,7 +2464,7 @@ let lastTarget=null,suppressTrails=0;
 // ── helpers ──
 function enabled(id){return document.getElementById(id)?.checked;}
 function esc(t){return String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function teamColor(row){return row.team==='blue'?'#005eb8':row.team==='red'?'#CE1126':'#006847';}
+function teamColor(row){return row.team==='blue'?'#00c853':row.team==='red'?'#b7f300':'#00d25b';}
 function frameFromTime(t){const fps=Number(data.config.fps)||30;return Math.min(Math.round(Math.max(0,t||0)*fps),Number(data.config.end_frame)||99999);}
 function frameNow(){return frameFromTime(video.currentTime||0);}
 function resolveFrame(target){
@@ -2430,6 +2556,7 @@ function drawTrails(frame){
   }
 }
 function drawMinimapPanel(rows){
+  if(minimapPanel)minimapPanel.classList.remove('is-hidden');
   if(!minimapCtx)return;
   const pw=minimapCanvas.offsetWidth||240,ph=minimapCanvas.offsetHeight||128;
   if(minimapCanvas.width!==pw)minimapCanvas.width=pw;
@@ -2459,6 +2586,14 @@ function drawMinimapPanel(rows){
     minimapCtx.fill();
     if(isBall)minimapCtx.shadowBlur=0;
   }
+}
+function clearMinimapPanel(){
+  if(minimapPanel)minimapPanel.classList.add('is-hidden');
+  if(!minimapCtx)return;
+  const pw=minimapCanvas.offsetWidth||240,ph=minimapCanvas.offsetHeight||128;
+  if(minimapCanvas.width!==pw)minimapCanvas.width=pw;
+  if(minimapCanvas.height!==ph)minimapCanvas.height=ph;
+  minimapCtx.clearRect(0,0,pw,ph);
 }
 function drawMasks(targetFrame){
   const key='frame_'+targetFrame;
@@ -2513,7 +2648,8 @@ function draw(){
   if(enabled('layerTracks'))drawTracks(rows);
   if(enabled('layerBall'))drawBall(rows);
   if(enabled('layerEvents'))drawEvents(events);
-  drawMinimapPanel(rows);
+  if(enabled('layerMinimap'))drawMinimapPanel(rows);
+  else clearMinimapPanel();
   renderEvents(events,highlights);
   requestAnimationFrame(draw);
 }
@@ -2548,19 +2684,11 @@ const videoInfoRow=document.getElementById('videoInfoRow');
 let _fbCurrentDir='';
 function _fbShowOverlay(){
   if(!fbOverlay)return;
-  fbOverlay.style.display='flex';
-  fbOverlay.style.position='fixed';
-  fbOverlay.style.inset='0';
-  fbOverlay.style.background='rgba(0,0,0,.6)';
-  fbOverlay.style.zIndex='9999';
-  fbOverlay.style.alignItems='flex-start';
-  fbOverlay.style.justifyContent='center';
-  fbOverlay.style.paddingTop='60px';
-  fbOverlay.style.backdropFilter='blur(3px)';
+  fbOverlay.classList.remove('hidden');
 }
 function _fbHideOverlay(){
   if(!fbOverlay)return;
-  fbOverlay.style.display='none';
+  fbOverlay.classList.add('hidden');
 }
 window._fbOpen=function(){
   _fbShowOverlay();
@@ -2572,7 +2700,7 @@ async function fbLoad(dir){
   if(!fbList)return;
   fbList.innerHTML='<div class="fb-empty">Cargando…</div>';
   try{
-    const bd=await fetch('/browse?dir='+encodeURIComponent(dir)).then(r=>r.json());
+    const bd=await fetch(playbackEndpoint('/browse')+'?dir='+encodeURIComponent(dir)).then(r=>r.json());
     _fbCurrentDir=bd.current||dir;
     if(fbPathLabel)fbPathLabel.textContent=_fbCurrentDir;
     let html='';
@@ -2609,13 +2737,13 @@ if(fbOverlay)fbOverlay.addEventListener('click',e=>{if(e.target===fbOverlay)_fbH
 let _viTimer=null;
 async function loadVideoInfo(path){
   if(!path)return;
-  videoInfoRow.style.display='none';
-  const info=await fetch('/video-info?path='+encodeURIComponent(path)).then(r=>r.json()).catch(()=>({}));
+  videoInfoRow.classList.add('hidden');
+  const info=await fetch(playbackEndpoint('/video-info')+'?path='+encodeURIComponent(path)).then(r=>r.json()).catch(()=>({}));
   if(info.error||!info.total_frames)return;
   const dur=info.duration_s,mm=Math.floor(dur/60),ss=(dur%60).toFixed(1);
   videoInfoRow.textContent='';
   videoInfoRow.innerHTML=`Video detectado: <span>${info.width}×${info.height}</span> · <span>${info.fps} fps</span> · <span>${mm}:${ss.padStart(4,'0')} min</span> · <span>${info.total_frames} frames</span>`;
-  videoInfoRow.style.display='block';
+  videoInfoRow.classList.remove('hidden');
   if(inpStartFrame)inpStartFrame.value=0;
   if(inpEndFrame)inpEndFrame.value=info.total_frames;
 }
@@ -2634,8 +2762,9 @@ if(analyzeForm){
     const fd=new FormData(analyzeForm);
     const params=new URLSearchParams(fd);
     analyzeStatus.textContent='Iniciando análisis…';
+    analyzeStatus.classList.remove('is-log');
     analyzeStatus.classList.remove('hidden');
-    const resp=await fetch('/analyze',{method:'POST',body:params,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
+    const resp=await fetch(playbackEndpoint('/analyze'),{method:'POST',body:params,headers:{'Content-Type':'application/x-www-form-urlencoded'}});
     if(resp.ok){
       const rj=await resp.json();
       if(rj.error){
@@ -2645,7 +2774,7 @@ if(analyzeForm){
       _analyzeStart=Date.now();
       analyzeStatus.textContent='⏳ Analizando… (la segmentación Grounded-SAM tarda 10–30 min en GPU)';
       pollInterval=setInterval(async()=>{
-        const s=await fetch('/analyze-status').then(r=>r.json());
+        const s=await fetch(playbackEndpoint('/analyze-status')).then(r=>r.json());
         const elapsed=Math.round((Date.now()-_analyzeStart)/1000);
         const mm=String(Math.floor(elapsed/60)).padStart(2,'0'),ss=String(elapsed%60).padStart(2,'0');
         const last=s.log?.slice(-1)[0]||'';
@@ -2656,7 +2785,7 @@ if(analyzeForm){
           clearInterval(pollInterval);setTimeout(()=>window.location.reload(),1500);
         } else {
           const errLog=(s.log||[]).slice(-5).join('\\n');
-          analyzeStatus.style.whiteSpace='pre-wrap';
+          analyzeStatus.classList.add('is-log');
           analyzeStatus.textContent='✗ Error: '+(s.error||'?')+'\\n'+errLog;
           clearInterval(pollInterval);
         }
@@ -2682,6 +2811,7 @@ if(data.endpoints?.stream&&window.EventSource){
 }
 requestAnimationFrame(draw);
 """
+    )
 
 
 def _controls_by_frame(
@@ -2973,3 +3103,7 @@ def _first(params: dict[str, list[str]], key: str, default: str) -> str:
 
 def _esc(value: Any) -> str:
     return html.escape(str(value), quote=True)
+
+
+def _js_string(value: str) -> str:
+    return json.dumps(value, ensure_ascii=True)

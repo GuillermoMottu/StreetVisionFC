@@ -1,0 +1,40 @@
+/* FutBotMX shared UI layer: futbotmx-ui-v1 */
+:root {
+  color-scheme: light;
+  --fb-ink: #05261d;
+  --fb-muted: #52665d;
+  --fb-line: #c7e2d1;
+  --fb-line-soft: #e2f2e6;
+  --fb-paper: #f5f9ef;
+  --fb-panel: #ffffff;
+  --fb-field: #e9ffd8;
+  --fb-navy: #004b3a;
+  --fb-blue: #00c853;
+  --fb-sky: #b7f300;
+  --fb-red: #9ee600;
+  --fb-green: #00d25b;
+  --fb-green-strong: #008f43;
+  --fb-amber: #d6ad38;
+  --fb-alert: #c73a2d;
+  --fb-grass-dark: #004b3a;
+  --fb-grass: #00c853;
+  --fb-lime: #b7f300;
+  --fb-cream: #f5f9ef;
+  --fb-radius: 8px;
+  --fb-gap: 12px;
+  --fb-shell: min(1180px, calc(100vw - 32px));
+  --fb-shadow: 0 14px 34px rgba(0, 75, 58, .14);
+
+  --ink: var(--fb-ink);
+  --muted: var(--fb-muted);
+  --line: var(--fb-line);
+  --paper: var(--fb-paper);
+  --page: var(--fb-paper);
+  --panel: var(--fb-panel);
+  --field: var(--fb-field);
+  --green: var(--fb-green);
+  --blue: var(--fb-blue);
+  --sky: var(--fb-sky);
+  --amber: var(--fb-amber);
+  --red: var(--fb-red);
+}

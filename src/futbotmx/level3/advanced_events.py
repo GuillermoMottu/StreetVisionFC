@@ -10,19 +10,20 @@ from typing import Any
 
 import matplotlib.pyplot as plt
 
+from futbotmx.artifact_names import ADVANCED_EVENTS_JSON, HIGHLIGHTS_CSV, SPATIAL_TRACKS_CSV
 from futbotmx.level3.schema import write_csv_artifact
-from futbotmx.level3.spatial import FieldModel, read_level3_tracks
+from futbotmx.level3.spatial import FieldModel, read_spatial_tracks
 
 
-RULE_VERSION = "level3_advanced_events_v0.1"
+RULE_VERSION = "advanced_events_v0.2"
 UNKNOWN_TEAMS = {"", "neutral", "unknown", "none"}
 
 
 @dataclass(frozen=True)
 class AdvancedEventsConfig:
-    tracks_csv: str = "experiments/test_020_level3_spatial_model/level3_tracks.csv"
-    interaction_metrics_csv: str = "experiments/test_021_level3_tactical_metrics/interaction_metrics.csv"
-    interaction_edges_csv: str = "experiments/test_021_level3_tactical_metrics/interaction_edges.csv"
+    tracks_csv: str = "experiments/test_020_spatial_model/spatial_tracks.csv"
+    interaction_metrics_csv: str = "experiments/test_021_tactical_metrics/interaction_metrics.csv"
+    interaction_edges_csv: str = "experiments/test_021_tactical_metrics/interaction_edges.csv"
     level2_root: str = "experiments/test_017_level2_closure"
     highlight_top_n: int = 6
     primary_clip: str = "video_595"
@@ -385,7 +386,7 @@ def build_highlight_events(
             "narrative": narrative,
             "rule_version": RULE_VERSION,
             "evidence": {
-                "source": "level3_tracks.csv|interaction_metrics.csv|level2_events.json",
+                "source": f"{SPATIAL_TRACKS_CSV}|interaction_metrics.csv|contextual_events.json",
                 "notes": "Advanced highlight score uses normalized ball speed, proximity pressure, zone and confidence.",
             },
         }
@@ -522,14 +523,14 @@ def write_level3_events(path: str | Path, events: list[dict[str, Any]]) -> None:
 
 
 def write_level3_highlights(path: str | Path, rows: list[dict[str, Any]]) -> None:
-    write_csv_artifact(path, "level3_highlights.csv", rows)
+    write_csv_artifact(path, HIGHLIGHTS_CSV, rows)
 
 
 def write_narrative(path: str | Path, events: list[dict[str, Any]], highlight_rows: list[dict[str, Any]], config: AdvancedEventsConfig) -> None:
     top_highlights = sorted(highlight_rows, key=lambda item: int(item["rank"]))[: config.highlight_top_n]
     pass_events = [event for event in events if event["event_type"] == "pass_chain"]
     lines = [
-        "# Narrativa Nivel 3",
+        "# Narrativa de eventos avanzados",
         "",
         f"Clip principal: `{config.primary_clip}`.",
         "",
@@ -631,14 +632,14 @@ def draw_highlight_overlay(path: str | Path, lookup: dict[tuple[str, int], list[
 
 def _draw_pitch(ax: Any) -> None:
     model = FieldModel()
-    ax.set_facecolor("#e9f4ea")
-    ax.add_patch(plt.Rectangle((0, 0), 1, 1, fill=False, lw=1.6, ec="#2f6f4f"))
+    ax.set_facecolor("#e9ffd8")
+    ax.add_patch(plt.Rectangle((0, 0), 1, 1, fill=False, lw=1.6, ec="#00d25b"))
     for y in (1.0 / 3.0, 2.0 / 3.0, 0.5):
-        ax.axhline(y, color="#7aa37d", lw=0.8, ls="--" if y != 0.5 else "-")
+        ax.axhline(y, color="#b7f300", lw=0.8, ls="--" if y != 0.5 else "-")
     goal_start = 0.5 - model.goal_width_norm / 2
     goal_end = 0.5 + model.goal_width_norm / 2
-    ax.plot([goal_start, goal_end], [0.0, 0.0], color="#2f6f4f", lw=3)
-    ax.plot([goal_start, goal_end], [1.0, 1.0], color="#2f6f4f", lw=3)
+    ax.plot([goal_start, goal_end], [0.0, 0.0], color="#b7f300", lw=3)
+    ax.plot([goal_start, goal_end], [1.0, 1.0], color="#b7f300", lw=3)
     ax.set_xlim(-0.04, 1.04)
     ax.set_ylim(1.04, -0.08)
     ax.set_xlabel("x_norm")
@@ -657,7 +658,7 @@ def load_level2_events(level2_root: str | Path, clips: list[str]) -> dict[str, l
 
 
 def build_advanced_events(config: AdvancedEventsConfig) -> dict[str, Any]:
-    tracks = read_level3_tracks(config.tracks_csv)
+    tracks = read_spatial_tracks(config.tracks_csv)
     interaction_rows = read_csv_rows(config.interaction_metrics_csv)
     edge_rows = read_csv_rows(config.interaction_edges_csv)
     clips = sorted(_by_clip(tracks))

@@ -10,10 +10,11 @@ from typing import Any, Iterable
 import matplotlib.pyplot as plt
 import numpy as np
 
+from futbotmx.artifact_names import SPATIAL_TRACKS_CSV
 from futbotmx.level3.schema import write_csv_artifact
 
 
-RULE_VERSION = "level3_spatial_model_v0.1"
+RULE_VERSION = "spatial_model_v0.2"
 FIELD_POINT_LABELS = ("top_left", "top_right", "bottom_right", "bottom_left")
 FIELD_POINTS = ((0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0))
 
@@ -37,7 +38,7 @@ class FieldModel:
                 "units": "normalized_visible_field",
                 "x_norm_range": [self.x_min, self.x_max],
                 "y_norm_range": [self.y_min, self.y_max],
-                "level2_zone_axis": self.zone_axis,
+                "zone_axis": self.zone_axis,
             },
             "relative_dimensions": {
                 "field_width_x_norm": self.x_max - self.x_min,
@@ -119,8 +120,8 @@ class ClipCalibration:
                 "instruction": "Replace image_points with four reviewed field corners in top_left/top_right/bottom_right/bottom_left order.",
             },
             "assumptions": [
-                "Visible green field bbox approximates the playable area for Level 3 demo coordinates.",
-                "x_norm follows image left-to-right and y_norm follows image top-to-bottom to preserve Level 2 zone_axis direction.",
+                "Visible green field bbox approximates the playable area for demo coordinates.",
+                "x_norm follows image left-to-right and y_norm follows image top-to-bottom to preserve the configured zone_axis direction.",
             ],
             "limitations": [
                 "Perspective and lens distortion are not fully solved by the bbox seed.",
@@ -175,7 +176,7 @@ def normalized_zone(x_norm: float, y_norm: float, zone_axis: str = "y") -> str:
     return "attacking_third"
 
 
-def read_level3_tracks(path: str | Path) -> list[dict[str, Any]]:
+def read_spatial_tracks(path: str | Path) -> list[dict[str, Any]]:
     rows: list[dict[str, Any]] = []
     with Path(path).open("r", newline="", encoding="utf-8") as handle:
         for row in csv.DictReader(handle):
@@ -391,8 +392,16 @@ def write_calibration_json(
     Path(path).write_text(json.dumps(payload, indent=2, ensure_ascii=True) + "\n", encoding="utf-8")
 
 
+def read_level3_tracks(path: str | Path) -> list[dict[str, Any]]:
+    return read_spatial_tracks(path)
+
+
+def write_spatial_tracks(path: str | Path, rows: list[dict[str, Any]]) -> None:
+    write_csv_artifact(path, SPATIAL_TRACKS_CSV, rows)
+
+
 def write_level3_tracks(path: str | Path, rows: list[dict[str, Any]]) -> None:
-    write_csv_artifact(path, "level3_tracks.csv", rows)
+    write_spatial_tracks(path, rows)
 
 
 def summarize_rectified_tracks(rows: list[dict[str, Any]], calibrations: dict[str, ClipCalibration]) -> list[dict[str, Any]]:
@@ -525,7 +534,7 @@ def _corner_deltas(reference: ClipCalibration | None, candidate: ClipCalibration
     ]
 
 
-def draw_minimap_base(path: str | Path, field_model: FieldModel | None = None, title: str = "Mini-mapa base Nivel 3") -> None:
+def draw_minimap_base(path: str | Path, field_model: FieldModel | None = None, title: str = "Mini-mapa base") -> None:
     model = field_model or FieldModel()
     output = Path(path)
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -552,7 +561,7 @@ def draw_minimap_tracks(
 
     clip_ids = sorted(by_clip)
     if not clip_ids:
-        draw_minimap_base(output, model, title="Mini-mapa Nivel 3 sin tracks")
+        draw_minimap_base(output, model, title="Mini-mapa sin tracks")
         return
 
     fig_width = max(5.0, 5.0 * len(clip_ids))
@@ -592,15 +601,15 @@ def draw_minimap_tracks(
 
 
 def _draw_pitch(ax: Any, model: FieldModel) -> None:
-    ax.set_facecolor("#e9f4ea")
-    ax.add_patch(plt.Rectangle((model.x_min, model.y_min), model.x_max - model.x_min, model.y_max - model.y_min, fill=False, lw=1.8, ec="#2f6f4f"))
+    ax.set_facecolor("#e9ffd8")
+    ax.add_patch(plt.Rectangle((model.x_min, model.y_min), model.x_max - model.x_min, model.y_max - model.y_min, fill=False, lw=1.8, ec="#00d25b"))
     for y in (1.0 / 3.0, 2.0 / 3.0, 0.5):
-        ax.axhline(y, color="#7aa37d", lw=0.8, ls="--" if y != 0.5 else "-")
+        ax.axhline(y, color="#b7f300", lw=0.8, ls="--" if y != 0.5 else "-")
     goal_start = 0.5 - model.goal_width_norm / 2
     goal_end = 0.5 + model.goal_width_norm / 2
-    ax.plot([goal_start, goal_end], [0.0, 0.0], color="#2f6f4f", lw=3)
-    ax.plot([goal_start, goal_end], [1.0, 1.0], color="#2f6f4f", lw=3)
-    ax.scatter([0.5], [0.5], s=18, color="#2f6f4f")
+    ax.plot([goal_start, goal_end], [0.0, 0.0], color="#b7f300", lw=3)
+    ax.plot([goal_start, goal_end], [1.0, 1.0], color="#b7f300", lw=3)
+    ax.scatter([0.5], [0.5], s=18, color="#00c853")
     ax.set_xlim(-0.04, 1.04)
     ax.set_ylim(1.04, -0.04)
     ax.set_xlabel("x_norm")

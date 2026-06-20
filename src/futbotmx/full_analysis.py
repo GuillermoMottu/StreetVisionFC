@@ -13,6 +13,32 @@ from dataclasses import asdict, dataclass, field, replace
 from pathlib import Path
 from typing import Any
 
+from futbotmx.artifact_names import (
+    ADVANCED_EVENTS_DIR,
+    ADVANCED_EVENTS_JSON,
+    HIGHLIGHTS_CSV,
+    LEGACY_ADVANCED_EVENTS_DIR,
+    LEGACY_ADVANCED_EVENTS_JSON,
+    LEGACY_HIGHLIGHTS_CSV,
+    LEGACY_NARRATIVE_MD,
+    LEGACY_SPATIAL_DIR,
+    LEGACY_SPATIAL_TRACKS_CSV,
+    LEGACY_TACTICAL_METRICS_CSV,
+    LEGACY_TACTICAL_METRICS_DIR,
+    LEGACY_TACTICAL_METRICS_JSON,
+    LEGACY_TEAM_TRACKS_CSV,
+    LEGACY_VISUALIZATIONS_DIR,
+    NARRATIVE_MD,
+    SPATIAL_DIR,
+    SPATIAL_TRACKS_CSV,
+    TACTICAL_METRICS_CSV,
+    TACTICAL_METRICS_DIR,
+    TACTICAL_METRICS_JSON,
+    TEAM_TRACKS_CSV,
+    VISUALIZATION_MANIFEST_CSV,
+    VISUALIZATIONS_DIR,
+    first_existing,
+)
 from futbotmx.config import load_config, write_config_snapshot
 from futbotmx.video_io import inspect_video
 
@@ -21,7 +47,8 @@ RULE_VERSION = "full_analysis_v0.1"
 CACHE_RULE_VERSION = "full_analysis_cache_v0.1"
 DEFAULT_CACHE_DIR = Path(".cache/futbotmx/full_analysis")
 HASH_FILE_MAX_BYTES = 50 * 1024 * 1024
-DEFAULT_LEVEL2_ROOT = Path("experiments/test_017_level2_closure")
+DEFAULT_CONTEXT_ROOT = Path("experiments/test_017_contextual_closure")
+DEFAULT_LEGACY_CONTEXT_ROOT = Path("experiments/test_017_level2_closure")
 DEFAULT_EXPERIMENT_SLUG = "full_analysis"
 MANIFEST_FIELDS = ["asset_id", "asset_type", "path", "source_artifact", "is_versioned", "role", "notes"]
 STAGE_FIELDS = [
@@ -52,8 +79,9 @@ class FullAnalysisRequest:
     experiment_dir: str = ""
     detections: str = ""
     tracks: str = ""
-    level2_root: str = DEFAULT_LEVEL2_ROOT.as_posix()
+    level2_root: str = DEFAULT_LEGACY_CONTEXT_ROOT.as_posix()
     calibration_json: str = ""
+    manual_assignment: str = ""
     top_highlights: int = 4
     segment_count: int = 4
     cache_dir: str = DEFAULT_CACHE_DIR.as_posix()
@@ -103,24 +131,24 @@ def stage_plan_template(request: FullAnalysisRequest, root: Path | None = None) 
     repo_root = root or Path.cwd()
     detections = _optional_repo_path(repo_root, request.detections)
     tracks = _optional_repo_path(repo_root, request.tracks)
-    level2_tracks = _repo_path(repo_root, Path(request.level2_root) / request.clip_id / "tracks_level2.csv")
+    contextual_tracks = _repo_path(repo_root, Path(request.level2_root) / request.clip_id / "tracks_level2.csv")
     detections_available = bool(detections and detections.exists())
     tracks_available = bool(tracks and tracks.exists())
-    level2_available = level2_tracks.exists()
+    contextual_available = contextual_tracks.exists()
     sam_status = "pass" if detections_available else "requires_gpu"
-    tracking_status = "pass" if (detections_available or tracks_available or level2_available) else "blocked"
+    tracking_status = "pass" if (detections_available or tracks_available or contextual_available) else "blocked"
     return [
         _planned("setup", "Preparar experimento", "lightweight", "local_stdlib", "pending"),
         _planned("ingestion", "Ingesta de video", "lightweight", "opencv_metadata", "pending"),
         _planned("sam3_detections", "SAM 3 / detecciones", "requires_gpu", "laptop_or_precomputed_detections", sam_status),
-        _planned("tracking", "Tracking", "lightweight_or_reused", "from_detections_or_level2_tracks", tracking_status),
-        _planned("level1_events", "Eventos Nivel 1", "lightweight", "rules_from_tracks", "pending"),
-        _planned("level2_events", "Eventos Nivel 2", "lightweight", "rules_from_tracks", "pending"),
-        _planned("level3_spatial", "Nivel 3 espacial", "lightweight", "homography_or_precomputed_tracks", "pending"),
+        _planned("tracking", "Tracking", "lightweight_or_reused", "from_detections_or_reference_tracks", tracking_status),
+        _planned("event_detection", "Deteccion de eventos", "lightweight", "rules_from_tracks", "pending"),
+        _planned("contextual_events", "Eventos contextuales", "lightweight", "rules_from_tracks", "pending"),
+        _planned("spatial_model", "Modelo espacial", "lightweight", "homography_or_precomputed_tracks", "pending"),
         _planned("team_assignment", "Asignacion de equipos", "lightweight", "heuristic_or_manual_csv", "pending"),
-        _planned("level3_metrics", "Metricas Nivel 3", "lightweight", "rules_from_rectified_tracks", "pending"),
-        _planned("level3_events", "Eventos avanzados Nivel 3", "lightweight", "rules_and_highlight_ranking", "pending"),
-        _planned("level3_visualizations", "Visualizaciones Nivel 3", "lightweight", "static_png_assets", "pending"),
+        _planned("tactical_metrics", "Metricas tacticas", "lightweight", "rules_from_rectified_tracks", "pending"),
+        _planned("advanced_events", "Eventos avanzados", "lightweight", "rules_and_highlight_ranking", "pending"),
+        _planned("visualizations", "Visualizaciones tacticas", "lightweight", "static_png_assets", "pending"),
         _planned("dashboard", "Dashboard final", "lightweight", "static_html", "pending"),
         _planned("reel", "Reel local", "lightweight", "static_demo_and_render_plan", "pending"),
     ]
@@ -144,32 +172,38 @@ def run_full_analysis(
     stages.append(_setup_stage(repo_root, request, experiment_path))
     stages.append(_ingestion_stage(repo_root, request, experiment_path, config, clip_info))
     stages.append(_detections_stage(repo_root, request, experiment_path, config))
-    tracking = _tracking_stage(repo_root, request, experiment_path, config, python)
+    metadata = effective_clip_metadata(repo_root, request, clip_info, experiment_path)
+    tracking = _tracking_stage(repo_root, request, experiment_path, config, python, metadata)
     stages.append(tracking)
     if tracking.status == "pass":
         context["tracks"] = experiment_path / "tracking" / "tracks.csv"
 
-    metadata = effective_clip_metadata(repo_root, request, clip_info, experiment_path)
-    level1 = _level1_stage(repo_root, request, experiment_path, config, python, context.get("tracks"), metadata)
-    stages.append(level1)
-    level2 = _level2_stage(repo_root, request, experiment_path, python, context.get("tracks"), metadata)
-    stages.append(level2)
-    spatial = _spatial_stage(repo_root, request, experiment_path, config, python, context.get("tracks"))
+    event_detection = _event_detection_stage(repo_root, request, experiment_path, config, python, context.get("tracks"), metadata)
+    stages.append(event_detection)
+    contextual_events = _contextual_events_stage(repo_root, request, experiment_path, python, context.get("tracks"), metadata)
+    stages.append(contextual_events)
+    spatial = _spatial_stage(repo_root, request, experiment_path, config, python, context.get("tracks"), metadata)
     stages.append(spatial)
-    spatial_tracks = experiment_path / "level3_spatial" / "level3_tracks.csv"
+    spatial_tracks = first_existing(
+        experiment_path / SPATIAL_DIR / SPATIAL_TRACKS_CSV,
+        experiment_path / LEGACY_SPATIAL_DIR / LEGACY_SPATIAL_TRACKS_CSV,
+    )
     if spatial_tracks.exists():
-        context["level3_tracks"] = spatial_tracks
+        context["spatial_tracks"] = spatial_tracks
 
-    team = _team_assignment_stage(repo_root, request, experiment_path, python, context.get("level3_tracks"))
+    team = _team_assignment_stage(repo_root, request, experiment_path, python, context.get("spatial_tracks"))
     stages.append(team)
-    team_tracks = experiment_path / "team_assignment" / "level3_tracks_with_teams.csv"
+    team_tracks = first_existing(
+        experiment_path / "team_assignment" / TEAM_TRACKS_CSV,
+        experiment_path / "team_assignment" / LEGACY_TEAM_TRACKS_CSV,
+    )
     if team_tracks.exists():
-        context["level3_tracks"] = team_tracks
-    tactical = _level3_metrics_stage(repo_root, request, experiment_path, python, context.get("level3_tracks"))
+        context["spatial_tracks"] = team_tracks
+    tactical = _tactical_metrics_stage(repo_root, request, experiment_path, python, context.get("spatial_tracks"))
     stages.append(tactical)
-    advanced = _level3_events_stage(repo_root, request, experiment_path, python, context.get("level3_tracks"))
+    advanced = _advanced_events_stage(repo_root, request, experiment_path, python, context.get("spatial_tracks"))
     stages.append(advanced)
-    visualizations = _level3_visualizations_stage(repo_root, request, experiment_path, python, context.get("level3_tracks"))
+    visualizations = _visualizations_stage(repo_root, request, experiment_path, python, context.get("spatial_tracks"))
     stages.append(visualizations)
     dashboard = _dashboard_stage(repo_root, request, experiment_path, python)
     stages.append(dashboard)
@@ -582,6 +616,7 @@ def _tracking_stage(
     experiment_path: Path,
     config: dict[str, Any],
     python: str,
+    metadata: dict[str, float | int],
 ) -> StageResult:
     stage_dir = experiment_path / "tracking"
     _prepare_stage_dir(stage_dir, request.force)
@@ -642,10 +677,14 @@ def _tracking_stage(
         command = [
             python,
             "scripts/run_tracking.py",
+            "--config",
+            request.config_path,
             "--detections",
             _rel(root, detections),
             "--output",
             _rel(root, target),
+            "--fps",
+            str(metadata["fps"]),
         ]
         result = _command_stage(root, "tracking", "Tracking", "lightweight_or_reused", "from_detections", stage_dir, command, timeout=180)
         _ensure_stage_files(root, stage_dir, result, {"source_detections": _rel(root, detections)}, config)
@@ -653,14 +692,14 @@ def _tracking_stage(
 
     source = _repo_path(root, Path(request.level2_root) / request.clip_id / "tracks_level2.csv")
     if source.exists():
-        cache_key = cache_key_for_stage(root, request, "tracking", {"level2_tracks": source}, {"source": "level2_closure", "level2_root": request.level2_root})
+        cache_key = cache_key_for_stage(root, request, "tracking", {"reference_tracks": source}, {"source": "reference_tracks", "context_root": request.level2_root})
         cached = _restore_cached_stage(
             root,
             request,
             "tracking",
             "Tracking",
             "lightweight_or_reused",
-            "reused_level2_closure_tracks",
+            "reused_reference_tracks",
             stage_dir,
             cache_key,
             {"source_tracks": _rel(root, source)},
@@ -673,21 +712,21 @@ def _tracking_stage(
             "tracking",
             "Tracking",
             "lightweight_or_reused",
-            "reused_level2_closure_tracks",
+            "reused_reference_tracks",
             "pass",
             _rel(root, stage_dir),
             command=f"copy {_rel(root, source)}",
             duration_sec=time.monotonic() - started,
             outputs=[_rel(root, target)],
-            notes="No fresh detections were provided; reused lightweight Level 2 closure tracks for this clip.",
+            notes="No fresh detections were provided; reused lightweight reference tracks for this clip.",
         )
         _ensure_stage_files(root, stage_dir, result, {"source_tracks": _rel(root, source)}, config)
         return _store_stage_cache(root, request, result, stage_dir, cache_key)
 
-    return _failed_stage(root, stage_dir, "tracking", "Tracking", "No detections, provided tracks or Level 2 closure tracks were available.", time.monotonic() - started)
+    return _failed_stage(root, stage_dir, "tracking", "Tracking", "No detections, provided tracks or reference tracks were available.", time.monotonic() - started)
 
 
-def _level1_stage(
+def _event_detection_stage(
     root: Path,
     request: FullAnalysisRequest,
     experiment_path: Path,
@@ -696,17 +735,17 @@ def _level1_stage(
     tracks: Path | None,
     metadata: dict[str, float | int],
 ) -> StageResult:
-    stage_dir = experiment_path / "level1_events"
+    stage_dir = experiment_path / "event_detection"
     _prepare_stage_dir(stage_dir, request.force)
     if not tracks or not tracks.exists():
-        return _skipped_stage(root, stage_dir, "level1_events", "Eventos Nivel 1", "Tracks are required before Level 1 events.", config)
+        return _skipped_stage(root, stage_dir, "event_detection", "Deteccion de eventos", "Tracks are required before event detection.", config)
     output = stage_dir / "events.json"
-    cache_key = cache_key_for_stage(root, request, "level1_events", {"tracks": tracks}, {"metadata": metadata})
+    cache_key = cache_key_for_stage(root, request, "event_detection", {"tracks": tracks}, {"metadata": metadata})
     cached = _restore_cached_stage(
         root,
         request,
-        "level1_events",
-        "Eventos Nivel 1",
+        "event_detection",
+        "Deteccion de eventos",
         "lightweight",
         "rules_from_tracks",
         stage_dir,
@@ -732,12 +771,12 @@ def _level1_stage(
         "--field-height",
         str(metadata["height"]),
     ]
-    result = _command_stage(root, "level1_events", "Eventos Nivel 1", "lightweight", "rules_from_tracks", stage_dir, command)
+    result = _command_stage(root, "event_detection", "Deteccion de eventos", "lightweight", "rules_from_tracks", stage_dir, command)
     _ensure_stage_files(root, stage_dir, result, {"tracks": _rel(root, tracks), "metadata": metadata}, config)
     return _store_stage_cache(root, request, result, stage_dir, cache_key)
 
 
-def _level2_stage(
+def _contextual_events_stage(
     root: Path,
     request: FullAnalysisRequest,
     experiment_path: Path,
@@ -745,22 +784,22 @@ def _level2_stage(
     tracks: Path | None,
     metadata: dict[str, float | int],
 ) -> StageResult:
-    stage_dir = experiment_path / "level2_events"
+    stage_dir = experiment_path / "contextual_events"
     _prepare_stage_dir(stage_dir, request.force)
     if not tracks or not tracks.exists():
-        return _skipped_stage(root, stage_dir, "level2_events", "Eventos Nivel 2", "Tracks are required before Level 2 events.")
+        return _skipped_stage(root, stage_dir, "contextual_events", "Eventos contextuales", "Tracks are required before contextual events.")
     cache_key = cache_key_for_stage(
         root,
         request,
-        "level2_events",
+        "contextual_events",
         {"tracks": tracks},
-        {"metadata": metadata, "level2_root": request.level2_root},
+        {"metadata": metadata, "context_root": request.level2_root},
     )
     cached = _restore_cached_stage(
         root,
         request,
-        "level2_events",
-        "Eventos Nivel 2",
+        "contextual_events",
+        "Eventos contextuales",
         "lightweight",
         "rules_from_tracks",
         stage_dir,
@@ -787,7 +826,7 @@ def _level2_stage(
         "--overlay-dir",
         str(Path(request.level2_root) / request.clip_id),
     ]
-    result = _command_stage(root, "level2_events", "Eventos Nivel 2", "lightweight", "rules_from_tracks", stage_dir, command)
+    result = _command_stage(root, "contextual_events", "Eventos contextuales", "lightweight", "rules_from_tracks", stage_dir, command)
     _ensure_stage_files(root, stage_dir, result, {"tracks": _rel(root, tracks), "metadata": metadata})
     return _store_stage_cache(root, request, result, stage_dir, cache_key)
 
@@ -799,9 +838,92 @@ def _spatial_stage(
     config: dict[str, Any],
     python: str,
     tracks: Path | None,
+    metadata: dict[str, float | int],
 ) -> StageResult:
-    stage_dir = experiment_path / "level3_spatial"
+    stage_dir = experiment_path / SPATIAL_DIR
     _prepare_stage_dir(stage_dir, request.force)
+
+    if tracks and tracks.exists() and _csv_has_fields(tracks, {"x_norm", "y_norm"}):
+        target = stage_dir / SPATIAL_TRACKS_CSV
+        cache_key = cache_key_for_stage(root, request, "spatial_model", {"tracks": tracks}, {"source": "provided_spatial_tracks"})
+        cached = _restore_cached_stage(
+            root,
+            request,
+            "spatial_model",
+            "Modelo espacial",
+            "lightweight",
+            "provided_spatial_tracks",
+            stage_dir,
+            cache_key,
+            {"source_tracks": _rel(root, tracks)},
+            config,
+        )
+        if cached:
+            return cached
+        _copy_file(tracks, target)
+        result = StageResult(
+            "spatial_model",
+            "Modelo espacial",
+            "lightweight",
+            "provided_spatial_tracks",
+            "pass",
+            _rel(root, stage_dir),
+            command=f"copy {_rel(root, tracks)}",
+            outputs=[_rel(root, target)],
+            notes="Provided tracks already include x_norm/y_norm; spatial rectification was reused.",
+        )
+        _ensure_stage_files(root, stage_dir, result, {"source_tracks": _rel(root, tracks)}, config)
+        return _store_stage_cache(root, request, result, stage_dir, cache_key)
+
+    if tracks and tracks.exists():
+        input_paths: dict[str, str | Path] = {"tracks": tracks}
+        if request.calibration_json:
+            input_paths["calibration_json"] = request.calibration_json
+        cache_key = cache_key_for_stage(
+            root,
+            request,
+            "spatial_model",
+            input_paths,
+            {"source": "current_analysis_tracks", "metadata": metadata},
+        )
+        cached = _restore_cached_stage(
+            root,
+            request,
+            "spatial_model",
+            "Modelo espacial",
+            "lightweight",
+            "homography_from_current_tracks",
+            stage_dir,
+            cache_key,
+            {"source_tracks": _rel(root, tracks), "metadata": metadata},
+            config,
+        )
+        if cached:
+            return cached
+        command = [
+            python,
+            "scripts/run_spatial_model.py",
+            "--config",
+            request.config_path,
+            "--tracks",
+            _rel(root, tracks),
+            "--clip-id",
+            request.clip_id,
+            "--fps",
+            str(metadata["fps"]),
+            "--width",
+            str(metadata["width"]),
+            "--height",
+            str(metadata["height"]),
+            "--experiment",
+            _rel(root, stage_dir),
+        ]
+        if request.calibration_json:
+            command.extend(["--calibration-json", request.calibration_json])
+        result = _command_stage(root, "spatial_model", "Modelo espacial", "lightweight", "homography_from_current_tracks", stage_dir, command, timeout=240)
+        _ensure_stage_files(root, stage_dir, result, {"source_tracks": _rel(root, tracks), "metadata": metadata}, config)
+        return _store_stage_cache(root, request, result, stage_dir, cache_key)
+
     source_tracks = _repo_path(root, Path(request.level2_root) / request.clip_id / "tracks_level2.csv")
     if source_tracks.exists():
         input_paths: dict[str, str | Path] = {"source_tracks": source_tracks}
@@ -810,17 +932,17 @@ def _spatial_stage(
         cache_key = cache_key_for_stage(
             root,
             request,
-            "level3_spatial",
+            "spatial_model",
             input_paths,
-            {"level2_root": request.level2_root, "source": "level2_tracks"},
+            {"context_root": request.level2_root, "source": "reference_tracks"},
         )
         cached = _restore_cached_stage(
             root,
             request,
-            "level3_spatial",
-            "Nivel 3 espacial",
+            "spatial_model",
+            "Modelo espacial",
             "lightweight",
-            "homography_from_level2_tracks",
+            "homography_from_reference_tracks",
             stage_dir,
             cache_key,
             {"source_tracks": _rel(root, source_tracks)},
@@ -830,7 +952,7 @@ def _spatial_stage(
             return cached
         command = [
             python,
-            "scripts/run_level3_spatial_model.py",
+            "scripts/run_spatial_model.py",
             "--config",
             request.config_path,
             "--source-dir",
@@ -842,51 +964,22 @@ def _spatial_stage(
         ]
         if request.calibration_json:
             command.extend(["--calibration-json", request.calibration_json])
-        result = _command_stage(root, "level3_spatial", "Nivel 3 espacial", "lightweight", "homography_from_level2_tracks", stage_dir, command, timeout=240)
+        result = _command_stage(root, "spatial_model", "Modelo espacial", "lightweight", "homography_from_reference_tracks", stage_dir, command, timeout=240)
         _ensure_stage_files(root, stage_dir, result, {"source_tracks": _rel(root, source_tracks)}, config)
         return _store_stage_cache(root, request, result, stage_dir, cache_key)
 
-    if tracks and tracks.exists() and _csv_has_fields(tracks, {"x_norm", "y_norm"}):
-        target = stage_dir / "level3_tracks.csv"
-        cache_key = cache_key_for_stage(root, request, "level3_spatial", {"tracks": tracks}, {"source": "provided_level3_tracks"})
-        cached = _restore_cached_stage(
-            root,
-            request,
-            "level3_spatial",
-            "Nivel 3 espacial",
-            "lightweight",
-            "provided_level3_tracks",
-            stage_dir,
-            cache_key,
-            {"source_tracks": _rel(root, tracks)},
-            config,
-        )
-        if cached:
-            return cached
-        _copy_file(tracks, target)
-        result = StageResult(
-            "level3_spatial",
-            "Nivel 3 espacial",
-            "lightweight",
-            "provided_level3_tracks",
-            "pass",
-            _rel(root, stage_dir),
-            command=f"copy {_rel(root, tracks)}",
-            outputs=[_rel(root, target)],
-            notes="Provided tracks already include x_norm/y_norm; spatial rectification was reused.",
-        )
-        _ensure_stage_files(root, stage_dir, result, {"source_tracks": _rel(root, tracks)}, config)
-        return _store_stage_cache(root, request, result, stage_dir, cache_key)
-
-    return _skipped_stage(root, stage_dir, "level3_spatial", "Nivel 3 espacial", "Level 2 tracks or rectified Level 3 tracks are required.", config)
+    return _skipped_stage(root, stage_dir, "spatial_model", "Modelo espacial", "Reference tracks or rectified spatial tracks are required.", config)
 
 
 def _team_assignment_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str, tracks: Path | None) -> StageResult:
     stage_dir = experiment_path / "team_assignment"
     _prepare_stage_dir(stage_dir, request.force)
     if not tracks or not tracks.exists():
-        return _skipped_stage(root, stage_dir, "team_assignment", "Asignacion de equipos", "Level 3 tracks are required before team assignment.")
-    cache_key = cache_key_for_stage(root, request, "team_assignment", {"tracks": tracks})
+        return _skipped_stage(root, stage_dir, "team_assignment", "Asignacion de equipos", "Spatial tracks are required before team assignment.")
+    input_paths: dict[str, str | Path] = {"tracks": tracks}
+    if request.manual_assignment:
+        input_paths["manual_assignment"] = request.manual_assignment
+    cache_key = cache_key_for_stage(root, request, "team_assignment", input_paths)
     cached = _restore_cached_stage(
         root,
         request,
@@ -896,7 +989,7 @@ def _team_assignment_stage(root: Path, request: FullAnalysisRequest, experiment_
         "heuristic_or_manual_csv",
         stage_dir,
         cache_key,
-        {"tracks": _rel(root, tracks)},
+        {"tracks": _rel(root, tracks), "manual_assignment": request.manual_assignment},
     )
     if cached:
         return cached
@@ -910,22 +1003,24 @@ def _team_assignment_stage(root: Path, request: FullAnalysisRequest, experiment_
         "--experiment",
         _rel(root, stage_dir),
     ]
+    if request.manual_assignment:
+        command.extend(["--manual-assignment", request.manual_assignment])
     result = _command_stage(root, "team_assignment", "Asignacion de equipos", "lightweight", "heuristic_or_manual_csv", stage_dir, command, timeout=180)
-    _ensure_stage_files(root, stage_dir, result, {"tracks": _rel(root, tracks)})
+    _ensure_stage_files(root, stage_dir, result, {"tracks": _rel(root, tracks), "manual_assignment": request.manual_assignment})
     return _store_stage_cache(root, request, result, stage_dir, cache_key)
 
 
-def _level3_metrics_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str, tracks: Path | None) -> StageResult:
-    stage_dir = experiment_path / "level3_metrics"
+def _tactical_metrics_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str, tracks: Path | None) -> StageResult:
+    stage_dir = experiment_path / TACTICAL_METRICS_DIR
     _prepare_stage_dir(stage_dir, request.force)
     if not tracks or not tracks.exists():
-        return _skipped_stage(root, stage_dir, "level3_metrics", "Metricas Nivel 3", "Level 3 tracks are required before tactical metrics.")
-    cache_key = cache_key_for_stage(root, request, "level3_metrics", {"tracks": tracks})
+        return _skipped_stage(root, stage_dir, "tactical_metrics", "Metricas tacticas", "Spatial tracks are required before tactical metrics.")
+    cache_key = cache_key_for_stage(root, request, "tactical_metrics", {"tracks": tracks})
     cached = _restore_cached_stage(
         root,
         request,
-        "level3_metrics",
-        "Metricas Nivel 3",
+        "tactical_metrics",
+        "Metricas tacticas",
         "lightweight",
         "rules_from_rectified_tracks",
         stage_dir,
@@ -936,7 +1031,7 @@ def _level3_metrics_stage(root: Path, request: FullAnalysisRequest, experiment_p
         return cached
     command = [
         python,
-        "scripts/run_level3_tactical_metrics.py",
+        "scripts/run_tactical_metrics.py",
         "--config",
         request.config_path,
         "--tracks",
@@ -944,35 +1039,35 @@ def _level3_metrics_stage(root: Path, request: FullAnalysisRequest, experiment_p
         "--experiment",
         _rel(root, stage_dir),
     ]
-    result = _command_stage(root, "level3_metrics", "Metricas Nivel 3", "lightweight", "rules_from_rectified_tracks", stage_dir, command, timeout=180)
+    result = _command_stage(root, "tactical_metrics", "Metricas tacticas", "lightweight", "rules_from_rectified_tracks", stage_dir, command, timeout=180)
     _ensure_stage_files(root, stage_dir, result, {"tracks": _rel(root, tracks)})
     return _store_stage_cache(root, request, result, stage_dir, cache_key)
 
 
-def _level3_events_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str, tracks: Path | None) -> StageResult:
-    stage_dir = experiment_path / "level3_events"
+def _advanced_events_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str, tracks: Path | None) -> StageResult:
+    stage_dir = experiment_path / ADVANCED_EVENTS_DIR
     _prepare_stage_dir(stage_dir, request.force)
-    metrics_dir = experiment_path / "level3_metrics"
+    metrics_dir = experiment_path / TACTICAL_METRICS_DIR
     interaction_metrics = metrics_dir / "interaction_metrics.csv"
     interaction_edges = metrics_dir / "interaction_edges.csv"
     if not tracks or not tracks.exists() or not interaction_metrics.exists() or not interaction_edges.exists():
-        return _skipped_stage(root, stage_dir, "level3_events", "Eventos avanzados Nivel 3", "Tracks and interaction metrics are required before advanced events.")
+        return _skipped_stage(root, stage_dir, "advanced_events", "Eventos avanzados", "Tracks and interaction metrics are required before advanced events.")
     cache_key = cache_key_for_stage(
         root,
         request,
-        "level3_events",
+        "advanced_events",
         {
             "tracks": tracks,
             "interaction_metrics": interaction_metrics,
             "interaction_edges": interaction_edges,
         },
-        {"level2_root": request.level2_root, "primary_clip": request.clip_id},
+        {"context_root": request.level2_root, "primary_clip": request.clip_id},
     )
     cached = _restore_cached_stage(
         root,
         request,
-        "level3_events",
-        "Eventos avanzados Nivel 3",
+        "advanced_events",
+        "Eventos avanzados",
         "lightweight",
         "rules_and_highlight_ranking",
         stage_dir,
@@ -983,7 +1078,7 @@ def _level3_events_stage(root: Path, request: FullAnalysisRequest, experiment_pa
         return cached
     command = [
         python,
-        "scripts/run_level3_advanced_events.py",
+        "scripts/run_advanced_events.py",
         "--config",
         request.config_path,
         "--experiment",
@@ -999,17 +1094,17 @@ def _level3_events_stage(root: Path, request: FullAnalysisRequest, experiment_pa
         "--primary-clip",
         request.clip_id,
     ]
-    result = _command_stage(root, "level3_events", "Eventos avanzados Nivel 3", "lightweight", "rules_and_highlight_ranking", stage_dir, command, timeout=180)
+    result = _command_stage(root, "advanced_events", "Eventos avanzados", "lightweight", "rules_and_highlight_ranking", stage_dir, command, timeout=180)
     _ensure_stage_files(root, stage_dir, result, {"tracks": _rel(root, tracks), "interaction_metrics": _rel(root, interaction_metrics)})
     return _store_stage_cache(root, request, result, stage_dir, cache_key)
 
 
-def _level3_visualizations_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str, tracks: Path | None) -> StageResult:
-    stage_dir = experiment_path / "level3_visualizations"
+def _visualizations_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str, tracks: Path | None) -> StageResult:
+    stage_dir = experiment_path / VISUALIZATIONS_DIR
     _prepare_stage_dir(stage_dir, request.force)
-    spatial_dir = experiment_path / "level3_spatial"
-    metrics_dir = experiment_path / "level3_metrics"
-    events_dir = experiment_path / "level3_events"
+    spatial_dir = experiment_path / SPATIAL_DIR
+    metrics_dir = experiment_path / TACTICAL_METRICS_DIR
+    events_dir = experiment_path / ADVANCED_EVENTS_DIR
     required = [
         tracks,
         spatial_dir / "field_calibration.json",
@@ -1017,15 +1112,15 @@ def _level3_visualizations_stage(root: Path, request: FullAnalysisRequest, exper
         metrics_dir / "voronoi_frames.csv",
         metrics_dir / "interaction_graph.json",
         metrics_dir / "interaction_edges.csv",
-        events_dir / "level3_highlights.csv",
-        events_dir / "level3_events.json",
+        events_dir / HIGHLIGHTS_CSV,
+        events_dir / ADVANCED_EVENTS_JSON,
     ]
     if not all(path and path.exists() for path in required):
-        return _skipped_stage(root, stage_dir, "level3_visualizations", "Visualizaciones Nivel 3", "Level 3 metrics, calibration and highlights are required before visualizations.")
+        return _skipped_stage(root, stage_dir, "visualizations", "Visualizaciones tacticas", "Tactical metrics, calibration and highlights are required before visualizations.")
     cache_key = cache_key_for_stage(
         root,
         request,
-        "level3_visualizations",
+        "visualizations",
         {
             "tracks": tracks,  # type: ignore[dict-item]
             "calibration": spatial_dir / "field_calibration.json",
@@ -1033,16 +1128,16 @@ def _level3_visualizations_stage(root: Path, request: FullAnalysisRequest, exper
             "voronoi_frames": metrics_dir / "voronoi_frames.csv",
             "interaction_graph": metrics_dir / "interaction_graph.json",
             "interaction_edges": metrics_dir / "interaction_edges.csv",
-            "highlights": events_dir / "level3_highlights.csv",
-            "events": events_dir / "level3_events.json",
+            "highlights": events_dir / HIGHLIGHTS_CSV,
+            "events": events_dir / ADVANCED_EVENTS_JSON,
         },
-        {"top_highlights": request.top_highlights, "level2_root": request.level2_root},
+        {"top_highlights": request.top_highlights, "context_root": request.level2_root},
     )
     cached = _restore_cached_stage(
         root,
         request,
-        "level3_visualizations",
-        "Visualizaciones Nivel 3",
+        "visualizations",
+        "Visualizaciones tacticas",
         "lightweight",
         "static_png_assets",
         stage_dir,
@@ -1053,7 +1148,7 @@ def _level3_visualizations_stage(root: Path, request: FullAnalysisRequest, exper
         return cached
     command = [
         python,
-        "scripts/run_level3_visualizations.py",
+        "scripts/run_tactical_visualizations.py",
         "--config",
         request.config_path,
         "--experiment",
@@ -1071,15 +1166,15 @@ def _level3_visualizations_stage(root: Path, request: FullAnalysisRequest, exper
         "--interaction-edges",
         _rel(root, metrics_dir / "interaction_edges.csv"),
         "--highlights",
-        _rel(root, events_dir / "level3_highlights.csv"),
+        _rel(root, events_dir / HIGHLIGHTS_CSV),
         "--events",
-        _rel(root, events_dir / "level3_events.json"),
+        _rel(root, events_dir / ADVANCED_EVENTS_JSON),
         "--level2-root",
         request.level2_root,
         "--top-highlights",
         str(request.top_highlights),
     ]
-    result = _command_stage(root, "level3_visualizations", "Visualizaciones Nivel 3", "lightweight", "static_png_assets", stage_dir, command, timeout=240)
+    result = _command_stage(root, "visualizations", "Visualizaciones tacticas", "lightweight", "static_png_assets", stage_dir, command, timeout=240)
     _ensure_stage_files(root, stage_dir, result, {"tracks": _rel(root, tracks)})  # type: ignore[arg-type]
     return _store_stage_cache(root, request, result, stage_dir, cache_key)
 
@@ -1087,32 +1182,32 @@ def _level3_visualizations_stage(root: Path, request: FullAnalysisRequest, exper
 def _dashboard_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str) -> StageResult:
     stage_dir = experiment_path / "dashboard"
     _prepare_stage_dir(stage_dir, request.force)
-    metrics_dir = experiment_path / "level3_metrics"
-    events_dir = experiment_path / "level3_events"
-    visualizations_dir = experiment_path / "level3_visualizations"
+    metrics_dir = experiment_path / TACTICAL_METRICS_DIR
+    events_dir = experiment_path / ADVANCED_EVENTS_DIR
+    visualizations_dir = experiment_path / VISUALIZATIONS_DIR
     required = [
-        metrics_dir / "level3_metrics.csv",
-        metrics_dir / "level3_metrics.json",
+        metrics_dir / TACTICAL_METRICS_CSV,
+        metrics_dir / TACTICAL_METRICS_JSON,
         metrics_dir / "interaction_edges.csv",
-        events_dir / "level3_highlights.csv",
-        events_dir / "level3_events.json",
-        events_dir / "level3_narrative.md",
-        visualizations_dir / "visualization_manifest.csv",
+        events_dir / HIGHLIGHTS_CSV,
+        events_dir / ADVANCED_EVENTS_JSON,
+        events_dir / NARRATIVE_MD,
+        visualizations_dir / VISUALIZATION_MANIFEST_CSV,
     ]
     if not all(path.exists() for path in required):
-        return _skipped_stage(root, stage_dir, "dashboard", "Dashboard final", "Level 3 metrics, events and visualization manifest are required before dashboard.")
+        return _skipped_stage(root, stage_dir, "dashboard", "Dashboard final", "Tactical metrics, events and visualization manifest are required before dashboard.")
     cache_key = cache_key_for_stage(
         root,
         request,
         "dashboard",
         {
-            "metrics_csv": metrics_dir / "level3_metrics.csv",
-            "metrics_json": metrics_dir / "level3_metrics.json",
+            "metrics_csv": metrics_dir / TACTICAL_METRICS_CSV,
+            "metrics_json": metrics_dir / TACTICAL_METRICS_JSON,
             "interaction_edges": metrics_dir / "interaction_edges.csv",
-            "highlights": events_dir / "level3_highlights.csv",
-            "events": events_dir / "level3_events.json",
-            "narrative": events_dir / "level3_narrative.md",
-            "visualization_manifest": visualizations_dir / "visualization_manifest.csv",
+            "highlights": events_dir / HIGHLIGHTS_CSV,
+            "events": events_dir / ADVANCED_EVENTS_JSON,
+            "narrative": events_dir / NARRATIVE_MD,
+            "visualization_manifest": visualizations_dir / VISUALIZATION_MANIFEST_CSV,
         },
     )
     cached = _restore_cached_stage(
@@ -1130,27 +1225,27 @@ def _dashboard_stage(root: Path, request: FullAnalysisRequest, experiment_path: 
         return cached
     command = [
         python,
-        "scripts/run_level3_dashboard.py",
+        "scripts/run_tactical_dashboard.py",
         "--config",
         request.config_path,
         "--experiment",
         _rel(root, stage_dir),
         "--metrics-csv",
-        _rel(root, metrics_dir / "level3_metrics.csv"),
+        _rel(root, metrics_dir / TACTICAL_METRICS_CSV),
         "--metrics-json",
-        _rel(root, metrics_dir / "level3_metrics.json"),
+        _rel(root, metrics_dir / TACTICAL_METRICS_JSON),
         "--interaction-edges",
         _rel(root, metrics_dir / "interaction_edges.csv"),
         "--highlights",
-        _rel(root, events_dir / "level3_highlights.csv"),
+        _rel(root, events_dir / HIGHLIGHTS_CSV),
         "--events",
-        _rel(root, events_dir / "level3_events.json"),
+        _rel(root, events_dir / ADVANCED_EVENTS_JSON),
         "--narrative",
-        _rel(root, events_dir / "level3_narrative.md"),
+        _rel(root, events_dir / NARRATIVE_MD),
         "--visualizations-dir",
         _rel(root, visualizations_dir),
         "--visualization-manifest",
-        _rel(root, visualizations_dir / "visualization_manifest.csv"),
+        _rel(root, visualizations_dir / VISUALIZATION_MANIFEST_CSV),
     ]
     result = _command_stage(root, "dashboard", "Dashboard final", "lightweight", "static_html", stage_dir, command, timeout=180)
     _ensure_stage_files(root, stage_dir, result, {"visualizations": _rel(root, visualizations_dir)})
@@ -1160,14 +1255,14 @@ def _dashboard_stage(root: Path, request: FullAnalysisRequest, experiment_path: 
 def _reel_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path, python: str) -> StageResult:
     stage_dir = experiment_path / "reel"
     _prepare_stage_dir(stage_dir, request.force)
-    events_dir = experiment_path / "level3_events"
-    visualizations_dir = experiment_path / "level3_visualizations"
+    events_dir = experiment_path / ADVANCED_EVENTS_DIR
+    visualizations_dir = experiment_path / VISUALIZATIONS_DIR
     dashboard_html = experiment_path / "dashboard" / "dashboard.html"
     required = [
-        events_dir / "level3_highlights.csv",
-        events_dir / "level3_events.json",
+        events_dir / HIGHLIGHTS_CSV,
+        events_dir / ADVANCED_EVENTS_JSON,
         events_dir / "overlay_validation.csv",
-        visualizations_dir / "visualization_manifest.csv",
+        visualizations_dir / VISUALIZATION_MANIFEST_CSV,
         visualizations_dir / "highlight_storyboard_manifest.csv",
         dashboard_html,
     ]
@@ -1179,10 +1274,10 @@ def _reel_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path,
         request,
         "reel",
         {
-            "highlights": events_dir / "level3_highlights.csv",
-            "events": events_dir / "level3_events.json",
+            "highlights": events_dir / HIGHLIGHTS_CSV,
+            "events": events_dir / ADVANCED_EVENTS_JSON,
             "overlay_validation": events_dir / "overlay_validation.csv",
-            "visualization_manifest": visualizations_dir / "visualization_manifest.csv",
+            "visualization_manifest": visualizations_dir / VISUALIZATION_MANIFEST_CSV,
             "storyboard_manifest": visualizations_dir / "highlight_storyboard_manifest.csv",
             "dashboard_html": dashboard_html,
         },
@@ -1203,21 +1298,21 @@ def _reel_stage(root: Path, request: FullAnalysisRequest, experiment_path: Path,
         return cached
     command = [
         python,
-        "scripts/run_level3_reel.py",
+        "scripts/run_tactical_reel.py",
         "--config",
         request.config_path,
         "--experiment",
         _rel(root, stage_dir),
         "--highlights",
-        _rel(root, events_dir / "level3_highlights.csv"),
+        _rel(root, events_dir / HIGHLIGHTS_CSV),
         "--events",
-        _rel(root, events_dir / "level3_events.json"),
+        _rel(root, events_dir / ADVANCED_EVENTS_JSON),
         "--overlay-validation",
         _rel(root, events_dir / "overlay_validation.csv"),
         "--advanced-events-dir",
         _rel(root, events_dir),
         "--visualization-manifest",
-        _rel(root, visualizations_dir / "visualization_manifest.csv"),
+        _rel(root, visualizations_dir / VISUALIZATION_MANIFEST_CSV),
         "--storyboard-manifest",
         _rel(root, visualizations_dir / "highlight_storyboard_manifest.csv"),
         "--visualizations-dir",
@@ -1412,7 +1507,7 @@ def _write_root_summary(root: Path, experiment_path: Path, request: FullAnalysis
         "",
         "## Frontera Ligero / GPU",
         "",
-        "- Ligeras en escritorio: ingesta de metadatos, tracking desde detecciones existentes, eventos Nivel 1/2, rectificacion Nivel 3, asignacion de equipos, metricas, eventos avanzados, visualizaciones estaticas, dashboard y reel demo.",
+        "- Ligeras en escritorio: ingesta de metadatos, tracking desde detecciones existentes, deteccion de eventos, eventos contextuales, modelo espacial, asignacion de equipos, metricas tacticas, eventos avanzados, visualizaciones estaticas, dashboard y reel demo.",
         "- Requiere laptop/GPU: SAM 3 para generar detecciones frescas desde video. En este comando se ejecuta si se entrega `--detections`; si no, queda documentado y se reutilizan tracks ligeros disponibles.",
         "- No se versiona MP4 final, checkpoints, frames masivos ni mascaras masivas.",
         "",

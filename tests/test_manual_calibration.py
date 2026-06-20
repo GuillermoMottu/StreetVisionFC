@@ -46,9 +46,14 @@ class ManualCalibrationTests(unittest.TestCase):
 
         html = render_calibration_editor_html(context)
 
+        self.assertIn('data-ui-shell="futbotmx-ui-v1"', html)
+        self.assertIn('data-product-flow="review"', html)
         self.assertIn("fieldCanvas", html)
         self.assertIn("video_test", html)
         self.assertIn("/save-calibration", html)
+        self.assertIn("btn-primary", html)
+        self.assertIn("btn-secondary", html)
+        self.assertIn("btn-danger", html)
 
     def test_save_manual_calibration_payload_writes_valid_json(self) -> None:
         payload = {

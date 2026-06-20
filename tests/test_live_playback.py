@@ -142,6 +142,8 @@ class LivePlaybackTests(unittest.TestCase):
             html = render_playback_html(context)
 
             # structural elements
+            self.assertIn('data-ui-shell="futbotmx-ui-v1"', html)
+            self.assertIn('data-product-flow="playback"', html)
             self.assertIn("<video", html)
             self.assertIn('<canvas id="overlay"', html)
             self.assertIn("FUTBOT_PLAYBACK_DATA", html)
@@ -150,6 +152,7 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("layerBall", html)
             self.assertIn("layerTrails", html)
             self.assertIn("layerMinimap", html)
+            self.assertIn("enabled('layerMinimap')", html)
             # readouts present in JS
             self.assertIn("frameReadout", html)
             self.assertIn("resolvedFrameReadout", html)
@@ -166,7 +169,27 @@ class LivePlaybackTests(unittest.TestCase):
             self.assertIn("/events.json", html)
             # analyze form
             self.assertIn("analyzeForm", html)
+            self.assertIn("analyze-summary", html)
             self.assertIn("/analyze", html)
+
+    def test_render_playback_html_can_be_mounted_under_route_prefix(self) -> None:
+        with TemporaryDirectory() as tmpdir:
+            root = Path(tmpdir)
+            create_source_artifacts(root)
+            context = build_live_playback_context(root, fixture_playback_config(root))
+
+            html = render_playback_html(context, route_prefix="/playback")
+            payload = client_payload(context, route_prefix="/playback")
+            manifest = backend_endpoint_manifest(context, route_prefix="/playback")
+
+        self.assertIn('action="/playback/analyze"', html)
+        self.assertIn('src="/playback/video?clip_id=video_fixture"', html)
+        self.assertIn('href="/playback/tracks.csv"', html)
+        self.assertIn("playbackEndpoint('/browse')", html)
+        self.assertIn("/playback/stream", payload["endpoints"]["stream"])
+        self.assertIn("/playback/video?clip_id=video_fixture", payload["endpoints"]["video"])
+        self.assertIn("/playback/stream-messages.jsonl", payload["debug_panel"]["download_endpoints"]["session_log"])
+        self.assertIn("/playback/stream", {row["path"] for row in manifest["endpoints"]})
 
     def test_build_live_playback_package_writes_activity_23_artifacts(self) -> None:
         with TemporaryDirectory() as tmpdir:

@@ -19,8 +19,10 @@ def main() -> int:
     parser.add_argument("--experiment", default="")
     parser.add_argument("--detections", default="", help="Optional normalized detections JSON produced by SAM 3 on the GPU laptop.")
     parser.add_argument("--tracks", default="", help="Optional precomputed tracks CSV to reuse.")
-    parser.add_argument("--level2-root", default="experiments/test_017_level2_closure")
+    parser.add_argument("--context-root", default="experiments/test_017_level2_closure", help="Optional root with historical/reference tracks and contextual event artifacts.")
+    parser.add_argument("--level2-root", dest="context_root", help=argparse.SUPPRESS)
     parser.add_argument("--calibration-json", default="")
+    parser.add_argument("--manual-assignment", default="", help="Optional human-reviewed team assignment CSV.")
     parser.add_argument("--top-highlights", type=int, default=4)
     parser.add_argument("--segment-count", type=int, default=4)
     parser.add_argument("--cache-dir", default=DEFAULT_CACHE_DIR.as_posix(), help="Local cache directory for reusable lightweight artifacts.")
@@ -38,8 +40,9 @@ def main() -> int:
         experiment_dir=experiment,
         detections=args.detections,
         tracks=args.tracks,
-        level2_root=args.level2_root,
+        level2_root=args.context_root,
         calibration_json=args.calibration_json,
+        manual_assignment=args.manual_assignment,
         top_highlights=args.top_highlights,
         segment_count=args.segment_count,
         cache_dir=args.cache_dir,

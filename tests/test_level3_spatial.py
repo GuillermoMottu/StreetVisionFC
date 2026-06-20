@@ -1,10 +1,17 @@
 from __future__ import annotations
 
+import csv
 from pathlib import Path
 import sys
+import tempfile
 import unittest
 
+import matplotlib
+
+matplotlib.use("Agg")
+
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 
 from futbotmx.level3 import (
     ClipSpatialSpec,
@@ -18,6 +25,7 @@ from futbotmx.level3 import (
     solve_homography,
     summarize_rectified_tracks,
 )
+from run_level3_spatial_model import run_spatial_model_from_tracks
 
 
 class Level3SpatialTests(unittest.TestCase):
@@ -158,6 +166,47 @@ class Level3SpatialTests(unittest.TestCase):
         self.assertGreater(confidence, 0.7)
         self.assertEqual(comparison[0]["method_used"], "manual")
         self.assertGreater(float(comparison[0]["corner_mean_delta_px"]), 0.0)
+
+    def test_spatial_model_can_rectify_direct_current_tracks(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            config = root / "config.yaml"
+            tracks = root / "tracks.csv"
+            output = root / "spatial"
+            config.write_text("level2_events:\n  zone_axis: y\n", encoding="utf-8")
+            with tracks.open("w", newline="", encoding="utf-8") as handle:
+                writer = csv.DictWriter(
+                    handle,
+                    fieldnames=["frame", "track_id", "class_name", "x", "y", "bbox_x1", "bbox_y1", "bbox_x2", "bbox_y2", "confidence", "team"],
+                    lineterminator="\n",
+                )
+                writer.writeheader()
+                writer.writerows(
+                    [
+                        {"frame": 10, "track_id": "field_01", "class_name": "green_soccer_field", "x": 60, "y": 120, "bbox_x1": 10, "bbox_y1": 20, "bbox_x2": 110, "bbox_y2": 220, "confidence": 0.9, "team": "neutral"},
+                        {"frame": 10, "track_id": "ball_01", "class_name": "ball", "x": 60, "y": 120, "bbox_x1": 58, "bbox_y1": 118, "bbox_x2": 62, "bbox_y2": 122, "confidence": 0.9, "team": "neutral"},
+                        {"frame": 10, "track_id": "robot_01", "class_name": "small_robot", "x": 70, "y": 130, "bbox_x1": 65, "bbox_y1": 125, "bbox_x2": 75, "bbox_y2": 135, "confidence": 0.8, "team": "neutral"},
+                    ]
+                )
+
+            validation = run_spatial_model_from_tracks(
+                config,
+                tracks,
+                output,
+                "video_current",
+                fps=10.0,
+                width=120,
+                height=240,
+                min_field_confidence=0.5,
+                min_field_coverage=0.2,
+            )
+
+            rows = list(csv.DictReader((output / "level3_tracks.csv").open("r", newline="", encoding="utf-8")))
+            calibration_exists = (output / "field_calibration.json").exists()
+
+        self.assertEqual(validation[0]["clip_id"], "video_current")
+        self.assertTrue(calibration_exists)
+        self.assertTrue(any(row["track_id"] == "ball_01" and row["calibration_status"] == "rectified" for row in rows))
 
 
 if __name__ == "__main__":

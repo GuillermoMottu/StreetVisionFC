@@ -57,7 +57,7 @@ python scripts/run_unified_analysis.py \
   --clip-id my_clip \
   --start-frame 0 --end-frame 300
 
-# Opens http://127.0.0.1:8766 automatically with:
+# The unified local frontend serves the playback at http://127.0.0.1:8765/playback/ with:
 #   - Synchronized video + bounding-box overlay
 #   - Voronoi minimap (field zones, team control)
 #   - Interaction graph (robot-robot / robot-ball events)

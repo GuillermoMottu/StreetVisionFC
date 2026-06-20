@@ -9,11 +9,12 @@ from itertools import combinations
 from pathlib import Path
 from typing import Any
 
+from futbotmx.artifact_names import SPATIAL_TRACKS_CSV, TACTICAL_METRICS_CSV, TACTICAL_METRICS_JSON
 from futbotmx.level3.schema import write_csv_artifact
-from futbotmx.level3.spatial import normalized_zone, read_level3_tracks
+from futbotmx.level3.spatial import normalized_zone, read_spatial_tracks
 
 
-RULE_VERSION = "level3_tactical_metrics_v0.1"
+RULE_VERSION = "tactical_metrics_v0.2"
 UNKNOWN_TEAMS = {"", "neutral", "unknown", "none"}
 
 
@@ -26,7 +27,7 @@ class TacticalConfig:
     robot_interaction_distance_norm: float = 0.22
     dispute_distance_norm: float = 0.32
     min_track_confidence: float = 0.5
-    source_tracks: str = "experiments/test_020_level3_spatial_model/level3_tracks.csv"
+    source_tracks: str = "experiments/test_020_spatial_model/spatial_tracks.csv"
 
     @property
     def grid_cell_count(self) -> int:
@@ -465,7 +466,7 @@ def build_interaction_graph(
     return {
         "rule_version": RULE_VERSION,
         "source": {
-            "tracks": "level3_tracks.csv",
+            "tracks": SPATIAL_TRACKS_CSV,
             "coordinate_system": "normalized_visible_field",
         },
         "summary": {
@@ -787,7 +788,7 @@ def write_dict_csv(path: str | Path, rows: list[dict[str, Any]], fieldnames: lis
 
 
 def write_level3_metrics_csv(path: str | Path, rows: list[dict[str, Any]]) -> None:
-    write_csv_artifact(path, "level3_metrics.csv", rows)
+    write_csv_artifact(path, TACTICAL_METRICS_CSV, rows)
 
 
 def write_level3_metrics_json(
@@ -928,7 +929,7 @@ def compute_tactical_outputs(
     config: TacticalConfig | None = None,
 ) -> dict[str, Any]:
     tactical_config = config or TacticalConfig(source_tracks=str(tracks_csv))
-    rows = read_level3_tracks(tracks_csv)
+    rows = read_spatial_tracks(tracks_csv)
     fps_by_clip = _fps_by_clip(rows)
     control_rows, _, frame_summaries = compute_spatial_control(rows, tactical_config)
     control_aggregate = aggregate_control_by_clip(control_rows)

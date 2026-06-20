@@ -1,0 +1,222 @@
+.fb-panel,
+.panel,
+article,
+figure {
+  border-radius: var(--fb-radius);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+  list-style: none;
+  padding: 16px 0;
+  margin: 0;
+}
+
+.summary-grid li {
+  min-height: 92px;
+  border: 1px solid var(--fb-line);
+  border-left: 5px solid var(--fb-green);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .99), rgba(246, 255, 242, .99)),
+    var(--fb-panel);
+  padding: 12px;
+  display: grid;
+  align-content: space-between;
+  box-shadow: 0 8px 18px rgba(0, 75, 58, .08);
+}
+
+.summary-grid li:nth-child(2n) {
+  border-left-color: var(--fb-lime);
+}
+
+.summary-grid li:nth-child(3n) {
+  border-left-color: var(--fb-navy);
+}
+
+.summary-grid li:nth-child(5n) {
+  border-left-color: var(--fb-sky);
+}
+
+.summary-grid span {
+  color: var(--fb-navy);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.summary-grid strong {
+  font-size: 28px;
+  line-height: 1;
+  color: var(--fb-navy);
+}
+
+.summary-grid em {
+  color: var(--fb-muted);
+  font-size: 12px;
+  font-style: normal;
+}
+
+.fb-status-strip,
+.status-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+  color: var(--fb-muted);
+  font-size: 13px;
+}
+
+.fb-status-strip span,
+.status-strip span,
+.pill,
+.status {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid var(--fb-line);
+  border-radius: 999px;
+  background: var(--fb-panel);
+  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.quick-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 14px 0 0;
+}
+
+.quick-links a,
+.btn-link,
+.dl-link {
+  border: 1px solid var(--fb-line);
+  border-radius: 6px;
+  background: #ffffff;
+  color: var(--fb-navy);
+  font-weight: 800;
+  padding: 7px 10px;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--fb-panel);
+  font-size: 13px;
+  border: 1px solid var(--fb-line);
+}
+
+th,
+td {
+  border-bottom: 1px solid var(--fb-line-soft);
+  padding: 8px 9px;
+  text-align: left;
+  vertical-align: top;
+}
+
+thead th,
+th {
+  color: var(--fb-navy);
+  font-size: 12px;
+  text-transform: uppercase;
+  background: #ecffd8;
+}
+
+.visual-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+
+figure {
+  margin: 0;
+  background: var(--fb-panel);
+  border: 1px solid var(--fb-line);
+  box-shadow: 0 8px 18px rgba(0, 59, 121, .07);
+}
+
+figure img,
+article img {
+  width: 100%;
+  object-fit: contain;
+  display: block;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, .22) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(255, 255, 255, .22) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183, 243, 0, .18), transparent 48%),
+    var(--fb-field);
+  background-size: 36px 36px;
+}
+
+figcaption {
+  border-top: 1px solid var(--fb-line);
+  color: var(--fb-muted);
+  padding: 8px;
+  font-size: 13px;
+}
+
+.missing {
+  display: grid;
+  place-items: center;
+  color: var(--fb-muted);
+  background: var(--fb-field);
+}
+
+button,
+.button,
+input,
+select,
+textarea {
+  border-radius: 6px;
+  border: 1px solid var(--fb-line);
+  color: var(--fb-ink);
+  font: inherit;
+}
+
+.btn-primary {
+  background: var(--fb-navy);
+  color: #ffffff;
+  border-color: var(--fb-green);
+}
+
+.btn-secondary {
+  background: var(--fb-panel);
+  color: var(--fb-navy);
+  border-color: #8fe6a9;
+}
+
+.btn-danger {
+  background: #fff2ee;
+  color: var(--fb-alert);
+  border-color: #e9a39a;
+}
+
+a {
+  color: var(--fb-navy);
+  text-underline-offset: 2px;
+}
+
+@media (max-width: 920px) {
+  .visual-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .fb-status-strip,
+  .status-strip {
+    justify-content: flex-start;
+    margin-top: 10px;
+  }
+}
+
+@media (max-width: 640px) {
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+}

@@ -1,9 +1,9 @@
 """
-Pipeline unificado: Grounded-SAM → full_analysis → live_playback.
+Pipeline unificado: Grounded-SAM → análisis táctico → live_playback.
 
 Etapas:
   1. Segmentación con OWLv2+SAM3 (Grounded-SAM) → detections.json
-  2. Análisis completo de 12 etapas: tracking, Level3 Voronoi, grafos de
+  2. Análisis completo de 12 etapas: tracking, Voronoi, grafos de
      interacción, asignación de equipos, dashboard, reel
   3. App de visualización en tiempo real (navegador en http://localhost:8766)
 
@@ -40,9 +40,12 @@ import subprocess
 import sys
 import webbrowser
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
+
+from futbotmx.artifact_names import ADVANCED_EVENTS_DIR, ADVANCED_EVENTS_JSON, HIGHLIGHTS_CSV, SPATIAL_DIR, SPATIAL_TRACKS_CSV
 
 
 def _extract_mask_contours(mask_dir: Path, experiment: Path) -> None:
@@ -102,6 +105,23 @@ def _extract_mask_contours(mask_dir: Path, experiment: Path) -> None:
     print(f"      Contornos: {total} objetos en {len(contours_by_frame)} frames → {out.name}")
 
 
+def _mask_quality_summary(frames: list[Any]) -> dict[str, float | int]:
+    total = 0
+    required = 0
+    with_masks = 0
+    for frame in frames:
+        for det in frame.detections:
+            total += 1
+            class_name = str(det.class_name)
+            if "field" in class_name:
+                continue
+            required += 1
+            if det.mask_path:
+                with_masks += 1
+    ratio = with_masks / required if required else 1.0
+    return {"total": total, "required": required, "with_masks": with_masks, "ratio": ratio}
+
+
 def _get_video_metadata(video_path: str) -> tuple[float, int, int]:
     """Devuelve (fps, width, height) del video."""
     import cv2
@@ -136,6 +156,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--sam3-checkpoint", default=None)
     p.add_argument("--confidence", type=float, default=0.1,
                    help="Umbral de confianza para OWLv2 (default: 0.1)")
+    p.add_argument("--min-mask-ratio", type=float, default=0.5,
+                   help="Fraccion minima de detecciones de objetos con mascara SAM3")
+    p.add_argument("--allow-bbox-only", action="store_true",
+                   help="Permite continuar aunque SAM3 no genere suficientes mascaras")
     p.add_argument("--prompts", nargs="+",
                    default=["small robot", "ball", "green soccer field", "yellow goalpost"],
                    help="Prompts de texto para OWLv2")
@@ -144,7 +168,11 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--experiment", default=None,
                    help="Carpeta de salida. Se genera automáticamente si no se especifica.")
     p.add_argument("--config", default="configs/default.yaml")
-    p.add_argument("--level2-root", default="experiments/test_017_level2_closure")
+    p.add_argument("--context-root", default="experiments/test_017_level2_closure",
+                   help="Raiz opcional con tracks/eventos historicos de referencia")
+    p.add_argument("--level2-root", dest="context_root", help=argparse.SUPPRESS)
+    p.add_argument("--manual-assignment", default="",
+                   help="CSV manual opcional para asignar equipos por track_id")
     p.add_argument("--skip-segmentation", action="store_true",
                    help="Saltar segmentación (requiere --detections o detections.json en --experiment)")
     p.add_argument("--skip-analysis", action="store_true",
@@ -229,11 +257,24 @@ def main() -> int:
 
         save_detections(all_frames, detections_json)
         total_dets = sum(len(fd.detections) for fd in all_frames)
+        quality = _mask_quality_summary(all_frames)
         print(
             f"      {len(all_frames)} frames · {total_dets} detecciones "
+            f"· {quality['with_masks']}/{quality['required']} masks "
             f"· {elapsed:.1f}s ({elapsed/max(1,len(all_frames)):.2f}s/frame)"
         )
         print(f"      Guardado → {detections_json}")
+        if total_dets == 0:
+            print("ERROR: segmentación sin detecciones.", file=sys.stderr)
+            return 1
+        if not args.allow_bbox_only and float(quality["ratio"]) < args.min_mask_ratio:
+            print(
+                "ERROR: demasiadas detecciones quedaron sin máscara "
+                f"({float(quality['ratio']):.1%} < {args.min_mask_ratio:.1%}). "
+                "Usa --allow-bbox-only solo para diagnóstico.",
+                file=sys.stderr,
+            )
+            return 1
 
         # ── Extracción de contornos de máscaras ───────────────────────
         _extract_mask_contours(mask_dir, experiment)
@@ -242,7 +283,7 @@ def main() -> int:
     if args.skip_analysis:
         print(f"\n[2/3] Análisis omitido → usando {experiment}")
     else:
-        print(f"\n[2/3] Análisis completo (tracking, Level3, Voronoi, grafos, dashboard)…")
+        print(f"\n[2/3] Análisis completo (tracking, modelo espacial, Voronoi, grafos, dashboard)…")
         cmd = [
             sys.executable,
             str(ROOT / "scripts" / "run_full_analysis.py"),
@@ -252,20 +293,24 @@ def main() -> int:
             "--end-frame", str(args.end_frame),
             "--experiment", str(experiment),
             "--config", args.config,
-            "--level2-root", args.level2_root,
+            "--context-root", args.context_root,
             "--detections", str(detections_json),
         ]
+        if args.manual_assignment:
+            cmd.extend(["--manual-assignment", args.manual_assignment])
         result = subprocess.run(cmd, cwd=str(ROOT), check=False)
         if result.returncode != 0:
             print(
-                "WARN: full_analysis terminó con errores — "
-                "continuando con los artefactos disponibles…"
+                "ERROR: full_analysis terminó con errores; "
+                "se detiene para no publicar artefactos parciales.",
+                file=sys.stderr,
             )
+            return result.returncode or 1
 
     # ── [3/3] Live Playback App ────────────────────────────────────────
-    tracks_csv = experiment / "level3_spatial" / "level3_tracks.csv"
-    events_json_path = experiment / "level3_events" / "level3_events.json"
-    highlights_csv = experiment / "level3_events" / "level3_highlights.csv"
+    tracks_csv = experiment / SPATIAL_DIR / SPATIAL_TRACKS_CSV
+    events_json_path = experiment / ADVANCED_EVENTS_DIR / ADVANCED_EVENTS_JSON
+    highlights_csv = experiment / ADVANCED_EVENTS_DIR / HIGHLIGHTS_CSV
 
     if args.no_serve:
         print(f"\n[3/3] Live playback omitido (--no-serve).")
@@ -280,9 +325,9 @@ def main() -> int:
     print(f"\n[3/3] Iniciando live playback…")
 
     for path, label in [
-        (tracks_csv, "tracks (level3_tracks.csv)"),
-        (events_json_path, "events (level3_events.json)"),
-        (highlights_csv, "highlights (level3_highlights.csv)"),
+        (tracks_csv, f"tracks ({SPATIAL_TRACKS_CSV})"),
+        (events_json_path, f"events ({ADVANCED_EVENTS_JSON})"),
+        (highlights_csv, f"highlights ({HIGHLIGHTS_CSV})"),
     ]:
         status = "OK" if path.exists() else "FALTANTE"
         print(f"      [{status}] {label}")

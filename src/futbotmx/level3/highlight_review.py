@@ -9,6 +9,8 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from futbotmx.ui import shared_css, ui_body_attrs
+
 
 RULE_VERSION = "highlight_human_review_v0.1"
 VALID_REVIEW_STATUSES = ("confiable", "provisional", "descartado")
@@ -225,14 +227,14 @@ def render_review_panel_html(context: dict[str, Any]) -> str:
             "<title>FutBotMX Revision de Highlights</title>",
             f"<style>{_panel_css()}</style>",
             "</head>",
-            "<body>",
-            "<main>",
-            "<header>",
+            f'<body {ui_body_attrs("review", "highlight-review-page")}>',
+            '<main class="fb-shell">',
+            '<header class="fb-topbar">',
             "<div>",
-            "<p>FutBotMX Nivel 3</p>",
+            '<p class="fb-eyebrow">FutBotMX Nivel 3</p>',
             "<h1>Revision humana de highlights</h1>",
             "</div>",
-            f"<button type=\"button\" id=\"exportCsv\">Exportar CSV</button>",
+            f'<button type="button" id="exportCsv" class="btn-primary">Exportar CSV</button>',
             "</header>",
             '<section class="summary" aria-label="Resumen">',
             _summary_badges(context["status_counts"]),
@@ -389,21 +391,27 @@ document.getElementById("exportCsv").addEventListener("click", () => {
 
 
 def _panel_css() -> str:
-    return """
+    return shared_css() + """
 :root {
-  --ink: #17201b;
-  --muted: #5b675f;
-  --line: #c9d6ce;
-  --paper: #fbfcfa;
+  --ink: #05261d;
+  --muted: #52665d;
+  --line: #c7e2d1;
+  --paper: #f5f9ef;
   --panel: #ffffff;
-  --field: #e9f4ea;
-  --blue: #315f9b;
-  --green: #2f6f4f;
+  --field: #e9ffd8;
+  --blue: #00c853;
+  --green: #00d25b;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: var(--paper);
+  background:
+    linear-gradient(90deg, rgba(0,200,83,.08) 1px, transparent 1px),
+    linear-gradient(180deg, rgba(0,75,58,.07) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(183,243,0,.18) 0 24%, transparent 24%),
+    radial-gradient(circle at 84% 0%, rgba(0,75,58,.14), transparent 30%),
+    var(--paper);
+  background-size: 52px 52px, 52px 52px, auto, auto, auto;
   color: var(--ink);
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -417,12 +425,16 @@ header {
   justify-content: space-between;
   align-items: end;
   gap: 20px;
-  border-bottom: 2px solid var(--line);
-  padding-bottom: 16px;
+  border: 1px solid var(--line);
+  border-bottom: 4px solid #b7f300;
+  border-radius: 8px;
+  padding: 16px;
+  background: linear-gradient(135deg, #004b3a, #00c853);
+  color: #ffffff;
 }
 header p {
   margin: 0 0 5px;
-  color: var(--green);
+  color: #eaffd6;
   font-size: 13px;
   font-weight: 700;
   text-transform: uppercase;
@@ -432,6 +444,7 @@ h1 {
   font-size: 38px;
   line-height: 1.05;
   letter-spacing: 0;
+  color: inherit;
 }
 button,
 select {
